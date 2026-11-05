@@ -1,0 +1,41 @@
+/* S3 · Plantillas: estilos propios (el resto viene de gelado-app.css y app.css) */
+.wa-media{width:100%;height:130px;border-radius:10px;object-fit:cover;background:#D9DEE5}
+.wa-bub .wa-head{font-weight:700;margin-bottom:4px}
+.wa-bub .wa-body{white-space:pre-wrap;overflow-wrap:anywhere}
+.wa-bub .wa-foot{color:#8696A0;font-size:12px;margin-top:6px}
+.wa-bub .wa-empty{color:var(--faint)}
+.wa-bub code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.wa-var{background:var(--blue-soft);color:var(--blue);border-radius:4px;padding:0 3px;font-weight:600}
+.wa-doc{background:#fff;border-radius:10px;padding:12px;font-size:13px;box-shadow:0 1px 1px rgba(0,0,0,.06)}
+.wa-btn-ic{margin-right:4px}
+
+.tpl-name{display:flex;flex-direction:column;gap:2px}
+.tpl-name .meta{font-size:12px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+.tpl-actions{display:flex;gap:6px;justify-content:flex-end}
+.tpl-reason{font-size:12px;color:var(--bad);white-space:normal;max-width:360px;margin-top:4px}
+.tpl-table td{vertical-align:top}
+.tpl-row{cursor:pointer}
+.tpl-row:hover td{background:#FAFAFB}
+
+.tpl-editor{flex:1;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:22px;padding:20px 28px}
+.tpl-editor .panel{overflow-y:auto}
+.tpl-form-head{display:flex;align-items:center;gap:10px}
+.tpl-input{width:100%;outline:none;font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:8px;height:38px;padding:0 12px;background:#fff;font-size:13.5px}
+.tpl-input:focus,.tpl-area:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.tpl-area{width:100%;min-height:110px;resize:vertical;outline:none;font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;font-size:13.5px}
+.tpl-counter{font-size:12px;color:var(--muted);text-align:right;margin-top:4px}
+.tpl-counter.over{color:var(--bad);font-weight:600}
+.tpl-fmt{display:flex;align-items:center;gap:6px}
+.tpl-fmt button,.tpl-link{border:0;background:transparent;color:var(--blue);font-weight:600;font-size:12.5px;cursor:pointer;padding:2px 6px;border-radius:6px}
+.tpl-fmt button:hover,.tpl-link:hover{background:var(--blue-soft)}
+.tpl-example{display:flex;align-items:center;gap:8px;margin-top:8px}
+.tpl-example .pill{flex:none}
+.tpl-btn-row{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:6px;align-items:start;margin-bottom:6px}
+.tpl-btn-row .extra{grid-column:2 / 3;display:flex;gap:6px}
+.tpl-btn-lock{background:var(--bad-soft);border:1px solid #F2C2C4;border-radius:8px;min-height:34px;padding:6px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.tpl-errors{background:var(--bad-soft);border:1px solid #F2C2C4;color:var(--bad);border-radius:8px;padding:10px 14px;font-size:13px;margin:0}
+.tpl-errors ul{margin:4px 0 0;padding-left:18px}
+.tpl-notes{background:var(--warn-soft);border:1px solid #F1D9A8;color:#6B4600;border-radius:8px;padding:10px 14px;font-size:13px}
+.tpl-seg{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tpl-check{display:flex;gap:8px;align-items:center;font-size:13px}
+@media (max-width:1100px){.tpl-editor{grid-template-columns:minmax(0,1fr);overflow-y:auto}}
