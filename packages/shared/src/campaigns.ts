@@ -31,6 +31,7 @@ export type CampaignUpsertDto = z.infer<typeof campaignUpsertSchema>;
 export interface AudienceCountDto {
   selected: number;        // en las etiquetas elegidas
   excludedByLabel: number;
+  excludedDeleted: number;
   excludedRevoked: number;
   excludedInvalid: number;
   excludedDuplicate: number;
@@ -94,9 +95,38 @@ export interface CampaignRecipientDto {
 export interface CampaignReportDto {
   campaign: CampaignDto;
   funnel: { sent: number; delivered: number; read: number; replied: number };
+  /** pendientes de enviar (en cola o enviándose) */
+  pending: number;
   failureReasons: Array<{ code: number | null; title: string; count: number }>;
-  skipReasons: Array<{ reason: string; count: number }>;
+  skipReasons: Array<{ reason: string; title: string; count: number }>;
+  /** coste real con el precio que informa Meta en cada mensaje (computeCost) y estimado previo */
+  cost: { estimated: number | null; actual: number; billableMessages: number; byCategory: Record<string, { count: number; cost: number }>; currency: string };
+  /** reparto previsto por días de lo que queda por enviar */
+  remainingPlan: Array<{ day: string; count: number }>;
 }
+
+export interface CampaignRecipientsPage {
+  items: CampaignRecipientDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+  tabCounts: Record<'all' | 'delivered' | 'read' | 'replied' | 'failed' | 'skipped', number>;
+}
+
+/** Respuesta de lanzar/programar */
+export interface CampaignLaunchResultDto {
+  campaign: CampaignDto;
+  plan: Array<{ day: string; count: number }>;
+  scheduled: boolean;
+}
+
+export const SKIP_REASON_ES: Record<string, string> = {
+  REVOKED: 'Dado de baja: no recibe publicidad',
+  PHONE_INVALID: 'Teléfono no válido',
+  DUPLICATE: 'Teléfono duplicado',
+  DELETED: 'Contacto borrado',
+  EXCLUDED_LABEL: 'Excluido por etiqueta',
+};
 
 export const recipientsQuerySchema = z.object({
   tab: z.enum(['all', 'delivered', 'read', 'replied', 'failed', 'skipped']).default('all'),
@@ -104,5 +134,15 @@ export const recipientsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(500).default(100),
 });
+
+export const audienceCountSchema = z.object({
+  audience: audienceSchema,
+  templateId: z.string().uuid().nullable().optional(),
+  ratePerMinute: z.number().int().min(1).max(600).optional(),
+  scheduledAt: z.string().datetime().nullable().optional(),
+});
+export type AudienceCountRequest = z.infer<typeof audienceCountSchema>;
+
+export const launchSchema = z.object({ scheduledAt: z.string().datetime().nullable().optional() }).default({});
 
 export const testSendSchema = z.object({ phone: z.string().min(3) });
