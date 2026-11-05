@@ -1,0 +1,38 @@
+/* Estilos propios de Contactos (lo que las maquetas no traen: controles reales en lugar de dibujos). */
+.contacts-page .page { flex: 1; min-height: 0; }
+.contacts-page .views .view { text-decoration: none; }
+.contacts-page .views a.view { color: var(--ink); }
+.ct-search { color: var(--ink); gap: 8px; min-width: 340px; }
+.ct-search input { border: 0; outline: 0; background: transparent; flex: 1; min-width: 180px; height: 100%; }
+.ct-select { height: 36px; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 0 10px; font-size: 13px; }
+.ct-check { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; vertical-align: middle; }
+.ct-row { cursor: pointer; }
+.ct-row:hover td { background: #FAFAFB; }
+.ct-row.sel td { background: var(--accent-soft); }
+.ct-bulk { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: #FBECEC; color: #8F262C; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
+.ct-bulk button.lnk { border: 0; background: transparent; color: #2457C5; padding: 0; font-size: 12px; font-weight: 600; text-decoration: underline; }
+.ct-pop { position: absolute; z-index: 30; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,.14); padding: 10px; min-width: 260px; max-height: 360px; overflow-y: auto; }
+.ct-pop h4 { margin: 4px 6px 6px; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.ct-pop label.opt { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.ct-pop label.opt:hover { background: var(--bg); }
+.ct-rel { position: relative; }
+.ct-fgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.ct-fgrid .full { grid-column: 1 / -1; }
+.ct-edit label { font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px; }
+.info .ct-edit label { font-size: 11.5px; }
+.info .ct-edit input.field, .info .ct-edit textarea.area { height: 32px; font-size: 13px; padding: 0 10px; }
+.info .ct-edit textarea.area { height: auto; min-height: 60px; padding: 8px 10px; }
+.ct-hist { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.ct-hist .h { display: flex; gap: 8px; align-items: baseline; }
+.ct-detail { max-width: 1100px; width: 100%; margin: 0 auto; }
+.ct-detail-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.ct-files { border: 2px dashed var(--line); border-radius: 12px; padding: 36px; text-align: center; background: #fff; }
+.ct-files.over { border-color: var(--accent); background: var(--accent-soft); }
+.ct-import-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; }
+.ct-stat-row { display: flex; justify-content: space-between; font-size: 13px; }
+.ct-warn { color: #8A5A00; }
+@media (max-width: 900px) {
+  .ct-detail-grid, .ct-import-grid { grid-template-columns: 1fr; }
+  .contacts-page .views { display: none; }
+  .contacts-page .page { padding: 16px; }
+}

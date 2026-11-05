@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ConsentSource, ConsentStatus } from './enums';
+import type { ConsentSource, ConsentStatus, RecipientStatus } from './enums';
 import type { LabelDto } from './labels';
 
 export interface ContactDto {
@@ -35,12 +35,25 @@ export interface ConsentEventDto {
   createdAt: string;
 }
 
+export interface ContactCampaignDto {
+  campaignId: string;
+  name: string;
+  status: RecipientStatus;
+  skipReason: string | null;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  readAt: string | null;
+  repliedAt: string | null;
+}
+
 export const contactListQuerySchema = z.object({
   q: z.string().trim().optional(),
   includeLabelIds: z.union([z.string(), z.array(z.string())]).optional().transform(toArr),
   excludeLabelIds: z.union([z.string(), z.array(z.string())]).optional().transform(toArr),
   consent: z.enum(['UNKNOWN', 'GRANTED', 'REVOKED']).optional(),
-  phoneInvalid: z.coerce.boolean().optional(),
+  /** Solo estos contactos (exportar una selección) */
+  ids: z.union([z.string(), z.array(z.string())]).optional().transform(toArr),
+  phoneInvalid: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).optional().transform((v) => (v === undefined ? undefined : v === true || v === 'true' || v === '1')),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(500).default(100),
   sort: z.enum(['name', 'createdAt', 'lastActivity']).default('name'),
@@ -54,7 +67,7 @@ function toArr(v: string | string[] | undefined): string[] | undefined {
   return r.length ? r : undefined;
 }
 
-const optStr = (max = 200) => z.string().trim().max(max).nullable().optional().transform((s) => (s ? s : null));
+const optStr = (max = 200) => z.string().trim().max(max).nullable().optional().transform((s) => (s === undefined ? undefined : s ? s : null));
 
 export const contactUpsertSchema = z.object({
   phone: z.string().trim().min(1, 'Teléfono obligatorio'),
@@ -115,7 +128,8 @@ export interface ImportUploadResultDto {
   totalRows: number;
 }
 
-export interface ImportRowIssue { row: number; reason: string; value?: string }
+/** kind: skipped = fila descartada · merged = duplicada unida a otra del archivo · warning = se importa pero con un aviso */
+export interface ImportRowIssue { row: number; reason: string; value?: string; kind?: 'skipped' | 'merged' | 'warning' }
 
 export interface ImportPreviewDto {
   jobId: string;
@@ -124,6 +138,12 @@ export interface ImportPreviewDto {
   willUpdate: number;
   willSkip: number;
   willOptOut: number;
+  /** Detalle de lo descartado/unido (willSkip = suma de estos + existentes omitidos) */
+  invalidPhone?: number;
+  emptyRows?: number;
+  duplicatesInFile?: number;
+  skippedExisting?: number;
+  totalIssues?: number;
   issues: ImportRowIssue[];   // primeras N
   sample: Array<{ row: number; phoneE164: string | null; name: string; labels: string[]; action: 'create' | 'update' | 'skip'; reason?: string }>;
 }
@@ -138,6 +158,11 @@ export interface ImportJobDto {
   updated: number;
   skipped: number;
   errors: ImportRowIssue[];
+  /** Total de incidencias del informe (errors puede venir recortado) */
+  errorCount?: number;
+  optedOut?: number;
+  labelsCreated?: number;
+  failureMessage?: string | null;
   createdAt: string;
   finishedAt: string | null;
 }
