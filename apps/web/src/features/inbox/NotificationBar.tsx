@@ -6,7 +6,7 @@ import { notificationPermission, requestNotificationPermission } from './notify'
 export { notificationPermission };
 type Perm = ReturnType<typeof notificationPermission>;
 
-const IOS_MSG = 'En este navegador no hay notificaciones del sistema (en iPhone y iPad solo existen si añades la web a la pantalla de inicio). El sonido de aviso funciona con la bandeja abierta.';
+const IOS_MSG = 'En iPhone y iPad, Safari no permite notificaciones de esta web. El sonido de aviso funciona con la bandeja abierta.';
 const DENIED_MSG = 'Las notificaciones están bloqueadas en este navegador. Puedes permitirlas desde los ajustes del sitio (el candado de la barra de direcciones).';
 const DISMISS_KEY = 'gelado:notif-bar-dismissed';
 const read = () => { try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; } };

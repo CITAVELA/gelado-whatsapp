@@ -81,7 +81,7 @@ describe('permiso de notificaciones', () => {
     const { NotificationBar } = await import('./NotificationBar');
     render(<NotificationBar perm="unsupported" onPerm={() => {}} />);
     expect(screen.queryByRole('button', { name: /Activar notificaciones/ })).toBeNull();
-    expect(screen.getByRole('note')).toHaveTextContent(/pantalla de inicio/);
+    expect(screen.getByRole('note')).toHaveTextContent(/Safari no permite notificaciones/);
     expect(screen.getByRole('note')).toHaveTextContent(/sonido de aviso/);
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar aviso' }));
     expect(screen.queryByRole('note')).toBeNull();

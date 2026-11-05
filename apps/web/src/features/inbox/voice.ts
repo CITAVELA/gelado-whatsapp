@@ -39,6 +39,7 @@ export function useVoiceRecorder() {
   const stream = useRef<MediaStream | null>(null);
   const chunks = useRef<Blob[]>([]);
   const requested = useRef<string | undefined>(undefined);
+  const startedAt = useRef(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -69,6 +70,7 @@ export function useVoiceRecorder() {
     chunks.current = [];
     r.ondataavailable = (e) => e.data.size && chunks.current.push(e.data);
     r.start();
+    startedAt.current = Date.now();
     rec.current = r;
     setSeconds(0);
     setRecording(true);
@@ -97,5 +99,8 @@ export function useVoiceRecorder() {
     cleanup();
   }, [cleanup]);
 
-  return { recording, seconds, start, stop, cancel };
+  /** Milisegundos grabados hasta ahora (0 si no se está grabando). */
+  const elapsedMs = useCallback(() => (rec.current ? Date.now() - startedAt.current : 0), []);
+
+  return { recording, seconds, start, stop, cancel, elapsedMs };
 }
