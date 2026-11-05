@@ -134,7 +134,7 @@ export async function toMessageDto(
     status: m.status,
     errorCode: m.errorCode,
     errorTitle: m.errorCode != null ? (info?.es ?? m.errorTitle) : m.errorTitle,
-    retryable: m.status === 'FAILED' && (m.errorCode == null ? true : !!info?.retryable),
+    retryable: m.status === 'FAILED' && (m.errorRetryable ?? (m.errorCode == null ? true : !!info?.retryable)),
     sentBy: toUserMini(m.sentBy),
     campaignId: m.campaignId,
     campaignName: m.campaign?.name ?? null,

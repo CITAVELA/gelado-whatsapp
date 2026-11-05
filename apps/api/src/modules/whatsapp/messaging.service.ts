@@ -23,6 +23,13 @@ import { MessageStatusService } from './message-status.service';
 export const WINDOW_CLOSED_MESSAGE = 'La ventana de 24 h está cerrada: solo puedes enviar una plantilla';
 /** 1 intento + 3 reintentos (docs/04) */
 const MAX_SEND_ATTEMPTS = 4;
+/** Un envío «en curso» más viejo que esto se da por muerto (la llamada a Meta tiene un tiempo máximo de 30 s). */
+const SENDING_STALE_MS = 90_000;
+/** Un PENDING más viejo que esto sin trabajo en marcha se reencola (tarea de cada minuto). */
+const ORPHAN_AFTER_MS = 5 * 60_000;
+export const REVOKED_MARKETING_MESSAGE = 'El contacto se ha dado de baja de las promociones: no se le puede enviar una plantilla de marketing';
+export const UNKNOWN_SEND_STATE_TITLE = 'Estado de envío desconocido';
+const UNKNOWN_SEND_STATE_DETAILS = 'La llamada a WhatsApp no terminó y no se sabe si el mensaje salió. No se reenvía solo para no duplicarlo: compruébalo y usa «Reintentar» si hace falta.';
 
 type ConversationWithContact = Prisma.ConversationGetPayload<{ include: { contact: true } }>;
 
@@ -59,6 +66,8 @@ export class MessagingService implements OnModuleInit {
 
   onModuleInit() {
     this.jobs.register<{ messageId: string }>(QUEUES.WA_SEND, (d) => this.processSend(d.messageId));
+    // Red de seguridad: mensajes PENDING que se quedaron sin trabajo (caída entre guardar y encolar, trabajo agotado)
+    this.jobs.register(QUEUES.CRON_MINUTE, () => this.requeueOrphans().then(() => undefined), {}, 'wa-send-orphans');
   }
 
   // ───────────────────────── API pública ─────────────────────────
@@ -126,7 +135,7 @@ export class MessagingService implements OnModuleInit {
     }
     // Regla 5: quien se dio de baja nunca recibe marketing
     if (template.category === 'MARKETING' && conv.contact.consentStatus === 'REVOKED') {
-      throw new ConflictException({ statusCode: 409, message: 'El contacto se ha dado de baja de las promociones: no se le puede enviar una plantilla de marketing' });
+      throw new ConflictException({ statusCode: 409, message: REVOKED_MARKETING_MESSAGE });
     }
     const comps = template.components as unknown as TemplateComponent[];
     const clean = Object.fromEntries(Object.entries(params ?? {}).map(([k, v]) => [k, cleanParam(String(v ?? ''))]));
@@ -200,22 +209,60 @@ export class MessagingService implements OnModuleInit {
     }
   }
 
-  /** Reenvía un mensaje fallido por un error temporal. */
+  /**
+   * Reenvía un mensaje fallido por un error temporal, con las mismas reglas que al enviarlo por primera vez:
+   * ventana de 24 h (salvo plantillas), plantilla aprobada, contacto no dado de baja (marketing) y, si el mensaje
+   * es de una campaña, campaña en marcha.
+   */
   async retry(messageId: string, userId?: string | null): Promise<Message> {
-    const m = await this.prisma.message.findUnique({ where: { id: messageId }, include: { conversation: { include: { contact: true } } } });
+    const m = await this.prisma.message.findUnique({ where: { id: messageId }, include: { template: true, conversation: { include: { contact: true } } } });
     if (!m || m.direction !== 'OUTBOUND') throw new NotFoundException({ statusCode: 404, message: 'Mensaje no encontrado' });
-    const info = m.errorCode != null ? metaErrorInfo(m.errorCode) : null;
-    if (m.status !== 'FAILED' || (info && !info.retryable)) {
+    if (m.status !== 'FAILED' || !isRetryableFailure(m)) {
       throw new ConflictException({ statusCode: 409, message: 'Este mensaje no se puede reintentar' });
     }
-    if (m.kind !== 'TEMPLATE') this.assertWindowOpen(m.conversation);
-    const upd = await this.prisma.message.update({
-      where: { id: m.id },
-      data: { status: 'PENDING', wamid: null, errorCode: null, errorTitle: null, errorDetails: null, failedAt: null, raw: Prisma.DbNull, ...(userId ? { sentById: userId } : {}) },
+    if (m.kind !== 'TEMPLATE') {
+      this.assertWindowOpen(m.conversation);
+    } else {
+      if (!m.template || m.template.status !== 'APPROVED') {
+        throw new ConflictException({ statusCode: 409, message: 'La plantilla no está aprobada por Meta, no se puede reenviar' });
+      }
+      if (m.template.category === 'MARKETING' && m.conversation.contact.consentStatus === 'REVOKED') {
+        throw new ConflictException({ statusCode: 409, message: REVOKED_MARKETING_MESSAGE });
+      }
+    }
+    if (m.campaignId) {
+      const campaign = await this.prisma.campaign.findUnique({ where: { id: m.campaignId }, select: { status: true } });
+      if (campaign?.status !== 'RUNNING') {
+        throw new ConflictException({ statusCode: 409, message: 'La campaña ya no está en marcha: este mensaje no se reenvía' });
+      }
+    }
+    // Condicional: dos pulsaciones seguidas no encolan dos envíos
+    const claimed = await this.prisma.message.updateMany({
+      where: { id: m.id, status: 'FAILED' },
+      data: {
+        status: 'PENDING', wamid: null, errorCode: null, errorTitle: null, errorDetails: null, errorRetryable: null, failedAt: null,
+        sendState: null, sendStartedAt: null, raw: Prisma.DbNull, ...(userId ? { sentById: userId } : {}),
+      },
     });
+    if (!claimed.count) throw new ConflictException({ statusCode: 409, message: 'Este mensaje no se puede reintentar' });
+    const upd = await this.prisma.message.findUniqueOrThrow({ where: { id: m.id } });
     this.notifier.status(upd);
     await this.jobs.send(QUEUES.WA_SEND, { messageId: m.id });
     return (await this.prisma.message.findUnique({ where: { id: m.id } })) ?? upd;
+  }
+
+  /** Reencola los mensajes PENDING de hace más de 5 minutos (docs/04: ningún mensaje se queda sin enviar). */
+  async requeueOrphans(): Promise<number> {
+    const rows = await this.prisma.message.findMany({
+      where: { direction: 'OUTBOUND', status: 'PENDING', wamid: null, createdAt: { lt: new Date(Date.now() - ORPHAN_AFTER_MS) } },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
+      select: { id: true },
+    });
+    // singletonKey: aunque el trabajo siga en cola, no se apilan copias cada minuto
+    for (const r of rows) await this.jobs.send(QUEUES.WA_SEND, { messageId: r.id }, { singletonKey: r.id, singletonSeconds: 240 });
+    if (rows.length) this.log.warn(`Reencolados ${rows.length} mensajes PENDING sin trabajo`);
+    return rows.length;
   }
 
   /** Crea la conversación del contacto si no existe (campañas, pruebas, «nueva conversación»). */
@@ -289,7 +336,16 @@ export class MessagingService implements OnModuleInit {
     return (await this.prisma.message.findUnique({ where: { id: message.id } })) ?? message;
   }
 
-  /** Worker de `wa-send`: llama a la Graph API. Errores temporales → relanza (pg-boss reintenta); definitivos → FAILED. */
+  /**
+   * Worker de `wa-send`: llama a la Graph API. Errores temporales → relanza (pg-boss reintenta); definitivos → FAILED.
+   *
+   * Doble envío (S9 #4): antes de llamar a Meta se reclama el mensaje (`sendState = SENDING`, condicional, así dos
+   * trabajos a la vez no envían dos veces) y se manda `biz_opaque_callback_data` = id del mensaje, que Meta devuelve
+   * en los estados y permite enlazar el wamid aunque la respuesta se perdiera. Si la llamada acaba sin respuesta
+   * (tiempo agotado, caída del proceso) el estado queda incierto: al reintentar, un mensaje de campaña NO se
+   * reenvía (FAILED «Estado de envío desconocido», reintento manual); uno del chat sí se reenvía (coste de un
+   * duplicado ocasional bajo, y el agente lo ve en la conversación).
+   */
   async processSend(messageId: string): Promise<void> {
     const msg = await this.prisma.message.findUnique({
       where: { id: messageId },
@@ -297,23 +353,59 @@ export class MessagingService implements OnModuleInit {
     });
     if (!msg || msg.direction !== 'OUTBOUND' || msg.status !== 'PENDING' || msg.wamid) return; // ya enviado o cancelado: idempotente
 
+    const staleSending = msg.sendState === 'SENDING' && !!msg.sendStartedAt && Date.now() - msg.sendStartedAt.getTime() > SENDING_STALE_MS;
+    if (msg.sendState === 'SENDING' && !staleSending) return; // otro trabajo lo está enviando ahora mismo
+    const previousUncertain = msg.sendState === 'UNCERTAIN' || staleSending;
+    const claimed = await this.prisma.message.updateMany({
+      where: { id: msg.id, status: 'PENDING', wamid: null, sendState: msg.sendState, sendStartedAt: msg.sendStartedAt },
+      data: { sendState: 'SENDING', sendStartedAt: new Date() },
+    });
+    if (!claimed.count) return;
+
+    if (previousUncertain && msg.campaignId) {
+      await this.statusSvc.markFailed(msg.id, { code: null, title: UNKNOWN_SEND_STATE_TITLE, details: UNKNOWN_SEND_STATE_DETAILS, retryable: true });
+      return;
+    }
+
+    let sendCalled = false;
     try {
       const wa = await this.buildOutbound(msg);
+      // Regla 5, justo antes de llamar a Meta: quien se dio de baja desde que se encoló no recibe marketing
+      if (await this.isRevokedMarketing(msg)) {
+        await this.statusSvc.markFailed(msg.id, { code: null, title: REVOKED_MARKETING_MESSAGE, details: 'Baja registrada antes del envío', retryable: false });
+        return;
+      }
       const to = msg.conversation.contact.waId ?? msg.conversation.contact.phoneE164;
-      const res = await this.gateway.sendMessage(to, wa, { contextWamid: msg.contextWamid ?? undefined });
+      sendCalled = true;
+      const res = await this.gateway.sendMessage(to, wa, { contextWamid: msg.contextWamid ?? undefined, opaqueData: msg.id });
       const wamid = res.messages?.[0]?.id;
-      if (!wamid) throw new WhatsAppApiError(undefined, null, metaErrorInfo(null, 502));
+      if (!wamid) throw new WhatsAppApiError(undefined, null, metaErrorInfo(null, 502), true);
       await this.statusSvc.markSent(msg.id, wamid);
     } catch (e) {
       const err = e instanceof WhatsAppApiError ? e : new WhatsAppApiError(undefined, null, metaErrorInfo(null, 500));
       if (!(e instanceof WhatsAppApiError)) this.log.error(`Fallo al preparar el envío ${msg.id}: ${(e as Error)?.stack ?? e}`);
+      // ¿Pudo llegar a Meta? Solo si la llamada salió y no hubo respuesta HTTP clara (o falló algo nuestro después)
+      const uncertain = sendCalled && (!(e instanceof WhatsAppApiError) || e.uncertain);
       const attempts = (((msg.raw as any)?.sendAttempts as number | undefined) ?? 0) + 1;
       if (err.retryable && attempts < MAX_SEND_ATTEMPTS) {
-        await this.prisma.message.update({ where: { id: msg.id }, data: { raw: { sendAttempts: attempts, lastError: err.message } } });
+        await this.prisma.message.update({
+          where: { id: msg.id },
+          data: { raw: { sendAttempts: attempts, lastError: err.message }, sendState: uncertain ? 'UNCERTAIN' : null, ...(uncertain ? {} : { sendStartedAt: null }) },
+        });
         throw err; // pg-boss reintenta con espera
       }
-      await this.statusSvc.markFailed(msg.id, { code: err.info.code || null, title: err.info.es, details: err.graph?.message ?? err.message });
+      if (uncertain && msg.campaignId) {
+        await this.statusSvc.markFailed(msg.id, { code: null, title: UNKNOWN_SEND_STATE_TITLE, details: UNKNOWN_SEND_STATE_DETAILS, retryable: true });
+        return;
+      }
+      await this.statusSvc.markFailed(msg.id, { code: err.info.code || null, title: err.info.es, details: err.graph?.message ?? err.message, retryable: err.retryable });
     }
+  }
+
+  private async isRevokedMarketing(msg: { kind: string; template: { category: string } | null; conversation: { contactId: string } }): Promise<boolean> {
+    if (msg.kind !== 'TEMPLATE' || msg.template?.category !== 'MARKETING') return false;
+    const c = await this.prisma.contact.findUnique({ where: { id: msg.conversation.contactId }, select: { consentStatus: true } });
+    return c?.consentStatus === 'REVOKED';
   }
 
   private async buildOutbound(msg: Prisma.MessageGetPayload<{ include: { template: true; media: true } }>): Promise<WaOutboundMessage> {
@@ -375,6 +467,12 @@ export class MessagingService implements OnModuleInit {
 
     return { type: 'template', template: { name: t.name, language: { code: t.language }, ...(out.length ? { components: out } : {}) } };
   }
+}
+
+/** ¿Se puede reintentar a mano? Usa el valor guardado; en mensajes antiguos lo deduce del código de error. */
+export function isRetryableFailure(m: { errorCode: number | null; errorRetryable?: boolean | null }): boolean {
+  if (m.errorRetryable != null) return m.errorRetryable;
+  return m.errorCode == null ? true : metaErrorInfo(m.errorCode).retryable;
 }
 
 /** Meta rechaza saltos de línea, tabuladores y más de 4 espacios seguidos en los parámetros de plantilla. */

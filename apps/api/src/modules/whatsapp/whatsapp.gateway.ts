@@ -9,6 +9,8 @@ export class WhatsAppApiError extends Error {
     readonly httpStatus: number | undefined,
     readonly graph: WaGraphError | null,
     readonly info: MetaErrorInfo,
+    /** Sin respuesta HTTP (tiempo agotado, conexión cortada): Meta puede haber aceptado la petición. */
+    readonly uncertain = false,
   ) {
     super(`${info.code}: ${graph?.message ?? info.es}`);
   }
@@ -20,13 +22,43 @@ export class WhatsAppApiError extends Error {
   }
 }
 
+/** Hosts desde los que Meta sirve los adjuntos (y solo ellos reciben el token Bearer). */
+const META_MEDIA_HOST_SUFFIXES = ['fbsbx.com', 'whatsapp.net', 'facebook.com', 'fbcdn.net'];
+/** Tope de descarga de un adjunto (el mayor límite de Meta: documentos de 100 MB). */
+export const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
+/** Errores de conexión en los que la petición no llegó a salir: Meta no ha podido recibirla. */
+const NOT_SENT_CODES = new Set(['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
+
+/**
+ * ¿Se puede descargar de esta URL con el token de Meta? Solo `https` y hosts de Meta; en desarrollo y pruebas
+ * también el origen de `META_GRAPH_BASE_URL` (el simulador). Evita mandar el token a un host cualquiera (SSRF).
+ */
+export function isAllowedMediaUrl(rawUrl: string, graphBaseUrl: string, nodeEnv: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (nodeEnv !== 'production') {
+    try {
+      if (u.origin === new URL(graphBaseUrl).origin) return true;
+    } catch {
+      /* base inválida: solo hosts de Meta */
+    }
+  }
+  if (u.protocol !== 'https:' || u.username || u.password) return false;
+  const host = u.hostname.toLowerCase();
+  return META_MEDIA_HOST_SUFFIXES.some((suf) => host === suf || host.endsWith('.' + suf));
+}
+
 /**
  * Contrato del cliente de la Graph API (docs/06). Una sola implementación HTTP: en local apunta al
  * simulador (META_GRAPH_BASE_URL=http://localhost:4010) y en producción a https://graph.facebook.com.
  * NUNCA incluye /register (CLAUDE.md, regla 2).
  */
 export interface WhatsAppGatewayContract {
-  sendMessage(toWaId: string, msg: WaOutboundMessage, opts?: { contextWamid?: string }): Promise<WaSendResponse>;
+  sendMessage(toWaId: string, msg: WaOutboundMessage, opts?: { contextWamid?: string; opaqueData?: string }): Promise<WaSendResponse>;
   markRead(wamid: string): Promise<void>;
   uploadMedia(data: Buffer, mimeType: string, fileName: string): Promise<{ id: string }>;
   getMediaInfo(mediaId: string): Promise<WaMediaInfo>;
@@ -63,7 +95,8 @@ export class WhatsAppGateway implements WhatsAppGatewayContract {
         signal: AbortSignal.timeout(30000),
       });
     } catch (e) {
-      throw new WhatsAppApiError(undefined, null, metaErrorInfo(null, undefined));
+      const code = (e as any)?.cause?.code ?? (e as any)?.code;
+      throw new WhatsAppApiError(undefined, null, metaErrorInfo(null, undefined), !NOT_SENT_CODES.has(code));
     }
     const text = await res.text();
     let json: any = null;
@@ -79,9 +112,11 @@ export class WhatsAppGateway implements WhatsAppGatewayContract {
     return json as T;
   }
 
-  sendMessage(toWaId: string, msg: WaOutboundMessage, opts?: { contextWamid?: string }) {
+  sendMessage(toWaId: string, msg: WaOutboundMessage, opts?: { contextWamid?: string; opaqueData?: string }) {
     const body: Record<string, unknown> = { messaging_product: 'whatsapp', recipient_type: 'individual', to: toWaId.replace(/^\+/, ''), ...msg };
     if (opts?.contextWamid) body.context = { message_id: opts.contextWamid };
+    // Meta lo devuelve tal cual en los estados: permite enlazar un estado con el mensaje aunque no se guardara el wamid
+    if (opts?.opaqueData) body.biz_opaque_callback_data = opts.opaqueData.slice(0, 512);
     return this.call<WaSendResponse>('POST', `${this.base}/${config().WA_PHONE_NUMBER_ID}/messages`, body);
   }
 
@@ -101,15 +136,44 @@ export class WhatsAppGateway implements WhatsAppGatewayContract {
     return this.call<WaMediaInfo>('GET', `${this.base}/${mediaId}`);
   }
 
-  async downloadMedia(url: string) {
+  async downloadMedia(url: string, maxBytes = MAX_DOWNLOAD_BYTES) {
+    const c = config();
+    if (!isAllowedMediaUrl(url, c.META_GRAPH_BASE_URL, c.NODE_ENV)) {
+      this.log.warn(`URL de adjunto rechazada (host no permitido): ${safeHost(url)}`);
+      throw new WhatsAppApiError(undefined, null, { code: 0, es: 'La URL del adjunto no es de Meta; no se descarga', action: 'no_retry', retryable: false });
+    }
     let res: Response;
     try {
-      res = await fetch(url, { headers: this.auth, signal: AbortSignal.timeout(60000) });
+      res = await fetch(url, { headers: this.auth, redirect: 'error', signal: AbortSignal.timeout(60000) });
     } catch {
       throw new WhatsAppApiError(undefined, null, metaErrorInfo(null, undefined));
     }
     if (!res.ok) throw new WhatsAppApiError(res.status, null, { code: res.status, es: 'La URL del adjunto ha caducado o no está disponible', action: 'retry', retryable: true });
-    return { data: Buffer.from(await res.arrayBuffer()), mimeType: res.headers.get('content-type') ?? 'application/octet-stream' };
+    const tooBig = () => new WhatsAppApiError(undefined, null, { code: 0, es: 'El adjunto supera el máximo de 100 MB', action: 'no_retry', retryable: false });
+    const declared = Number(res.headers.get('content-length'));
+    if (Number.isFinite(declared) && declared > maxBytes) throw tooBig();
+    // Lectura por partes con tope: un cuerpo sin Content-Length (o mentiroso) no llena la memoria
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      const reader = res.body?.getReader();
+      if (reader) {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          total += value.length;
+          if (total > maxBytes) {
+            await reader.cancel().catch(() => undefined);
+            throw tooBig();
+          }
+          chunks.push(value);
+        }
+      }
+    } catch (e) {
+      if (e instanceof WhatsAppApiError) throw e;
+      throw new WhatsAppApiError(undefined, null, metaErrorInfo(null, undefined));
+    }
+    return { data: Buffer.concat(chunks, total), mimeType: res.headers.get('content-type') ?? 'application/octet-stream' };
   }
 
   async listTemplates() {
@@ -119,7 +183,13 @@ export class WhatsAppGateway implements WhatsAppGatewayContract {
     while (url) {
       const page: { data: WaTemplate[]; paging?: { next?: string } } = await this.call('GET', url);
       all.push(...page.data);
-      url = page.paging?.next ?? null;
+      const next = page.paging?.next ?? null;
+      // Se manda el token a `next`: solo si es del mismo origen que la Graph API
+      if (next && !sameOrigin(next, this.base)) {
+        this.log.warn(`paging.next ignorado (origen distinto de la Graph API): ${safeHost(next)}`);
+        break;
+      }
+      url = next;
     }
     return all;
   }
@@ -149,5 +219,21 @@ export class WhatsAppGateway implements WhatsAppGatewayContract {
   getPhoneNumber() {
     const fields = 'id,display_phone_number,verified_name,quality_rating,status,messaging_limit_tier,name_status,throughput';
     return this.call<WaPhoneNumberInfo>('GET', `${this.base}/${config().WA_PHONE_NUMBER_ID}?fields=${fields}`);
+  }
+}
+
+function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+}
+
+function safeHost(u: string): string {
+  try {
+    return new URL(u).host;
+  } catch {
+    return '(URL no válida)';
   }
 }

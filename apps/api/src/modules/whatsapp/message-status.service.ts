@@ -6,6 +6,7 @@ import { DomainEvents } from '../events/domain-events.service';
 import { ConsentService } from '../contacts/consent.service';
 import { MessageNotifier } from './message-notifier.service';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUS_MAP: Record<string, MessageStatus | undefined> = { sent: 'SENT', delivered: 'DELIVERED', read: 'READ', failed: 'FAILED' };
 
 /** Error de que el estado llegó antes de guardar el wamid: el job se reintenta con espera. */
@@ -29,16 +30,24 @@ export class MessageStatusService {
     private readonly notifier: MessageNotifier,
   ) {}
 
-  /** Guarda el wamid de la respuesta del envío y pasa a SENT al momento. */
+  /**
+   * Guarda el wamid de la respuesta del envío y pasa a SENT al momento. Si un estado ya enlazó el mensaje
+   * por `biz_opaque_callback_data` (y lo hizo avanzar), no retrocede.
+   */
   async markSent(messageId: string, wamid: string): Promise<Message> {
     const now = new Date();
-    const m = await this.prisma.message.update({ where: { id: messageId }, data: { wamid, status: 'SENT', sentAt: now, errorCode: null, errorTitle: null, errorDetails: null } });
-    await this.publish(m, now);
+    const cur = await this.prisma.message.findUniqueOrThrow({ where: { id: messageId }, select: { status: true } });
+    const advance = cur.status === 'PENDING';
+    const m = await this.prisma.message.update({
+      where: { id: messageId },
+      data: { wamid, sendState: null, sendStartedAt: null, ...(advance ? { status: 'SENT', sentAt: now, errorCode: null, errorTitle: null, errorDetails: null, errorRetryable: null } : {}) },
+    });
+    if (advance) await this.publish(m, now);
     return m;
   }
 
   /** Marca un saliente como FAILED (envío rechazado o estado `failed`) y ejecuta las acciones por código. */
-  async markFailed(messageId: string, err: { code: number | null; title: string | null; details?: string | null }, at = new Date()): Promise<Message> {
+  async markFailed(messageId: string, err: { code: number | null; title: string | null; details?: string | null; retryable?: boolean }, at = new Date()): Promise<Message> {
     const info = err.code != null ? metaErrorInfo(err.code) : null;
     const known = err.code != null && META_ERRORS[err.code];
     const m = await this.prisma.message.update({
@@ -49,6 +58,10 @@ export class MessageStatusService {
         errorCode: err.code || null,
         errorTitle: (known ? info!.es : err.title) ?? 'Error al enviar el mensaje',
         errorDetails: err.details ?? null,
+        // Si se podrá reintentar a mano (S9 #6): lo dice quien falla; si no, la tabla de errores (sin código: sí)
+        errorRetryable: err.retryable ?? (info ? info.retryable : true),
+        sendState: null,
+        sendStartedAt: null,
       },
     });
     await this.runErrorActions(m);
@@ -63,8 +76,15 @@ export class MessageStatusService {
   async applyWebhookStatus(s: WaStatus): Promise<{ message: Message; advanced: boolean } | null> {
     const next = STATUS_MAP[s.status];
     if (!next) return null; // 'deleted' y desconocidos: se ignoran
-    const msg = await this.prisma.message.findUnique({ where: { wamid: s.id } });
-    if (!msg) throw new StatusBeforeMessageError(s.id);
+    let msg: Message | null = await this.prisma.message.findUnique({ where: { wamid: s.id } });
+    if (!msg) {
+      // Wamid desconocido: puede ser un envío cuya respuesta se perdió o que aún no la guardó. Meta devuelve el id del
+      // mensaje en `biz_opaque_callback_data` y con él se enlaza.
+      const linked = await this.linkByOpaqueData(s);
+      if (linked === 'other') return null; // el mensaje ya tiene otro wamid (reenvío): este estado es de la copia anterior
+      if (!linked) throw new StatusBeforeMessageError(s.id);
+      msg = linked;
+    }
     const at = new Date(Number(s.timestamp) * 1000);
     const when = Number.isNaN(at.getTime()) ? new Date() : at;
 
@@ -79,6 +99,10 @@ export class MessageStatusService {
     if (next === 'DELIVERED' && !msg.deliveredAt) data.deliveredAt = when;
     if (next === 'READ' && !msg.readAt) data.readAt = when;
 
+    // Un FAILED que fue «no sé si salió» (sin código de Meta) y ahora resulta que sí salió: se corrige
+    if (msg.status === 'FAILED' && msg.errorCode == null && next !== 'FAILED' && msg.errorRetryable === true && !msg.sentAt) {
+      msg = await this.prisma.message.update({ where: { id: msg.id }, data: { status: 'SENT', errorTitle: null, errorDetails: null, errorRetryable: null, failedAt: null, sentAt: when } });
+    }
     const advanced = canAdvanceStatus(msg.status as MessageStatus, next);
     if (advanced) data.status = next;
 
@@ -93,6 +117,19 @@ export class MessageStatusService {
     const m = Object.keys(data).length ? await this.prisma.message.update({ where: { id: msg.id }, data }) : msg;
     if (advanced || data.pricingCategory || data.billable != null) await this.publish(m, when, advanced);
     return { message: m, advanced };
+  }
+
+  /** Enlaza el wamid de un estado con el mensaje cuyo id llega en `biz_opaque_callback_data`. */
+  private async linkByOpaqueData(s: WaStatus): Promise<Message | 'other' | null> {
+    const id = (s as WaStatus & { biz_opaque_callback_data?: unknown }).biz_opaque_callback_data;
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return null;
+    const target = await this.prisma.message.findUnique({ where: { id } });
+    if (!target || target.direction !== 'OUTBOUND') return null;
+    if (target.wamid) return target.wamid === s.id ? target : 'other';
+    const linked = await this.prisma.message.updateMany({ where: { id, wamid: null }, data: { wamid: s.id } });
+    if (!linked.count) return this.prisma.message.findUnique({ where: { wamid: s.id } }).then((m) => m ?? 'other');
+    this.log.warn(`Estado ${s.status} de ${s.id} enlazado al mensaje ${id} por biz_opaque_callback_data (no se había guardado el wamid)`);
+    return this.prisma.message.findUniqueOrThrow({ where: { id } });
   }
 
   /** WebSocket + evento interno `message.status` (lo usa campañas). */
