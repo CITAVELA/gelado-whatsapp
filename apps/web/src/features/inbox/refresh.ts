@@ -13,6 +13,7 @@ export interface BatchedRefresh {
 export function createBatchedRefresh(run: () => void, defaultWindowMs = 4000): BatchedRefresh {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let dirty = false;
+  let dueAt = 0; // instante en que vence el temporizador en marcha
 
   const clear = () => {
     if (timer) clearTimeout(timer);
@@ -44,7 +45,12 @@ export function createBatchedRefresh(run: () => void, defaultWindowMs = 4000): B
         dirty = true;
         return;
       }
-      if (timer) return;
+      const due = Date.now() + windowMs;
+      // Con un refresco lento ya pendiente (envíos de campaña, 30 s), una petición con ventana más corta
+      // (un entrante de cliente, 4 s) lo adelanta: se reprograma con el mínimo de las dos.
+      if (timer && dueAt <= due) return;
+      clear();
+      dueAt = due;
       timer = setTimeout(fire, windowMs);
     },
     dispose() {

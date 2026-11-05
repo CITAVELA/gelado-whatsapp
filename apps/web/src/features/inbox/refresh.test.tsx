@@ -37,6 +37,25 @@ describe('F4c #19 · refrescos agrupados y con pestaña oculta', () => {
     r.dispose();
   });
 
+  it('N6 · con un refresco lento pendiente (campaña, 30 s), una petición de 4 s lo adelanta; la inversa no lo retrasa', () => {
+    const run = vi.fn();
+    const r = createBatchedRefresh(run, 4000);
+    r.request(30_000);
+    vi.advanceTimersByTime(1000);
+    r.request(4000); // entrante normal
+    vi.advanceTimersByTime(3999);
+    expect(run).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(2);
+    expect(run).toHaveBeenCalledTimes(1);
+    r.request(4000);
+    r.request(30_000); // una ventana más larga no retrasa la pendiente
+    vi.advanceTimersByTime(4001);
+    expect(run).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(60_000);
+    expect(run).toHaveBeenCalledTimes(2);
+    r.dispose();
+  });
+
   it('con la pestaña oculta no refresca; al volver a ser visible refresca una vez', () => {
     const run = vi.fn();
     const r = createBatchedRefresh(run, 4000);
@@ -118,6 +137,20 @@ describe('F4c #19 · refrescos agrupados y con pestaña oculta', () => {
     const data: any = qc.getQueriesData({ queryKey: K.lists })[0]![1];
     expect(data.pages[0].items[0].lastMessagePreview).toBe('envio 299');
     act(() => void vi.advanceTimersByTime(25_000)); // refresco lento (30 s) para corregir el orden
+    expect(listCalls()).toBe(1);
+    view.unmount();
+  });
+
+  it('N6 · con el refresco lento de una campaña pendiente, la respuesta de un cliente refresca la lista en ≤ 4 s', () => {
+    const { listCalls, view } = setup();
+    act(() => {
+      handlers['message.created']!({ conversationId: 'c1', message: msg('c1m', { campaignId: 'camp1' }), notify: false });
+      vi.advanceTimersByTime(2000);
+      handlers['message.created']!({ conversationId: 'c2', message: msg('in1', { direction: 'INBOUND', kind: 'TEXT', body: 'hola' }), notify: false });
+      vi.advanceTimersByTime(3999);
+    });
+    expect(listCalls()).toBe(0);
+    act(() => void vi.advanceTimersByTime(2));
     expect(listCalls()).toBe(1);
     view.unmount();
   });
