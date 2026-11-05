@@ -12,7 +12,7 @@
     "dev": "pnpm -F @gelado/shared build && concurrently -n api,web,meta -c blue,magenta,green \"pnpm -F @gelado/api dev\" \"pnpm -F @gelado/web dev\" \"pnpm -F @gelado/api simulator\"",
     "build": "pnpm -F @gelado/shared build && pnpm -F @gelado/web build && pnpm -F @gelado/api build",
     "start": "node apps/api/dist/main.js",
-    "test": "pnpm -F @gelado/shared build && pnpm -r --workspace-concurrency=1 run test",
+    "test": "pnpm -F @gelado/shared build && pnpm -r --workspace-concurrency=1 --filter '!@gelado/e2e' run test",
     "test:e2e": "pnpm -F @gelado/e2e test",
     "typecheck": "pnpm -F @gelado/shared build && pnpm -r run typecheck"
   },
