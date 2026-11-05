@@ -1,0 +1,59 @@
+# Render Blueprint · workspace del cliente (Hobby) · 1 servicio web Starter en Frankfurt (docs/04).
+# API + webhook + worker + web compilada en el mismo proceso y dominio. Variables secretas: sync:false
+# (se rellenan a mano en el panel de Render; nunca en el repositorio).
+services:
+  - type: web
+    name: gelado-whatsapp
+    runtime: node
+    region: frankfurt
+    plan: starter
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm build
+    startCommand: pnpm db:deploy && pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TZ
+        value: Europe/Madrid
+      - key: NODE_VERSION
+        value: "22"
+      - key: WORKER_ENABLED
+        value: "true"
+      - key: APP_URL
+        sync: false   # https://gelado-whatsapp.onrender.com
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: STATUS_TOKEN
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false   # pooler de Supabase en modo sesión, puerto 5432, ?schema=app&connection_limit=5
+      - key: DIRECT_URL
+        sync: false
+      - key: STORAGE_DRIVER
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: media
+      - key: META_GRAPH_BASE_URL
+        value: https://graph.facebook.com
+      - key: GRAPH_API_VERSION
+        value: v23.0
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: WA_SYSTEM_USER_TOKEN
+        sync: false
+      - key: WA_VERIFY_TOKEN
+        sync: false
+      - key: WA_WABA_ID
+        value: "24936790469294569"
+      - key: WA_PHONE_NUMBER_ID
+        value: "833139829886325"
+      - key: META_BUSINESS_ID
+        value: "115003938195726"

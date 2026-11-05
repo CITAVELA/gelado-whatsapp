@@ -1,0 +1,45 @@
+/* Complementos de la app sobre gelado-app.css (estados interactivos, móvil, utilidades). */
+html, body, #root { height: 100%; }
+button { cursor: pointer; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.btn:hover:not(:disabled), .hbtn:hover:not(:disabled), .icon-btn:hover { background: var(--bg); }
+.btn.primary:hover:not(:disabled) { background: #A92B31; }
+.rail-btn:hover { background: #22262B; color: #fff; }
+.view { cursor: pointer; border: 0; background: transparent; width: 100%; text-align: left; font: inherit; }
+.view:hover { background: var(--bg); }
+.card { cursor: pointer; }
+.card:hover { background: #FAF7F7; }
+.tab { cursor: pointer; }
+input.field, select.field, textarea.area { width: 100%; outline: none; font: inherit; color: var(--ink); }
+input.field:focus, select.field:focus, textarea.area:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+textarea.area { resize: vertical; min-height: 80px; }
+.err { color: var(--bad); font-size: 12.5px; }
+.ok-text { color: var(--ok); font-size: 12.5px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.row { display: flex; align-items: center; gap: 8px; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.grow { flex: 1; min-width: 0; }
+.muted { color: var(--muted); }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+.spinner { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast-wrap { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+.toast { background: var(--ink); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.2); max-width: 360px; }
+.toast.bad { background: var(--bad); }
+.banner.crit { background: var(--bad-soft); color: var(--bad); border-bottom: 1px solid #F2C2C4; }
+.main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.main-col > .content { flex: 1; min-height: 0; display: flex; }
+a.rail-btn { text-decoration: none; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* Móvil: menú inferior y una sola columna (docs/07 · Comportamiento en el móvil) */
+@media (max-width: 760px) {
+  .app { flex-direction: column-reverse; }
+  .rail { width: 100%; height: 58px; flex-direction: row; justify-content: space-around; padding: 0 6px; }
+  .rail .logo, .rail .rail-sp { display: none; }
+  .rail-btn { width: 48px; height: 44px; }
+  .page { padding: 16px; }
+  .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
+  .views, .info { display: none; }
+  .list { width: 100%; }
+}

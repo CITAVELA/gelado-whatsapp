@@ -1,0 +1,47 @@
+# Plan de trabajo del MVP (sesión autónoma)
+
+Rama de integración: `claude/mvp`. `main` no se toca. Cada subagente trabaja en su worktree `.worktrees/<rama>` y su rama `claude/<rama>`; el orquestador integra.
+
+## Contratos (Paso 0, ya publicados)
+
+| Contrato | Dónde |
+| --- | --- |
+| Enums, DTOs y esquemas zod | `packages/shared/src/*` (un archivo por módulo) |
+| Lista de endpoints REST con rol | `packages/shared/src/endpoints.ts` (`ENDPOINTS`) — la prueba de permisos la recorre |
+| Eventos WebSocket | `packages/shared/src/ws.ts` |
+| Errores de Meta (traducción y acción) | `packages/shared/src/meta-errors.ts` |
+| Cliente Graph API | `apps/api/src/modules/whatsapp/whatsapp.gateway.ts` (`WhatsAppGateway`, sin `/register`) |
+| Bus de eventos internos | `apps/api/src/modules/events/domain-events.service.ts` (`DomainEvents`) |
+| Cambio de consentimiento | `apps/api/src/modules/contacts/consent.service.ts` (`ConsentService`, única puerta) |
+| Ajustes | `apps/api/src/modules/settings/settings.service.ts` (`SettingsService`) |
+| Mapeo Prisma → DTO | `apps/api/src/modules/inbox/mappers.ts` |
+| Colas pg-boss | `apps/api/src/modules/jobs/jobs.service.ts` (`QUEUES`, `register`, `send`; inline en pruebas) |
+| Storage (forma Supabase) | `apps/api/src/modules/storage/storage.service.ts` |
+| Tiempo real | `apps/api/src/modules/realtime/realtime.gateway.ts` (`RealtimeService.emit`) |
+| Simulador de Meta | `apps/api/test/meta-simulator/simulator.ts` |
+| Utilidades de prueba | `apps/api/test/utils/app.ts` |
+| Web: cliente API, auth, socket, UI común | `apps/web/src/lib/*`, `apps/web/src/components/*`, `apps/web/src/layout/*` |
+
+## Propiedad de archivos (para no pisarse)
+
+| Subagente | Backend | Web | Shared |
+| --- | --- | --- | --- |
+| S1 · WhatsApp núcleo | `modules/whatsapp/**`, `modules/webhooks/**`, `modules/media/**`, `test/meta-simulator/**` | — | `whatsapp.ts`, `meta-errors.ts`, `library.ts` (límites) |
+| S2 · Contactos | `modules/contacts/**`, `modules/labels/**` | `features/contacts/**` | `contacts.ts`, `labels.ts`, `phone.ts` |
+| S3 · Plantillas | `modules/templates/**` | `features/templates/**` | `templates.ts` |
+| S4 · UI bandeja y base | — | `features/inbox/**`, `components/**`, `layout/**`, `styles/app.css` | — |
+| S5 · Bandeja backend | `modules/inbox/**`, `modules/library/**` | conecta `features/inbox/**` | `inbox.ts` |
+| S6 · Campañas | `modules/campaigns/**` | `features/campaigns/**` | `campaigns.ts` |
+| S7 · Calidad, costes, ajustes | `modules/quality/**`, `modules/settings/**` | `features/quality/**`, `features/settings/**` | `quality.ts`, `settings.ts`, `costs.ts` |
+| Orquestador | `app.module.ts`, `bootstrap.ts`, `common/**`, `auth`, `users`, `audit`, `jobs`, `events`, `prisma/**` | `App.tsx`, `lib/**` | `index.ts`, `enums.ts`, `endpoints.ts`, `ws.ts` |
+
+Cambios fuera de lo propio (p. ej. `schema.prisma`, `endpoints.ts`): mínimos, explicados en el informe del subagente; el orquestador los integra.
+
+## Estado
+
+- [x] Paso 0 · base y contratos
+- [ ] Paso 1 · S1, S2, S3, S4
+- [ ] Paso 2 · S5, S6, S7
+- [ ] Paso 3 · S8 (QA), S9 (código), S10 (seguridad)
+- [ ] Paso 4 · correcciones
+- [ ] Paso 5 · verificación final

@@ -1,0 +1,23 @@
+{
+  "name": "gelado-whatsapp",
+  "private": true,
+  "packageManager": "pnpm@10.18.3",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "db:up": "bash scripts/db-up.sh",
+    "db:migrate": "pnpm -F @gelado/api exec prisma migrate dev",
+    "db:deploy": "pnpm -F @gelado/api exec prisma migrate deploy",
+    "db:reset": "pnpm -F @gelado/api exec prisma migrate reset --force",
+    "db:seed": "pnpm -F @gelado/api run seed",
+    "dev": "pnpm -F @gelado/shared build && concurrently -n api,web,meta -c blue,magenta,green \"pnpm -F @gelado/api dev\" \"pnpm -F @gelado/web dev\" \"pnpm -F @gelado/api simulator\"",
+    "build": "pnpm -F @gelado/shared build && pnpm -F @gelado/web build && pnpm -F @gelado/api build",
+    "start": "node apps/api/dist/main.js",
+    "test": "pnpm -F @gelado/shared build && pnpm -r --workspace-concurrency=1 run test",
+    "test:e2e": "pnpm -F @gelado/e2e test",
+    "typecheck": "pnpm -F @gelado/shared build && pnpm -r run typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "5.9.3"
+  }
+}
