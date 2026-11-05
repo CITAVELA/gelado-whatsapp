@@ -30,7 +30,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 export const useToast = () => useContext(ToastCtx);
 
 // ── Modal ──
-export function Modal({ title, onClose, children, width = 560, footer }: { title: string; onClose: () => void; children: ReactNode; width?: number; footer?: ReactNode }) {
+export function Modal({ title, subtitle, onClose, children, width = 560, height, footer, bare }: { title: string; subtitle?: ReactNode; onClose: () => void; children: ReactNode; width?: number; height?: number; footer?: ReactNode; bare?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -40,13 +40,16 @@ export function Modal({ title, onClose, children, width = 560, footer }: { title
   }, [onClose]);
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} ref={ref} style={{ width, maxWidth: '96vw', maxHeight: '92vh' }}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} ref={ref} style={{ width, height, maxWidth: '96vw', maxHeight: '92vh' }}>
         <div className="row" style={{ padding: '14px 18px', borderBottom: '1px solid var(--line)' }}>
-          <strong className="grow" style={{ fontSize: 15 }}>{title}</strong>
+          <div className="grow">
+            <strong style={{ fontSize: 15, display: 'block' }}>{title}</strong>
+            {subtitle && <span className="hint">{subtitle}</span>}
+          </div>
           <button className="tbtn" aria-label="Cerrar" onClick={onClose}><Icon name="close" small /></button>
         </div>
-        <div style={{ padding: 18, overflowY: 'auto', flex: 1 }}>{children}</div>
-        {footer && <div className="row" style={{ padding: '12px 18px', borderTop: '1px solid var(--line)', justifyContent: 'flex-end' }}>{footer}</div>}
+        <div className={bare ? 'modal-body bare' : 'modal-body'}>{children}</div>
+        {footer && <div className="row modal-foot">{footer}</div>}
       </div>
     </div>
   );

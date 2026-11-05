@@ -1,22 +1,17 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, useCallback } from 'react';
-import type { AlertDto, InboxCountsDto } from '@gelado/shared';
+import type { AlertDto } from '@gelado/shared';
 import { Icon } from '../components/Icon';
+import { Popover, MenuItem } from '../components/Popover';
 import { Avatar } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
 import { useSocketEvent } from '../lib/socket';
-import { queryClient } from '../lib/query';
+import { useInboxCounts } from '../features/inbox/hooks';
+import { useInboxRealtime } from '../features/inbox/useInboxRealtime';
 
-/** Contadores de la bandeja (los usa el menú, el título de la pestaña y la columna de vistas). */
-export function useInboxCounts() {
-  return useQuery({
-    queryKey: ['inbox', 'counts'],
-    queryFn: () => api.get<InboxCountsDto>('/api/conversations/counts'),
-    refetchInterval: 60_000,
-  });
-}
+export { useInboxCounts };
 
 function AlertBanner() {
   const { data } = useQuery({ queryKey: ['alerts'], queryFn: () => api.get<AlertDto[]>('/api/alerts'), refetchInterval: 60_000 });
@@ -37,44 +32,65 @@ function AlertBanner() {
   );
 }
 
+const roleLabel = (r: string) => (r === 'ADMIN' ? 'Administradora' : 'Agente');
+
 export function AppLayout() {
   const { user, isAdmin, logout } = useAuth();
   const counts = useInboxCounts();
   const unread = counts.data?.totalUnread ?? 0;
+  useInboxRealtime();
 
+  // título de la pestaña: «(17) Gelado WhatsApp»
   useEffect(() => {
     document.title = unread > 0 ? `(${unread}) Gelado WhatsApp` : 'Gelado WhatsApp';
   }, [unread]);
-  useSocketEvent('badge.counts', useCallback((p: InboxCountsDto) => queryClient.setQueryData(['inbox', 'counts'], p), []));
 
+  const badge = unread > 99 ? '99+' : unread;
   const nav = [
-    { to: '/bandeja', icon: 'inbox', label: 'Bandeja de entrada', badge: unread },
+    { to: '/bandeja', icon: 'inbox', label: 'Bandeja de entrada', badge },
     { to: '/contactos', icon: 'contacts', label: 'Contactos' },
     { to: '/campanas', icon: 'campaigns', label: 'Campañas' },
     { to: '/plantillas', icon: 'templates', label: 'Plantillas' },
-    { to: '/calidad', icon: 'quality', label: 'Calidad y costes' },
+    { to: '/calidad', icon: 'quality', label: 'Calidad y costes', desktopOnly: true },
   ];
+  const cls = ({ isActive }: { isActive: boolean }) => `rail-btn${isActive ? ' on' : ''}`;
 
   return (
     <div className="app">
       <nav className="rail" aria-label="Menú principal">
         <div className="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
         {nav.map((n) => (
-          <NavLink key={n.to} to={n.to} className={({ isActive }) => `rail-btn${isActive ? ' on' : ''}`} aria-label={n.label} title={n.label}>
+          <NavLink key={n.to} to={n.to} className={(s) => `${cls(s)}${n.desktopOnly ? ' hide-mobile' : ''}`} aria-label={n.label} title={n.label}>
             <Icon name={n.icon} />
-            {!!n.badge && <span className="dot">{n.badge > 99 ? '99+' : n.badge}</span>}
+            {!!n.badge && <span className="dot" aria-label={`${n.badge} sin leer`}>{n.badge}</span>}
           </NavLink>
         ))}
         <div className="rail-sp" />
         {isAdmin && (
-          <NavLink to="/ajustes" className={({ isActive }) => `rail-btn${isActive ? ' on' : ''}`} aria-label="Ajustes" title="Ajustes">
+          <NavLink to="/ajustes" className={(s) => `${cls(s)} hide-mobile`} aria-label="Ajustes" title="Ajustes">
             <Icon name="settings" />
           </NavLink>
         )}
-        <button className="rail-btn" aria-label="Cerrar sesión" title="Cerrar sesión" onClick={() => logout()}>
+        <button className="rail-btn hide-mobile" aria-label="Cerrar sesión" title="Cerrar sesión" onClick={() => logout()}>
           <Icon name="logout" />
         </button>
-        {user && <Avatar name={user.name} title={`${user.name} · ${user.role === 'ADMIN' ? 'Administradora' : 'Agente'}`} />}
+        {user && <span className="hide-mobile"><Avatar name={user.name} title={`${user.name} · ${roleLabel(user.role)}`} /></span>}
+        <Popover
+          className="show-mobile"
+          align="right"
+          label="Más opciones"
+          trigger={<button className="rail-btn" aria-label="Más" aria-haspopup="menu"><Icon name="more" /></button>}
+        >
+          {(close) => (
+            <>
+              {user && <div className="hint menu-title">{user.name} · {roleLabel(user.role)}</div>}
+              <NavLink to="/calidad" className="mi" onClick={close}><Icon name="quality" small />Calidad y costes</NavLink>
+              {isAdmin && <NavLink to="/ajustes" className="mi" onClick={close}><Icon name="settings" small />Ajustes</NavLink>}
+              <div className="sep" />
+              <MenuItem icon="logout" red onClick={() => { close(); void logout(); }}>Cerrar sesión</MenuItem>
+            </>
+          )}
+        </Popover>
       </nav>
       <div className="main-col">
         <AlertBanner />
