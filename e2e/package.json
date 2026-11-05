@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "prepare-db": "node scripts/prepare-db.mjs",
-    "test": "node scripts/prepare-db.mjs && playwright test",
+    "test": "node scripts/run-projects.mjs",
     "recorridos": "node scripts/prepare-db.mjs && playwright test -c playwright.recorridos.config.ts"
   },
   "devDependencies": {

@@ -58,11 +58,14 @@ pnpm db:deploy        # aplica migraciones (prisma migrate deploy); pnpm db:migr
 pnpm db:seed          # usuarios (con SEED_DEV_PASSWORD en dev o enlaces de invitación), etiquetas, ajustes
 pnpm dev              # api :3000 + web :5173 (proxy a la api) + simulador de Meta :4010
 pnpm test             # unitarias e integración (BD gelado_test, se recrea sola)
-pnpm test:e2e         # Playwright contra el build (pnpm build antes) y el simulador (BD gelado_e2e)
+pnpm test:e2e         # Playwright contra el build (pnpm build antes) y el simulador (BD gelado_e2e): los 5 proyectos uno tras otro, con la BD limpia en cada uno (chromium, firefox, webkit, pixel-7, iphone-14)
+pnpm test:e2e --project=webkit             # un solo proyecto (también --project=firefox,webkit o E2E_PROJECTS=pixel-7); el resto de argumentos va a `playwright test`
+pnpm test:e2e --project=iphone-14 tests/08-nota-de-voz.spec.ts   # un proyecto y un fichero
+pnpm -F @gelado/e2e prepare-db             # solo recrear la BD e2e (si se lanza `playwright test` a mano desde e2e/)
 pnpm build            # shared + web + api; producción: pnpm db:deploy && pnpm start
 ```
 
-Notas: Prisma vive en `apps/api/prisma`. `prisma migrate reset` está bloqueado para agentes: las BD de prueba se recrean con `DROP SCHEMA` (solo bases locales `*_test`/`*_e2e`). Plan y propiedad de archivos: `docs/trabajo/PLAN.md`.
+Notas: en paralelo con otra sesión, usa `TEST_DATABASE_URL`, `E2E_DATABASE_URL` (base `*_e2e`), `E2E_PORT` y `E2E_SIM_PORT` propios. Los audios de prueba de `apps/api/test/fixtures/audio` se regeneran con `bash apps/api/test/fixtures/audio/generar-audio.sh`. Prisma vive en `apps/api/prisma`. `prisma migrate reset` está bloqueado para agentes: las BD de prueba se recrean con `DROP SCHEMA` (solo bases locales `*_test`/`*_e2e`). Plan y propiedad de archivos: `docs/trabajo/PLAN.md`.
 
 ## Datos de Meta (no secretos)
 

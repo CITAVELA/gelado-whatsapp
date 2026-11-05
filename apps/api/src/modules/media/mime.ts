@@ -30,6 +30,24 @@ export function baseMime(mime: string): string {
   return (mime ?? '').split(';')[0]!.trim().toLowerCase();
 }
 
+/** Nombres alternativos que usan algunos navegadores y sistemas para tipos que Meta admite con otro nombre. */
+const MIME_ALIASES: Record<string, string> = {
+  'audio/x-m4a': 'audio/mp4',
+  'audio/m4a': 'audio/mp4',
+  'audio/x-aac': 'audio/aac',
+  'audio/x-opus+ogg': 'audio/ogg',
+  'application/ogg': 'audio/ogg',
+};
+
+/**
+ * MIME de una subida: sin parámetros (`;codecs=…`), en minúsculas y con los alias conocidos (`audio/x-m4a` → `audio/mp4`).
+ * Lo que no se reconoce se deja tal cual para que la validación lo rechace con su mensaje.
+ */
+export function normalizeUploadMime(mime: string): string {
+  const m = baseMime(mime);
+  return MIME_ALIASES[m] ?? m;
+}
+
 /** Extensión (sin punto) para guardar el archivo; usa el nombre original si el MIME no se conoce. */
 export function extFor(mime: string, fileName?: string | null): string {
   const known = EXT_BY_MIME[baseMime(mime)];

@@ -4,7 +4,7 @@
  * + acceso: errores de login en español y pantallas protegidas.
  */
 import { expect, test } from '@playwright/test';
-import { CRISTINA, api, inboundText, json, login, phone } from '../helpers';
+import { CRISTINA, api, inboundText, json, login, logout, phone } from '../helpers';
 
 test('(i) /privacidad responde 200 sin sesión, con el texto en el HTML y el ancla #supresion', async ({ request }) => {
   const r = await request.get('/privacidad');
@@ -47,7 +47,7 @@ test('el título de la pestaña lleva el contador de no leídos y el cierre de s
   const p = phone();
   await inboundText(p.wa, 'Contador de la pestaña', `Contador ${p.wa.slice(-6)}`);
   await expect(page).toHaveTitle(/^\(\d+\) Gelado WhatsApp/, { timeout: 5000 });
-  await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+  await logout(page);
   await expect(page).toHaveURL(/\/login/);
   await page.goto('/bandeja');
   await expect(page).toHaveURL(/\/login/);

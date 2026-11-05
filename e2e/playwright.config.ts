@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -41,7 +41,15 @@ export default defineConfig({
   workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', actionTimeout: 10_000, screenshot: 'only-on-failure', locale: 'es-ES', timezoneId: 'Europe/Madrid' },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium', launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined } } }],
+  // Escritorio: Chromium, Firefox y WebKit (motor de Safari en macOS). Móvil: «Pixel 7» (Chromium/Android) y «iPhone 14» (WebKit/iOS).
+  // `pnpm test:e2e` recorre los proyectos uno a uno con la BD recién preparada (scripts/run-projects.mjs).
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium', launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined } } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'pixel-7', use: { ...devices['Pixel 7'], launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined } } },
+    { name: 'iphone-14', use: { ...devices['iPhone 14'] } },
+  ],
   webServer: [
     {
       command: 'pnpm -F @gelado/api exec tsx test/meta-simulator/cli.ts',

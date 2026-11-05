@@ -3,7 +3,7 @@
  * Ya están corregidos: estas pruebas evitan que vuelvan.
  */
 import { expect, test } from '@playwright/test';
-import { ADMIN, CRISTINA, api, ensureApprovedTemplate, inboundText, json, login, phone, simGet, simPost } from '../helpers';
+import { ADMIN, CRISTINA, api, ensureApprovedTemplate, inboundText, json, login, openSettingsSection, phone, sendText, simGet, simPost } from '../helpers';
 
 test('F-10 · tras enviar varios mensajes seguidos, ninguno se queda en «Enviando» (reloj) cuando el servidor ya lo envió', async ({ page }) => {
   await login(page, CRISTINA);
@@ -11,10 +11,8 @@ test('F-10 · tras enviar varios mensajes seguidos, ninguno se queda en «Envian
   const name = `Carrera ${p.wa.slice(-8)}`;
   await inboundText(p.wa, 'hola', name);
   await page.getByRole('list', { name: 'Lista de conversaciones' }).getByRole('link', { name: new RegExp(name) }).click();
-  const box = page.getByLabel('Escribe un mensaje');
   for (let i = 0; i < 8; i++) {
-    await box.fill(`mensaje ${i}`);
-    await box.press('Enter');
+    await sendText(page, `mensaje ${i}`);
     await page.waitForTimeout(150);
   }
   await expect.poll(async () => (await simGet('/_sim/sent')).filter((s: any) => s.body?.to === p.wa && s.body?.type === 'text').length, { timeout: 10_000 }).toBe(8); // (fuera de horario hay además una respuesta automática interactiva)
@@ -23,6 +21,7 @@ test('F-10 · tras enviar varios mensajes seguidos, ninguno se queda en «Envian
 });
 
 test('F-11 · la tabla «Equipo» de Ajustes no recorta la columna de acciones a 1440 px', async ({ page }) => {
+  test.skip(!!test.info().project.use.isMobile, 'Maqueta de escritorio: en móvil la tabla se desplaza en horizontal dentro de su panel');
   await login(page, ADMIN, '/ajustes');
   const last = page.getByRole('row', { name: /Cristina Lopez/ }).getByRole('button').or(page.getByRole('row', { name: /Cristina Lopez/ }).getByRole('link')).last();
   const panel = page.locator('.panel, table').first();
@@ -56,7 +55,7 @@ test('F-12 · el informe de campaña no recorta «Abrir conversación» en la li
 
 test('F-13 · Ajustes → WhatsApp no deja palabras en inglés («nombre approved»)', async ({ page }) => {
   await login(page, ADMIN, '/ajustes');
-  await page.getByRole('link', { name: /WhatsApp y tarifas/ }).or(page.getByRole('button', { name: /WhatsApp y tarifas/ })).first().click();
+  await openSettingsSection(page, /WhatsApp y tarifas/);
   await expect(page.getByText('Estado del número')).toBeVisible();
   await expect(page.getByText(/Conectado/)).toBeVisible();
   expect(await page.locator('body').innerText()).not.toMatch(/\bapproved\b|\bconnected\b/i);

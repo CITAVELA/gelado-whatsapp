@@ -4,7 +4,7 @@
  * (c) PDF de la biblioteca y foto del ordenador · (d) asignar, etiquetar, posponer y finalizar.
  */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { ADMIN, CRISTINA, PNG_PATH, api, ensureApprovedTemplate, ensureLibraryPdf, inboundText, json, login, phone, simGet, simPost } from '../helpers';
+import { ADMIN, CRISTINA, NO_AUDIO_DEVICE, PNG_PATH, api, backToList, ensureApprovedTemplate, ensureLibraryPdf, inboundText, json, login, openConversationMenu, phone, sendText, simGet, simPost } from '../helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -39,7 +39,7 @@ test('(a) un mensaje entrante aparece en la bandeja en menos de 5 s, sin recarga
   await expect(page).toHaveTitle(/^\(\d+\) Gelado WhatsApp/);
 });
 
-test('(a) aviso sonoro y notificación del navegador al entrar un mensaje; sin aviso si ya estás en esa conversación', async ({ browser }) => {
+test('(a) aviso sonoro y notificación del navegador al entrar un mensaje; sin aviso si ya estás en esa conversación', async ({ browser, browserName }) => {
   const ctx = await browser.newContext({ locale: 'es-ES', baseURL: `http://localhost:${process.env.E2E_PORT || '3100'}`, permissions: ['notifications'] });
   await ctx.addInitScript(() => {
     (window as any).__beeps = 0;
@@ -49,9 +49,11 @@ test('(a) aviso sonoro y notificación del navegador al entrar un mensaje; sin a
       const orig = proto.createOscillator;
       proto.createOscillator = function (...a: any[]) { (window as any).__beeps++; return orig.apply(this, a); };
     }
-    const Real = window.Notification;
-    (window as any).Notification = class extends Real { constructor(t: string, o?: NotificationOptions) { super(t, o); (window as any).__notifs.push(`${t}|${o?.body ?? ''}`); } };
-    Object.defineProperty((window as any).Notification, 'permission', { get: () => 'granted' });
+    const Real = window.Notification; // en iOS Safari normal no existe: el aviso sonoro debe funcionar igual
+    if (Real) {
+      (window as any).Notification = class extends Real { constructor(t: string, o?: NotificationOptions) { super(t, o); (window as any).__notifs.push(`${t}|${o?.body ?? ''}`); } };
+      Object.defineProperty((window as any).Notification, 'permission', { get: () => 'granted' });
+    }
   });
   const page = await ctx.newPage();
   await login(page, CRISTINA);
@@ -59,8 +61,10 @@ test('(a) aviso sonoro y notificación del navegador al entrar un mensaje; sin a
   const nameA = `Sonido ${a.wa.slice(-8)}`, nameB = `Otro ${b.wa.slice(-8)}`;
   await inboundText(a.wa, 'Primer aviso', nameA);
   await expect(card(page, nameA)).toBeVisible({ timeout: 5000 });
-  await expect.poll(() => page.evaluate(() => (window as any).__beeps)).toBeGreaterThanOrEqual(2); // dos pitidos
-  await expect.poll(() => page.evaluate(() => (window as any).__notifs)).toContainEqual(expect.stringContaining(`${nameA}|Primer aviso`));
+  const sound = browserName !== 'firefox'; // ver NO_AUDIO_DEVICE
+  test.info().annotations.push(...(sound ? [] : [{ type: 'aviso', description: NO_AUDIO_DEVICE }]));
+  if (sound) await expect.poll(() => page.evaluate(() => (window as any).__beeps)).toBeGreaterThanOrEqual(2); // dos pitidos
+  if (await page.evaluate(() => 'Notification' in window)) await expect.poll(() => page.evaluate(() => (window as any).__notifs)).toContainEqual(expect.stringContaining(`${nameA}|Primer aviso`));
   // con la conversación A abierta y visible, otro mensaje de A no avisa; uno de B sí
   await card(page, nameA).click();
   await expect(chat(page)).toBeVisible();
@@ -70,8 +74,9 @@ test('(a) aviso sonoro y notificación del navegador al entrar un mensaje; sin a
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => (window as any).__beeps)).toBe(before);
   await inboundText(b.wa, 'Soy otro cliente', nameB);
+  await backToList(page); // en móvil la lista y la conversación son pantallas distintas
   await expect(card(page, nameB)).toBeVisible({ timeout: 5000 });
-  await expect.poll(() => page.evaluate(() => (window as any).__beeps)).toBeGreaterThan(before);
+  if (sound) await expect.poll(() => page.evaluate(() => (window as any).__beeps)).toBeGreaterThan(before);
   await ctx.close();
 });
 
@@ -79,9 +84,7 @@ test('(b) responder con texto: Enter envía, sale por la API de Meta y el client
   await login(page, CRISTINA);
   await card(page).click();
   await expect(page.getByText('Ventana abierta: quedan')).toBeVisible();
-  const box = page.getByLabel('Escribe un mensaje');
-  await box.fill('¡Hola Ginés! Sí, tenemos el 7.1 en stock.');
-  await box.press('Enter');
+  await sendText(page, '¡Hola Ginés! Sí, tenemos el 7.1 en stock.'); // Enter en escritorio, botón Enviar en táctil
   // el mensaje provisional (optimista) debe ser sustituido por el real: al final, una sola burbuja
   await expect(chat(page).getByText('¡Hola Ginés! Sí, tenemos el 7.1 en stock.', { exact: true })).toHaveCount(1, { timeout: 5000 });
   await expect.poll(sentTypes).toContain('text');
@@ -118,24 +121,26 @@ test('(d) asignar, etiquetar, posponer y finalizar dejan su rastro en el histori
   await card(page).click();
   const id = page.url().split('/').pop()!;
   // asignar a mí
-  await page.getByRole('button', { name: 'Asignar', exact: true }).click();
+  await openConversationMenu(page, 'Asignar');
   await page.getByRole('menuitem', { name: /Cristina Lopez \(tú\)/ }).click();
-  await expect(page.getByText(/asignó|asignada/i).first()).toBeVisible();
+  await expect(page.getByText(/asignó|asignada/i).and(page.locator(':visible')).first()).toBeVisible();
   // etiquetar
-  await page.getByRole('button', { name: 'Etiquetar' }).click();
+  await openConversationMenu(page, 'Etiquetar');
   await page.getByRole('menuitem', { name: /PEDIDO/i }).click();
   await page.keyboard.press('Escape');
-  await expect(page.getByText(/PEDIDO/).first()).toBeVisible();
+  await expect(page.getByText(/PEDIDO/).and(page.locator(':visible')).first()).toBeVisible();
   // posponer 1 hora → pasa a Pospuestas y sale de Abiertos
-  await page.getByRole('button', { name: 'Posponer' }).click();
+  await openConversationMenu(page, 'Posponer');
   await page.getByRole('menuitem', { name: /1 hora/ }).click();
+  await backToList(page);
   await expect(card(page)).toHaveCount(0);
   await page.getByRole('tab', { name: 'Pospuestas' }).click();
   await expect(card(page)).toBeVisible();
   await card(page).click();
-  await expect(page.getByText(/pospuso|pospuesta/i).first()).toBeVisible();
+  await expect(page.getByText(/pospuso|pospuesta/i).and(page.locator(':visible')).first()).toBeVisible();
   // finalizar → pasa a Finalizadas
   await page.getByRole('button', { name: 'Marcar como finalizada' }).click();
+  await backToList(page);
   await page.getByRole('tab', { name: 'Finalizadas' }).click();
   await expect(card(page)).toBeVisible();
   const tl = await json(await admin.get(`/api/conversations/${id}/timeline`));
@@ -143,6 +148,7 @@ test('(d) asignar, etiquetar, posponer y finalizar dejan su rastro en el histori
   expect(types).toEqual(expect.arrayContaining(['ASSIGNED', 'LABEL_ADDED', 'SNOOZED', 'DONE']));
   // si el cliente vuelve a escribir, la conversación se reabre sola
   await inboundText(client.wa, 'Una cosa más: ¿hacéis envíos el sábado?', NAME);
+  await backToList(page);
   await page.getByRole('tab', { name: 'Abiertos' }).click();
   await expect(card(page)).toBeVisible({ timeout: 5000 });
 });

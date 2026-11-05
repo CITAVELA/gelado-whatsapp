@@ -79,6 +79,8 @@ export function Popover({ trigger, children, align = 'left', minWidth = 230, lab
 
 // ── Elementos de menú ──
 const Scope = createContext<{ openSub: string | null; setOpenSub: (id: string | null) => void }>({ openSub: null, setOpenSub: () => undefined });
+/** true dentro de un submenú: sus elementos no deben cerrarlo al pasar el puntero (ni al tocarlos en una pantalla táctil). */
+const InSub = createContext(false);
 function MenuScope({ children }: { children: ReactNode }) {
   const [openSub, setOpenSub] = useState<string | null>(null);
   return <Scope.Provider value={{ openSub, setOpenSub }}>{children}</Scope.Provider>;
@@ -86,8 +88,9 @@ function MenuScope({ children }: { children: ReactNode }) {
 
 export function MenuItem({ icon, children, right, onClick, checked, red, active, disabled }: { icon?: string; children: ReactNode; right?: ReactNode; onClick?: () => void; checked?: boolean; red?: boolean; active?: boolean; disabled?: boolean }) {
   const { setOpenSub } = useContext(Scope);
+  const inSub = useContext(InSub);
   return (
-    <button type="button" role="menuitem" className={`mi${active ? ' on' : ''}${red ? ' red' : ''}`} disabled={disabled} onMouseEnter={() => setOpenSub(null)} onClick={onClick}>
+    <button type="button" role="menuitem" className={`mi${active ? ' on' : ''}${red ? ' red' : ''}`} disabled={disabled} onMouseEnter={inSub ? undefined : () => setOpenSub(null)} onClick={onClick}>
       {icon && <Icon name={icon} small />}
       <span className="mi-text">{children}</span>
       {checked ? <span className="r">✓</span> : right != null ? <span className="r mono">{right}</span> : null}
@@ -108,15 +111,16 @@ export function SubMenu({ icon, label, children, minWidth = 240 }: { icon?: stri
     setFlip(r.right > window.innerWidth - 8 && r.left - r.width > 0);
   }, [open]);
   return (
+    // En pantallas táctiles el toque dispara primero mouseenter (que abre) y luego click: el clic no debe volver a cerrarlo
     <div className="sub-wrap" onMouseEnter={() => setOpenSub(id)}>
-      <button type="button" role="menuitem" aria-haspopup="menu" aria-expanded={open} className={`mi${open ? ' on' : ''}`} onClick={() => setOpenSub(open ? null : id)}>
+      <button type="button" role="menuitem" aria-haspopup="menu" aria-expanded={open} className={`mi${open ? ' on' : ''}`} onClick={() => setOpenSub(id)}>
         {icon && <Icon name={icon} small />}
         <span className="mi-text">{label}</span>
         <span className="r">›</span>
       </button>
       {open && (
         <div ref={sub} className={`menu submenu${flip ? ' flip' : ''}`} role="menu" aria-label={label} style={{ minWidth }}>
-          {children(() => setOpenSub(null))}
+          <InSub.Provider value>{children(() => setOpenSub(null))}</InSub.Provider>
         </div>
       )}
     </div>
