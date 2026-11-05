@@ -46,7 +46,7 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
    * Registra un handler. En colas de trabajo (wa-send…) debe haber uno; en crons (cron-*) puede haber varios
    * (p. ej. plantillas y calidad en cron-hourly): se ejecutan en orden y el fallo de uno no para a los demás.
    */
-  register<T>(queue: QueueName, handler: JobHandler<T>, options: PgBoss.WorkOptions = {}, name = queue) {
+  register<T>(queue: QueueName, handler: JobHandler<T>, options: PgBoss.WorkOptions = {}, name: string = queue) {
     const list = this.handlers.get(queue) ?? [];
     list.push({ name, fn: handler as JobHandler });
     this.handlers.set(queue, list);

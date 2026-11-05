@@ -18,6 +18,6 @@ export class TemplatesModule implements OnModuleInit {
     this.router.on('message_template_quality_update', 'templates', (v) => this.templates.handleQualityUpdate(v));
     this.router.on('template_category_update', 'templates', (v) => this.templates.handleCategoryUpdate(v));
     // Sincronización horaria (cron-hourly admite varios handlers)
-    this.jobs.register(QUEUES.CRON_HOURLY, async () => void (await this.templates.sync()), {}, 'templates-sync' as QueueName);
+    this.jobs.register(QUEUES.CRON_HOURLY, async () => void (await this.templates.sync()), {}, 'templates-sync');
   }
 }
