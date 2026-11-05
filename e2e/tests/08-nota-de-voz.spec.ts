@@ -20,6 +20,7 @@ test.beforeEach(async ({ page }) => {
     w.__gum = 0;
     const fake = async () => {
       w.__gum++;
+      if (w.__gumDelay) await new Promise((r) => setTimeout(r, w.__gumDelay)); // aviso de permiso del micrófono que tarda en concederse
       const Ctx = window.AudioContext ?? w.webkitAudioContext;
       const ctx = new Ctx();
       ctx.resume?.().catch?.(() => undefined); // sin esperar: en Firefox sin tarjeta de sonido no llega a resolverse
@@ -109,4 +110,25 @@ test('grabar una nota de voz en el navegador y enviarla: llega a Meta como OGG/O
   const rec = await page.evaluate(() => (window as any).__rec);
   testInfo.annotations.push({ type: 'MediaRecorder', description: String(rec) });
   console.log(`[${testInfo.project.name}] MediaRecorder: ${rec} · ogg ${ogg.length} B`);
+});
+
+test('móvil: soltar el dedo mientras se espera el permiso del micrófono no envía una nota vacía', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, 'El mantener pulsado es solo de móvil');
+  await page.addInitScript(() => { (window as any).__gumDelay = 2500; });
+  await login(page, CRISTINA);
+  const p = phone();
+  const name = `Permiso ${p.wa.slice(-8)}`;
+  await simPost('/_sim/reset');
+  await inboundText(p.wa, 'Otro audio', name);
+  await expect(page.getByRole('list', { name: 'Lista de conversaciones' }).getByRole('link', { name: new RegExp(name) })).toBeVisible({ timeout: 8000 });
+  await openCard(page, new RegExp(name));
+  const mic = page.getByRole('button', { name: 'Mantén pulsado para grabar nota de voz' });
+  await mic.dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true });
+  await page.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch', isPrimary: true }))); // el dedo se levanta para pulsar «Permitir»
+  await expect(page.getByText('Grabando')).toBeVisible({ timeout: 8000 }); // se concede pasados 2,5 s
+  await page.waitForTimeout(1500);
+  expect((await simGet('/_sim/sent')).some((s: any) => s.body?.type === 'audio' && s.body?.to === p.wa)).toBe(false); // nada enviado solo
+  await expect(page.getByText('Grabando')).toBeVisible(); // la barra sigue para enviar o cancelar a mano
+  await page.getByRole('button', { name: 'Enviar', exact: true }).click();
+  await expect.poll(async () => (await simGet('/_sim/sent')).some((s: any) => s.body?.type === 'audio' && s.body?.to === p.wa), { timeout: 15_000 }).toBe(true);
 });
