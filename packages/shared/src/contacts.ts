@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ConsentSource, ConsentStatus, RecipientStatus } from './enums';
 import type { LabelDto } from './labels';
+import { LEGACY_OPT_OUT_LABEL } from './optout';
 
 export interface ContactDto {
   id: string;
@@ -113,11 +114,22 @@ export const importOptionsSchema = z.object({
   onDuplicate: z.enum(['update', 'skip']).default('update'),
   addLabelIds: z.array(z.string().uuid()).default([]),
   /** Valores de la columna de etiquetas que se tratan como baja (P7) */
-  optOutLabelValues: z.array(z.string()).default(['NO PUBLICIDAD']),
+  optOutLabelValues: z.array(z.string()).default(['NO PUBLICIDAD']).transform(withMandatoryOptOut),
   initialConsent: z.enum(['UNKNOWN', 'GRANTED']).default('UNKNOWN'),
   createMissingLabels: z.boolean().default(true),
 });
 export type ImportOptionsDto = z.infer<typeof importOptionsSchema>;
+
+/**
+ * P7 (docs/10): NO PUBLICIDAD es SIEMPRE una baja en la importación, lo pida o no el cliente. Devuelve los valores
+ * configurados más «NO PUBLICIDAD» (sin duplicados al comparar sin tildes ni mayúsculas).
+ */
+export function withMandatoryOptOut(values: readonly string[]): string[] {
+  const key = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const out = [...values.map((v) => v.trim()).filter(Boolean)];
+  if (!out.some((v) => key(v) === key(LEGACY_OPT_OUT_LABEL))) out.push(LEGACY_OPT_OUT_LABEL);
+  return out;
+}
 
 export interface ImportUploadResultDto {
   jobId: string;

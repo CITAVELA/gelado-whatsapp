@@ -525,6 +525,14 @@ model Setting {
   updatedAt   DateTime @updatedAt
 }
 
+/// Lista de supresión mínima (RGPD + «un dado de baja nunca recibe marketing»): al borrar físicamente un contacto se
+/// guarda aquí solo el HMAC-SHA256 de su teléfono E.164 (clave = SESSION_SECRET). Si el número vuelve (importación,
+/// mensaje entrante o alta manual) el contacto nuevo nace REVOKED con origen MANUAL y nota «Suprimido previamente».
+model SuppressedPhone {
+  phoneHash String   @id
+  createdAt DateTime @default(now())
+}
+
 model ImportJob {
   id            String    @id @default(uuid()) @db.Uuid
   fileName      String

@@ -11,6 +11,7 @@ import { AuditService } from '../audit/audit.service';
 import { JobsService, QUEUES } from '../jobs/jobs.service';
 import { StorageService, buildObjectPath } from '../storage/storage.service';
 import { ConsentService } from './consent.service';
+import { SUPPRESSED_NOTE, SuppressionService } from './suppression.service';
 import { csvCell } from './contacts.service';
 import { MAX_IMPORT_BYTES, detectKind, parseFile, suggestMapping, type ParsedFile } from './import.parser';
 import { analyzeRows, type Analysis, type PlanRow } from './import.rules';
@@ -39,6 +40,7 @@ export class ImportService implements OnModuleInit {
     private readonly jobs: JobsService,
     private readonly consent: ConsentService,
     private readonly audit: AuditService,
+    private readonly suppression: SuppressionService,
   ) {}
 
   onModuleInit() {
@@ -122,6 +124,7 @@ export class ImportService implements OnModuleInit {
     let skippedExisting = 0;
     let willOptOut = 0;
     const sample: ImportPreviewDto['sample'] = [];
+    const suppressed = await this.suppression.suppressedAmong(analysis.plans.filter((p) => !existing.get(p.phoneE164)).map((p) => p.phoneE164));
     const extraIssues: ImportRowIssue[] = [];
     for (const p of analysis.plans) {
       const ex = existing.get(p.phoneE164);
@@ -136,7 +139,8 @@ export class ImportService implements OnModuleInit {
       } else action = 'update';
       if (action === 'create') willCreate++;
       else if (action === 'update') willUpdate++;
-      if (p.optOut && action !== 'skip' && ex?.consentStatus !== 'REVOKED') willOptOut++;
+      // la baja NO PUBLICIDAD se aplica siempre (también a existentes omitidos) y los números suprimidos antes nacen de baja
+      if ((p.optOut || suppressed.has(p.phoneE164)) && ex?.consentStatus !== 'REVOKED') willOptOut++;
       if (sample.length < 15) sample.push({ row: p.row, phoneE164: p.phoneE164, name: [p.data.firstName, p.data.lastName].filter(Boolean).join(' ') || p.data.company || '', labels: p.labels.concat(p.optOut ? ['(BAJA)'] : []), action, reason });
     }
     const all = [...analysis.issues, ...extraIssues].sort((a, b) => a.row - b.row);
@@ -189,7 +193,10 @@ export class ImportService implements OnModuleInit {
       const result = await this.apply(job.id, job.createdById, analysis, existing, opts, parsed.rows.length);
       await this.audit.log({
         userId: job.createdById, action: 'import_contacts', entityType: 'ImportJob', entityId: job.id,
-        data: { fileName: job.fileName, totalRows: parsed.rows.length, created: result.created, updated: result.updated, skipped: result.skipped, optedOut: result.optedOut, ms: Date.now() - t0 },
+        data: {
+          fileName: job.fileName, totalRows: parsed.rows.length,
+          options: { defaultCountry: opts.defaultCountry, onDuplicate: opts.onDuplicate, optOutLabelValues: opts.optOutLabelValues, initialConsent: opts.initialConsent, createMissingLabels: opts.createMissingLabels, addLabelIds: opts.addLabelIds, mapping: opts.mapping },
+          created: result.created, updated: result.updated, skipped: result.skipped, optedOut: result.optedOut, ms: Date.now() - t0 },
       });
     } catch (e) {
       this.log.error(`Importación ${jobId} falló: ${(e as Error)?.stack ?? e}`);
@@ -241,6 +248,18 @@ export class ImportService implements OnModuleInit {
     let processed = totalRows - analysis.plans.reduce((n, p) => n + p.rows.length, 0);
     await this.prisma.importJob.update({ where: { id: jobId }, data: { processedRows: processed } });
 
+    // «Omitir existentes» no toca los datos, pero una baja (NO PUBLICIDAD) del archivo se aplica siempre: nunca se pierde
+    const skipExisting = async (p: PlanRow, ex: Existing) => {
+      issues.push({ row: p.row, reason: 'Ya existe un contacto con ese teléfono (se omite)', value: p.phoneE164, kind: 'skipped' });
+      if (p.optOut && ex.consentStatus !== 'REVOKED') {
+        const r = await this.consent.setConsent(ex.id, 'REVOKED', 'LEGACY_LABEL', { userId, note: OPT_OUT_NOTE });
+        if (r.changed) {
+          optedOut++;
+          issues.push({ row: p.row, reason: 'Aviso: se omiten los datos, pero se aplica la baja NO PUBLICIDAD', value: p.phoneE164, kind: 'warning' });
+        }
+      }
+    };
+
     const plans = analysis.plans;
     for (let i = 0; i < plans.length; i += BATCH) {
       const batch = plans.slice(i, i + BATCH);
@@ -251,23 +270,30 @@ export class ImportService implements OnModuleInit {
         const ex = existing.get(p.phoneE164);
         if (!ex) news.push(p);
         else if (ex.deletedAt) revived.push({ p, ex });
-        else if (opts.onDuplicate === 'skip') issues.push({ row: p.row, reason: 'Ya existe un contacto con ese teléfono (se omite)', value: p.phoneE164, kind: 'skipped' });
+        else if (opts.onDuplicate === 'skip') await skipExisting(p, ex);
         else updatedRows.push({ p, ex });
       }
 
+      // números suprimidos antes (borrado físico): nacen dados de baja
+      const suppressed = await this.suppression.suppressedAmong(news.map((p) => p.phoneE164));
       try {
-        await this.createBatch(news, userId, opts, labelsFor);
+        await this.createBatch(news, userId, opts, labelsFor, suppressed);
         created += news.length;
-        optedOut += news.filter((p) => p.optOut).length;
+        optedOut += news.filter((p) => p.optOut || suppressed.has(p.phoneE164)).length;
       } catch {
-        // carrera con otra alta: fila a fila para no perder el lote
+        // carrera con otra alta (p. ej. un entrante): fila a fila; si el teléfono ya existe, se aplica la ruta de actualización
         for (const p of news) {
           try {
-            await this.createBatch([p], userId, opts, labelsFor);
+            await this.createBatch([p], userId, opts, labelsFor, suppressed);
             created++;
-            if (p.optOut) optedOut++;
+            if (p.optOut || suppressed.has(p.phoneE164)) optedOut++;
           } catch (err) {
-            issues.push({ row: p.row, reason: `No se pudo crear el contacto: ${(err as Error).message.slice(0, 120)}`, value: p.phoneE164, kind: 'skipped' });
+            const ex = await this.findByPhoneOrWaId(p);
+            if (!ex) {
+              issues.push({ row: p.row, reason: `No se pudo crear el contacto: ${(err as Error).message.slice(0, 120)}`, value: p.phoneE164, kind: 'skipped' });
+            } else if (ex.deletedAt) revived.push({ p, ex });
+            else if (opts.onDuplicate === 'skip') await skipExisting(p, ex);
+            else updatedRows.push({ p, ex });
           }
         }
       }
@@ -309,11 +335,11 @@ export class ImportService implements OnModuleInit {
   }
 
   /** Alta en bloque: contactos, etiquetas y ConsentEvent (regla 5: cada estado inicial no desconocido deja su evento). */
-  private async createBatch(plans: PlanRow[], userId: string, opts: ImportOptionsDto, labelsFor: (p: PlanRow) => string[]) {
+  private async createBatch(plans: PlanRow[], userId: string, opts: ImportOptionsDto, labelsFor: (p: PlanRow) => string[], suppressed: Set<string>) {
     if (!plans.length) return;
     const now = new Date();
     const ids = plans.map(() => randomUUID());
-    const status = (p: PlanRow) => (p.optOut ? 'REVOKED' : opts.initialConsent);
+    const status = (p: PlanRow) => (p.optOut || suppressed.has(p.phoneE164) ? 'REVOKED' : opts.initialConsent);
     await this.prisma.$transaction(async (tx) => {
       const r = await tx.contact.createMany({
         data: plans.map((p, k) => ({
@@ -327,10 +353,24 @@ export class ImportService implements OnModuleInit {
       const events = plans.flatMap((p, k) =>
         status(p) === 'UNKNOWN'
           ? []
-          : [{ contactId: ids[k]!, status: status(p) as 'GRANTED' | 'REVOKED', source: (p.optOut ? 'LEGACY_LABEL' : 'IMPORT') as 'LEGACY_LABEL' | 'IMPORT', note: p.optOut ? OPT_OUT_NOTE : 'Consentimiento inicial de la importación', userId }],
+          : [
+              p.optOut
+                ? { contactId: ids[k]!, status: 'REVOKED' as const, source: 'LEGACY_LABEL' as const, note: OPT_OUT_NOTE, userId }
+                : suppressed.has(p.phoneE164)
+                  ? { contactId: ids[k]!, status: 'REVOKED' as const, source: 'MANUAL' as const, note: SUPPRESSED_NOTE, userId }
+                  : { contactId: ids[k]!, status: status(p) as 'GRANTED', source: 'IMPORT' as const, note: 'Consentimiento inicial de la importación', userId },
+            ],
       );
       if (events.length) await tx.consentEvent.createMany({ data: events });
     }, { timeout: 60_000 });
+  }
+
+  /** Relee el contacto que ganó la carrera (por teléfono o wa_id, ambos únicos). */
+  private findByPhoneOrWaId(p: PlanRow): Promise<Existing | null> {
+    return this.prisma.contact.findFirst({
+      where: { OR: [{ phoneE164: p.phoneE164 }, { waId: p.waId }] },
+      select: { id: true, deletedAt: true, consentStatus: true },
+    });
   }
 
   /** Contacto borrado antes que vuelve en el archivo: se reactiva con los datos del archivo y conserva su consentimiento. */

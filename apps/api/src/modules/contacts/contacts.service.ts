@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   LABELS_ES, normalizePhone,
@@ -7,16 +7,26 @@ import {
 } from '@gelado/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { StorageService } from '../storage/storage.service';
 import { contactInclude, toContactDto } from '../inbox/mappers';
 import { ConsentService } from './consent.service';
 import { searchCondition } from './contacts.search';
+import { SuppressionService } from './suppression.service';
 
 const BLANK = { firstName: null, lastName: null, email: null, company: null, customerCode: null, taxId: null, landline: null, notes: null };
 type Ctx = { userId: string; ip?: string | null };
 
 @Injectable()
 export class ContactsService {
-  constructor(private readonly prisma: PrismaService, private readonly consent: ConsentService, private readonly audit: AuditService) {}
+  private readonly log = new Logger('Contacts');
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly consent: ConsentService,
+    private readonly audit: AuditService,
+    private readonly storage: StorageService,
+    private readonly suppression: SuppressionService,
+  ) {}
 
   // ── Listado ──
 
@@ -102,6 +112,8 @@ export class ContactsService {
       if (labelIds?.length) await tx.contactLabel.createMany({ data: [...new Set(labelIds)].map((labelId) => ({ contactId: cid, labelId })), skipDuplicates: true });
       return cid;
     });
+    // número que se suprimió físicamente antes: nace dado de baja (lista de supresión)
+    if (!existing) await this.suppression.enforce(id, n.e164);
     return this.get(id);
   }
 
@@ -139,12 +151,46 @@ export class ContactsService {
     const c = await this.prisma.contact.findUnique({ where: { id } });
     if (!c || (c.deletedAt && !hard)) throw new NotFoundException({ statusCode: 404, message: 'Contacto no encontrado' });
     if (hard) {
-      // Supresión física (derecho de supresión, regla 7): conversación, mensajes y envíos de campaña. El rastro queda en AuditLog sin datos personales.
+      // Supresión física (derecho de supresión, regla 7): conversación, mensajes, envíos de campaña, adjuntos (y sus objetos
+      // de Storage salvo los de la biblioteca u otros mensajes) y eventos de webhook con su número. Queda su hash en la
+      // lista de supresión (si el número vuelve, nace REVOKED) y el rastro en AuditLog sin datos personales.
+      const conv = await this.prisma.conversation.findUnique({ where: { contactId: id }, select: { id: true } });
+      const mediaIds = conv
+        ? (await this.prisma.message.findMany({ where: { conversationId: conv.id, mediaId: { not: null } }, select: { mediaId: true }, distinct: ['mediaId'] })).map((m) => m.mediaId!)
+        : [];
+      const digits = [...new Set([c.waId, c.phoneE164.replace(/\D/g, '')].filter((x): x is string => !!x && /^\d{6,20}$/.test(x)))];
+      let storagePaths: string[] = [];
+      let webhookEvents = 0;
       await this.prisma.$transaction(async (tx) => {
         await tx.campaignRecipient.deleteMany({ where: { contactId: id } });
         await tx.contact.delete({ where: { id } });
+        await this.suppression.add(c.phoneE164, tx);
+        if (mediaIds.length) {
+          const [msgs, lib, imports] = await Promise.all([
+            tx.message.findMany({ where: { mediaId: { in: mediaIds } }, select: { mediaId: true }, distinct: ['mediaId'] }),
+            tx.libraryFile.findMany({ where: { mediaFileId: { in: mediaIds } }, select: { mediaFileId: true } }),
+            tx.importJob.findMany({ where: { mediaFileId: { in: mediaIds } }, select: { mediaFileId: true } }),
+          ]);
+          const used = new Set<string>([...msgs.map((m) => m.mediaId!), ...lib.map((l) => l.mediaFileId), ...imports.map((j) => j.mediaFileId)]);
+          const orphans = mediaIds.filter((m) => !used.has(m));
+          if (orphans.length) {
+            storagePaths = (await tx.mediaFile.findMany({ where: { id: { in: orphans } }, select: { storagePath: true } })).map((m) => m.storagePath);
+            await tx.mediaFile.deleteMany({ where: { id: { in: orphans } } });
+          }
+        }
+        if (digits.length) {
+          // eventos de webhook ya tratados (o fallidos) que mencionan el número como wa_id / recipient_id; los pendientes se respetan
+          const re = `(^|[^0-9])(${digits.join('|')})([^0-9]|$)`;
+          webhookEvents = await tx.$executeRaw`DELETE FROM "WebhookEvent" WHERE ("processedAt" IS NOT NULL OR "error" IS NOT NULL) AND "payload"::text ~ ${re}`;
+        }
       });
-      await this.audit.log({ userId: ctx.userId, action: 'hard_delete_contact', entityType: 'Contact', entityId: id, data: { phoneLast4: c.phoneE164.slice(-4) }, ip: ctx.ip });
+      if (storagePaths.length) {
+        await this.storage.remove(storagePaths).catch((e) => this.log.warn(`No se pudieron borrar ${storagePaths.length} objetos de Storage de un contacto suprimido: ${(e as Error).message}`));
+      }
+      await this.audit.log({
+        userId: ctx.userId, action: 'hard_delete_contact', entityType: 'Contact', entityId: id,
+        data: { phoneLast4: c.phoneE164.slice(-4), mediaDeleted: storagePaths.length, webhookEventsDeleted: webhookEvents }, ip: ctx.ip,
+      });
       return { ok: true, hard: true };
     }
     await this.prisma.contact.update({ where: { id }, data: { deletedAt: new Date() } });

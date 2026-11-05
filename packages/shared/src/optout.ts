@@ -22,3 +22,27 @@ export function isOptOutKeyword(text: string | null | undefined): boolean {
   const n = normalizeKeyword(text);
   return OPT_OUT_KEYWORDS.some((k) => normalizeKeyword(k) === n);
 }
+
+/**
+ * Textos de botón de respuesta rápida que cuentan como baja. Lista CERRADA de textos exactos (normalizados:
+ * sin tildes, minúsculas, espacios colapsados). Nunca por subcadena: «Ver rebajas», «Bajar catálogo» o
+ * «Non-stop» no son una baja.
+ */
+export const OPT_OUT_BUTTON_TEXTS = ['no recibir mas', 'no recibir mas publicidad', 'darme de baja'];
+
+const OPT_OUT_BUTTON_NORMALIZED = normalizeKeyword(OPT_OUT_BUTTON_TEXT);
+
+/** El texto es exactamente «No recibir más» (sin distinguir mayúsculas ni tildes). */
+export function isCanonicalOptOutButtonText(text: string | null | undefined): boolean {
+  return !!text && normalizeKeyword(text) === OPT_OUT_BUTTON_NORMALIZED;
+}
+
+/** El texto de un botón de respuesta rápida es uno de los de baja admitidos (coincidencia exacta). */
+export function isOptOutButtonText(text: string | null | undefined): boolean {
+  if (!text) return false;
+  const n = normalizeKeyword(text);
+  return n === OPT_OUT_BUTTON_NORMALIZED || OPT_OUT_BUTTON_TEXTS.includes(n);
+}
+
+/** Etiqueta heredada de Superchat que SIEMPRE es una baja en la importación (P7 de docs/10). */
+export const LEGACY_OPT_OUT_LABEL = 'NO PUBLICIDAD';

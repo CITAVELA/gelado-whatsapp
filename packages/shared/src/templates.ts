@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { TemplateCategory, TemplateStatus } from './enums';
-import { OPT_OUT_BUTTON_TEXT } from './optout';
+import { OPT_OUT_BUTTON_TEXT, isCanonicalOptOutButtonText, isOptOutButtonText } from './optout';
 
 /** Componentes tal cual Meta (HEADER/BODY/FOOTER/BUTTONS). */
 export interface TemplateComponent {
@@ -79,8 +79,10 @@ export const templateEditorSchema = z.object({
 export type TemplateEditorDto = z.infer<typeof templateEditorSchema>;
 export type TemplateEditorButton = TemplateEditorDto['buttons'][number];
 
-const OPT_OUT_RE = /no recibir m[aá]s|baja|stop/i;
-const isOptOutQr = (b: { type: string; text: string }) => b.type === 'QUICK_REPLY' && OPT_OUT_RE.test(b.text);
+/** Respuesta rápida con exactamente «No recibir más» (la que impone el editor). */
+const isCanonicalOptOutQr = (b: { type: string; text: string }) => b.type === 'QUICK_REPLY' && isCanonicalOptOutButtonText(b.text);
+/** Respuesta rápida cuyo texto es uno de los de baja admitidos (lista cerrada, coincidencia exacta). */
+export const isOptOutQr = (b: { type: string; text: string }) => b.type === 'QUICK_REPLY' && isOptOutButtonText(b.text);
 
 /** Reglas de docs/06 que el esquema zod no cubre. Devuelve los errores en español (vacío = válida). */
 export function validateTemplateEditor(dto: TemplateEditorDto): string[] {
@@ -127,7 +129,7 @@ export function validateTemplateEditor(dto: TemplateEditorDto): string[] {
   });
   if (dto.buttons.filter((b) => b.type === 'URL').length > 2) errs.push('Meta admite como máximo 2 botones de enlace');
   if (dto.buttons.filter((b) => b.type === 'PHONE_NUMBER').length > 1) errs.push('Meta admite como máximo 1 botón de llamada');
-  const total = dto.buttons.length + (dto.category === 'MARKETING' && !dto.buttons.some(isOptOutQr) ? 1 : 0);
+  const total = dto.buttons.length + (dto.category === 'MARKETING' && !dto.buttons.some(isCanonicalOptOutQr) ? 1 : 0);
   if (total > TEMPLATE_LIMITS.maxButtons) errs.push(`Máximo ${TEMPLATE_LIMITS.maxButtons} botones (el botón «${OPT_OUT_BUTTON_TEXT}» cuenta)`);
   return errs;
 }
@@ -167,7 +169,7 @@ export function editorToComponents(dto: TemplateEditorDto, opts: { headerHandle?
     } else others.push({ type: 'PHONE_NUMBER', text: b.text.trim(), phone_number: b.phone.replace(/[\s()-]/g, '') });
   }
   const wantsOptOut = dto.category === 'MARKETING' || dto.addOptOutButton;
-  if (wantsOptOut && !quick.some(isOptOutQr)) quick.push({ type: 'QUICK_REPLY', text: OPT_OUT_BUTTON_TEXT });
+  if (wantsOptOut && !quick.some(isCanonicalOptOutQr)) quick.push({ type: 'QUICK_REPLY', text: OPT_OUT_BUTTON_TEXT });
   const buttons = [...quick, ...others];
   if (buttons.length) out.push({ type: 'BUTTONS', buttons });
   return out;
@@ -212,15 +214,14 @@ export function templateVariableKeys(components: TemplateComponent[]): string[] 
 
 /** ¿Tiene la plantilla el botón de respuesta rápida «No recibir más»? */
 export function hasOptOutButton(components: TemplateComponent[]): boolean {
-  return components.some(
-    (c) => c.type === 'BUTTONS' && c.buttons?.some((b) => b.type === 'QUICK_REPLY' && /no recibir m[aá]s|baja|stop/i.test(b.text)),
-  );
+  return components.some((c) => c.type === 'BUTTONS' && c.buttons?.some(isOptOutQr));
 }
 
 /** Índice del botón de baja (para enviar el payload OPT_OUT). */
 export function optOutButtonIndex(components: TemplateComponent[]): number {
   const btns = components.find((c) => c.type === 'BUTTONS')?.buttons ?? [];
-  return btns.findIndex((b) => b.type === 'QUICK_REPLY' && /no recibir m[aá]s|baja|stop/i.test(b.text));
+  const exact = btns.findIndex(isCanonicalOptOutQr);
+  return exact >= 0 ? exact : btns.findIndex(isOptOutQr);
 }
 
 /** Rellena el texto con los parámetros para la vista previa. */

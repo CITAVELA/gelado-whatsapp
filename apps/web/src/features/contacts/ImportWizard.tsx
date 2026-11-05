@@ -12,7 +12,15 @@ import { MappingStep } from './MappingStep';
 const STEPS = ['Subir archivo', 'Columnas', 'Reglas', 'Revisar', 'Importar'];
 const COUNTRIES: Array<[string, string]> = [['ES', 'España (+34)'], ['PT', 'Portugal (+351)'], ['FR', 'Francia (+33)'], ['IT', 'Italia (+39)'], ['DE', 'Alemania (+49)'], ['GB', 'Reino Unido (+44)'], ['AD', 'Andorra (+376)'], ['MA', 'Marruecos (+212)']];
 
-interface Rules { defaultCountry: string; onDuplicate: 'update' | 'skip'; addLabelIds: string[]; noPublicidadIsOptOut: boolean; initialConsent: 'UNKNOWN' | 'GRANTED'; createMissingLabels: boolean }
+export interface Rules { defaultCountry: string; onDuplicate: 'update' | 'skip'; addLabelIds: string[]; initialConsent: 'UNKNOWN' | 'GRANTED'; createMissingLabels: boolean }
+
+/** P7: «NO PUBLICIDAD» siempre es baja; no hay opción para desactivarlo (el servidor también lo impone). */
+export function buildImportOptions(mapping: Record<string, ImportField>, rules: Rules): ImportOptionsDto {
+  return {
+    mapping, defaultCountry: rules.defaultCountry, onDuplicate: rules.onDuplicate, addLabelIds: rules.addLabelIds,
+    optOutLabelValues: ['NO PUBLICIDAD'], initialConsent: rules.initialConsent, createMissingLabels: rules.createMissingLabels,
+  };
+}
 
 function Steps({ step }: { step: number }) {
   return (
@@ -40,17 +48,14 @@ export function ImportWizard() {
   const [step, setStep] = useState(1);
   const [up, setUp] = useState<ImportUploadResultDto | null>(null);
   const [mapping, setMapping] = useState<Record<string, ImportField>>({});
-  const [rules, setRules] = useState<Rules>({ defaultCountry: 'ES', onDuplicate: 'update', addLabelIds: [], noPublicidadIsOptOut: true, initialConsent: 'UNKNOWN', createMissingLabels: true });
+  const [rules, setRules] = useState<Rules>({ defaultCountry: 'ES', onDuplicate: 'update', addLabelIds: [], initialConsent: 'UNKNOWN', createMissingLabels: true });
   const [preview, setPreview] = useState<ImportPreviewDto | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [over, setOver] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
 
-  const options = (): ImportOptionsDto => ({
-    mapping, defaultCountry: rules.defaultCountry, onDuplicate: rules.onDuplicate, addLabelIds: rules.addLabelIds,
-    optOutLabelValues: rules.noPublicidadIsOptOut ? ['NO PUBLICIDAD'] : [], initialConsent: rules.initialConsent, createMissingLabels: rules.createMissingLabels,
-  });
+  const options = (): ImportOptionsDto => buildImportOptions(mapping, rules);
 
   async function upload(file: File | undefined) {
     if (!file) return;
@@ -160,7 +165,7 @@ export function ImportWizard() {
                 </div>
               </div>
               <label className="row" style={{ gap: 10 }}><input type="checkbox" className="ct-check" checked={rules.createMissingLabels} onChange={(e) => setRules({ ...rules, createMissingLabels: e.target.checked })} />Crear las etiquetas de la columna de listas que no existan</label>
-              <label className="row" style={{ gap: 10 }}><input type="checkbox" className="ct-check" checked={rules.noPublicidadIsOptOut} onChange={(e) => setRules({ ...rules, noPublicidadIsOptOut: e.target.checked })} />La etiqueta NO PUBLICIDAD significa baja (no recibirá campañas)</label>
+              <div className="hint" data-testid="nopub-note"><strong>NO PUBLICIDAD</strong> significa baja: esos contactos se importan dados de baja y no recibirán campañas (no se puede desactivar).</div>
               <div className="row"><label className="grow" htmlFor="r-consent">Consentimiento de los contactos nuevos</label>
                 <select id="r-consent" className="field" style={{ width: 200, height: 32 }} value={rules.initialConsent} onChange={(e) => setRules({ ...rules, initialConsent: e.target.value as Rules['initialConsent'] })}>
                   <option value="UNKNOWN">Sin constancia</option>

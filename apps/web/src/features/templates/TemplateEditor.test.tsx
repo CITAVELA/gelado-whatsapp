@@ -29,6 +29,15 @@ describe('TemplateEditor', () => {
     expect(screen.getByTestId('template-preview')).toHaveTextContent('No recibir más');
   });
 
+  it('un botón «Ver rebajas» no sustituye al de baja: la vista previa lleva los dos', () => {
+    setup();
+    fireEvent.click(screen.getByText('+ Añadir botón'));
+    fireEvent.change(screen.getByLabelText('Texto del botón 1'), { target: { value: 'Ver rebajas' } });
+    const preview = screen.getByTestId('template-preview');
+    expect(preview).toHaveTextContent('Ver rebajas');
+    expect(preview).toHaveTextContent('No recibir más');
+  });
+
   it('muestra errores en español al enviar incompleto', async () => {
     setup();
     fireEvent.click(screen.getByText('Enviar a revisión de Meta'));

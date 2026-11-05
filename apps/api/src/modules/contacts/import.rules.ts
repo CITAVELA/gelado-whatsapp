@@ -1,4 +1,4 @@
-import { normalizePhone, type ImportOptionsDto, type ImportRowIssue } from '@gelado/shared';
+import { normalizePhone, withMandatoryOptOut, type ImportOptionsDto, type ImportRowIssue } from '@gelado/shared';
 import { foldAccents } from './contacts.search';
 
 /** Quita emojis, símbolos y signos sueltos de un nombre; conserva letras con tilde, ñ, dígitos y puntuación normal. */
@@ -65,7 +65,8 @@ export interface Analysis {
 
 type Opts = Pick<ImportOptionsDto, 'mapping' | 'defaultCountry' | 'onDuplicate' | 'optOutLabelValues'>;
 
-const optOutKeys = (o: Opts) => new Set(o.optOutLabelValues.map((x) => foldAccents(x).replace(/\s+/g, ' ').trim()));
+// NO PUBLICIDAD cuenta siempre como baja (P7), aunque la lista de opciones no lo traiga
+const optOutKeys = (o: Opts) => new Set(withMandatoryOptOut(o.optOutLabelValues).map((x) => foldAccents(x).replace(/\s+/g, ' ').trim()));
 
 /** Lee y limpia el archivo según el mapeo (sin tocar la BD). Los números de fila son los del archivo (cabecera = 1). */
 export function analyzeRows(rows: Record<string, string>[], o: Opts): Analysis {
