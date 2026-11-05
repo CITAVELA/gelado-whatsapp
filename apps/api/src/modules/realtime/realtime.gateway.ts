@@ -40,7 +40,7 @@ export class RealtimeGateway implements OnGatewayConnection {
 @Injectable()
 export class RealtimeService {
   /** Últimos eventos emitidos (útil en pruebas) */
-  readonly emitted: Array<{ event: string; payload: unknown }> = [];
+  readonly emitted: Array<{ event: string; payload: unknown; userId?: string }> = [];
   constructor(private readonly gateway: RealtimeGateway) {}
 
   emit<E extends keyof ServerToClientEvents>(event: E, payload: Parameters<ServerToClientEvents[E]>[0]) {
@@ -51,6 +51,8 @@ export class RealtimeService {
   }
 
   emitToUser<E extends keyof ServerToClientEvents>(userId: string, event: E, payload: Parameters<ServerToClientEvents[E]>[0]) {
+    if (this.emitted.length > 200) this.emitted.shift();
+    this.emitted.push({ event: String(event), payload, userId });
     const server = this.gateway.server as any;
     if (server?.to) server.to(`user:${userId}`).emit(event, payload);
   }
