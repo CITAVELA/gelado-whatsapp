@@ -1,4 +1,4 @@
-import { Global, Injectable, Logger, Module, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import PgBoss from 'pg-boss';
 import { config } from '../../common/config';
 
@@ -38,6 +38,31 @@ export function pgConnectionString(url: string): string {
   return u.toString();
 }
 
+const MADRID_CLOCK = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+/** Máximo de minutos que se recuperan hacia atrás tras una parada larga (un día) */
+const MAX_CATCH_UP_MINUTES = 24 * 60;
+
+/** Crons que tocan en el minuto de `now` y en los minutos transcurridos desde `since` (excluido), cada uno una vez. */
+export function dueCrons(now: Date, since: Date | null = null): QueueName[] {
+  const MIN = 60_000;
+  const end = Math.floor(now.getTime() / MIN) * MIN;
+  let start = since ? Math.floor(since.getTime() / MIN) * MIN + MIN : end;
+  start = Math.max(Math.min(start, end), end - (MAX_CATCH_UP_MINUTES - 1) * MIN);
+  let hourly = false;
+  let daily = false;
+  for (let t = start; t <= end; t += MIN) {
+    const parts = MADRID_CLOCK.formatToParts(new Date(t));
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value);
+    const minute = Number(parts.find((p) => p.type === 'minute')?.value);
+    if (minute === 7) hourly = true;
+    if (minute === 0 && hour === 3) daily = true;
+  }
+  const due: QueueName[] = [QUEUES.CRON_MINUTE];
+  if (hourly) due.push(QUEUES.CRON_HOURLY);
+  if (daily) due.push(QUEUES.CRON_DAILY);
+  return due;
+}
+
 export type JobHandler<T = any> = (data: T, job: PgBoss.Job<T>) => Promise<void>;
 
 interface WorkerDef {
@@ -63,6 +88,8 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
   private workerIds = new Map<string, string>();
   private cronTimer: NodeJS.Timeout | null = null;
   private cronRunning = false;
+  /** Instante de la última ronda de crons lanzada: la siguiente ejecuta también lo vencido desde entonces */
+  private lastCronAt: Date | null = null;
   private stopping = false;
   /** En pruebas (sin WORKER_ENABLED): true = send() ejecuta el handler en el acto (sin pg-boss) */
   inlineMode = config().NODE_ENV === 'test' && !config().WORKER_ENABLED;
@@ -174,8 +201,11 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
     const tick = async () => {
       if (!this.cronRunning) {
         this.cronRunning = true;
+        const now = new Date();
         try {
-          await this.runCronsFor(new Date());
+          // Si el tick anterior tardó más de 60 s no se pierden los crons de los minutos intermedios (:07, 03:00)
+          await this.runCronsFor(now, this.lastCronAt);
+          this.lastCronAt = now;
         } finally {
           this.cronRunning = false;
         }
@@ -185,15 +215,12 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
     arm();
   }
 
-  /** Lanza los crons que tocan en `now` (hora de Madrid): cada minuto, minuto :07 y 03:00. */
-  async runCronsFor(now: Date) {
-    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now);
-    const hour = Number(parts.find((p) => p.type === 'hour')?.value);
-    const minute = Number(parts.find((p) => p.type === 'minute')?.value);
-    const due: QueueName[] = [QUEUES.CRON_MINUTE];
-    if (minute === 7) due.push(QUEUES.CRON_HOURLY);
-    if (minute === 0 && hour === 3) due.push(QUEUES.CRON_DAILY);
-    for (const q of due) {
+  /**
+   * Lanza los crons que tocan (hora de Madrid): cada minuto, minuto :07 y 03:00. Con `since` ejecuta también
+   * los vencidos en los minutos transcurridos desde esa ronda (a lo sumo una vez cada uno).
+   */
+  async runCronsFor(now: Date, since: Date | null = null) {
+    for (const q of dueCrons(now, since)) {
       if (!this.handlers.has(q)) continue;
       try {
         await this.dispatchCron(q);
@@ -235,13 +262,17 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
     return this.handlers.has(queue);
   }
 
-  /** Trabajos fallidos en las últimas 24 h (para /api/status). */
+  /** Trabajos fallidos en las últimas 24 h (para /api/status), incluidos los ya archivados por pg-boss. */
   async failedLast24h(): Promise<number> {
     if (!this.boss) return 0;
     try {
       const db = (this.boss as any).getDb?.() ?? null;
       if (!db) return 0;
-      const r = await db.executeSql(`SELECT count(*)::int AS n FROM pgboss.job WHERE state = 'failed' AND completed_on > now() - interval '24 hours'`);
+      // pg-boss mueve los trabajos terminados a `pgboss.archive` (misma forma que `job`) en su mantenimiento
+      const r = await db.executeSql(
+        `SELECT (SELECT count(*) FROM pgboss.job WHERE state = 'failed' AND completed_on > now() - interval '24 hours')::int
+              + (SELECT count(*) FROM pgboss.archive WHERE state = 'failed' AND completed_on > now() - interval '24 hours')::int AS n`,
+      );
       return r.rows?.[0]?.n ?? 0;
     } catch {
       return 0;
@@ -255,7 +286,3 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
     if (this.boss) await this.boss.stop({ graceful: true, timeout: 5000 }).catch(() => undefined);
   }
 }
-
-@Global()
-@Module({ providers: [JobsService], exports: [JobsService] })
-export class JobsModule {}
