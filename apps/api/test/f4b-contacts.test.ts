@@ -8,6 +8,7 @@ import { deflateRawSync } from 'node:zlib';
 import { ADMIN_EMAIL, createTestApp, loginAs, type TestApp } from './utils/app';
 import { ImportService } from '../src/modules/contacts/import.service';
 import { ConsentService } from '../src/modules/contacts/consent.service';
+import { ContactFactory } from '../src/modules/contacts/contact-factory.service';
 import { SuppressionService, SUPPRESSED_NOTE } from '../src/modules/contacts/suppression.service';
 import { StorageService } from '../src/modules/storage/storage.service';
 import { RealtimeService } from '../src/modules/realtime/realtime.gateway';
@@ -172,13 +173,13 @@ describe('F4b · supresión física completa y lista de supresión (S9 #9 = S10 
     expect(JSON.stringify(log.data)).not.toContain('617498111');
   });
 
-  it('guarda solo el hash del teléfono (HMAC con SESSION_SECRET), no el número', async () => {
+  it('guarda solo el hash del teléfono (HMAC con una sal propia), no el número', async () => {
     const { a } = await seed();
     await admin.del(`/api/contacts/${a.id}?hard=true`);
     const rows = await t.prisma.suppressedPhone.findMany();
     expect(rows).toHaveLength(1);
     const sup = t.app.get(SuppressionService);
-    expect(rows[0]!.phoneHash).toBe(sup.hash(PHONE));
+    expect(rows[0]!.phoneHash).toBe(await sup.hash(PHONE));
     expect(rows[0]!.phoneHash).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.stringify(rows)).not.toContain('617498111');
     expect(await sup.isSuppressed(PHONE)).toBe(true);
@@ -211,15 +212,14 @@ describe('F4b · supresión física completa y lista de supresión (S9 #9 = S10 
     expect((await t.prisma.contact.findUniqueOrThrow({ where: { phoneE164: '+34617498333' } })).consentStatus).toBe('GRANTED');
   });
 
-  it('para el procesador de entrantes: SuppressionService.enforce(contactId, phone) deja REVOKED al contacto recién creado', async () => {
+  it('ContactFactory (única puerta de alta): un número suprimido nace REVOKED; uno no suprimido, UNKNOWN', async () => {
     const { a } = await seed();
     await admin.del(`/api/contacts/${a.id}?hard=true`);
-    const c = await t.prisma.contact.create({ data: { phoneE164: PHONE, waId: WA, profileName: 'Ana' } }); // lo que hace InboundMessagesService
-    expect(await t.app.get(SuppressionService).enforce(c.id, PHONE)).toBe(true);
+    const f = t.app.get(ContactFactory);
+    const c = await f.create({ phoneE164: PHONE, waId: WA, profileName: 'Ana' }); // lo que hace InboundMessagesService
     expect((await t.prisma.contact.findUniqueOrThrow({ where: { id: c.id } })).consentStatus).toBe('REVOKED');
-    // y un número no suprimido no se toca
-    const d = await t.prisma.contact.create({ data: { phoneE164: '+34600999888', waId: '34600999888' } });
-    expect(await t.app.get(SuppressionService).enforce(d.id, '+34600999888')).toBe(false);
+    expect(await t.prisma.consentEvent.findFirstOrThrow({ where: { contactId: c.id } })).toMatchObject({ source: 'MANUAL', note: SUPPRESSED_NOTE });
+    const d = await f.create({ phoneE164: '+34600999888', waId: '34600999888' });
     expect((await t.prisma.contact.findUniqueOrThrow({ where: { id: d.id } })).consentStatus).toBe('UNKNOWN');
   });
 });

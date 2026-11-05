@@ -25,6 +25,7 @@ import {
   type ConversationRow,
   type MessageRow,
 } from './mappers';
+import { ContactFactory } from '../contacts/contact-factory.service';
 
 const ACCENTS_FROM = 'áàäâãéèëêíìïîóòöôõúùüûñç';
 const ACCENTS_TO = 'aaaaaeeeeiiiiooooouuuunc';
@@ -50,6 +51,7 @@ export class InboxService {
     private readonly media: MediaService,
     private readonly storage: StorageService,
     private readonly messaging: MessagingService,
+    private readonly contactFactory: ContactFactory,
   ) {}
 
   // ───────────────────────── Lista ─────────────────────────
@@ -165,7 +167,7 @@ export class InboxService {
     if (!n.ok) throw new BadRequestException({ statusCode: 400, message: n.reason });
     let contact = await this.prisma.contact.findFirst({ where: { OR: [{ phoneE164: n.e164 }, { waId: n.waId }] } });
     if (!contact) {
-      contact = await this.prisma.contact.create({ data: { phoneE164: n.e164, waId: n.waId, firstName: dto.firstName?.trim() || null } });
+      contact = await this.contactFactory.create({ phoneE164: n.e164, waId: n.waId, firstName: dto.firstName?.trim() || null }); // un suprimido vuelve REVOKED
     } else if (contact.deletedAt) {
       contact = await this.prisma.contact.update({ where: { id: contact.id }, data: { deletedAt: null } });
     }

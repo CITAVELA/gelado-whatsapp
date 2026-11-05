@@ -4,7 +4,7 @@ import { OPT_OUT_BUTTON_TEXT, OPT_OUT_CONFIRMATION, OPT_OUT_PAYLOAD, WINDOW_MS, 
 import { PrismaService } from '../../common/prisma.service';
 import { DomainEvents } from '../events/domain-events.service';
 import { ConsentService } from '../contacts/consent.service';
-import { SuppressionService } from '../contacts/suppression.service';
+import { ContactFactory } from '../contacts/contact-factory.service';
 import { JobsService, QUEUES } from '../jobs/jobs.service';
 import { previewFor } from '../inbox/mappers';
 import { MessageNotifier } from '../whatsapp/message-notifier.service';
@@ -93,7 +93,7 @@ export class InboundMessagesService implements OnModuleInit {
     private readonly notifier: MessageNotifier,
     private readonly statusSvc: MessageStatusService,
     private readonly messaging: MessagingService,
-    private readonly suppression: SuppressionService,
+    private readonly contactFactory: ContactFactory,
   ) {}
 
   onModuleInit() {
@@ -146,8 +146,6 @@ export class InboundMessagesService implements OnModuleInit {
     if (!created) throw new Error(`No se pudo guardar el mensaje ${m.id}`);
     const { message, contact, conversation, prevStatus, eventIds } = created;
     const reopened = prevStatus === 'DONE' || prevStatus === 'SNOOZED';
-    // Lista de supresión (derecho de supresión ejercido antes): si el número vuelve a escribir, nace dado de baja
-    if (contact.consentStatus !== 'REVOKED' && contact.phoneE164) await this.suppression.enforce(contact.id, contact.phoneE164);
 
     // Tiempo real
     await this.notifier.created(message.id, parsed.kind !== 'REACTION');
@@ -181,7 +179,7 @@ export class InboundMessagesService implements OnModuleInit {
       const phoneE164 = waIdToE164(m.from);
       let contact = await tx.contact.findFirst({ where: { OR: [{ waId: m.from }, { phoneE164 }] } });
       if (!contact) {
-        contact = await tx.contact.create({ data: { phoneE164, waId: m.from, profileName } });
+        contact = await this.contactFactory.create({ phoneE164, waId: m.from, profileName }, { db: tx }); // si el número fue suprimido, nace REVOKED
       } else {
         const data: Prisma.ContactUpdateInput = {};
         if (!contact.waId) data.waId = m.from;

@@ -11,6 +11,7 @@ import { StorageService } from '../storage/storage.service';
 import { contactInclude, toContactDto } from '../inbox/mappers';
 import { ConsentService } from './consent.service';
 import { searchCondition } from './contacts.search';
+import { ContactFactory } from './contact-factory.service';
 import { SuppressionService } from './suppression.service';
 
 const BLANK = { firstName: null, lastName: null, email: null, company: null, customerCode: null, taxId: null, landline: null, notes: null };
@@ -26,6 +27,7 @@ export class ContactsService {
     private readonly audit: AuditService,
     private readonly storage: StorageService,
     private readonly suppression: SuppressionService,
+    private readonly factory: ContactFactory,
   ) {}
 
   // ── Listado ──
@@ -128,14 +130,12 @@ export class ContactsService {
         });
         cid = existing.id;
       } else {
-        const c = await tx.contact.create({ data: { ...fields, phoneE164: n.e164, waId: n.waId } });
+        const c = await this.factory.create({ ...fields, phoneE164: n.e164, waId: n.waId }, { db: tx, userId: ctx.userId });
         cid = c.id;
       }
       if (labelIds?.length) await tx.contactLabel.createMany({ data: [...new Set(labelIds)].map((labelId) => ({ contactId: cid, labelId })), skipDuplicates: true });
       return cid;
     });
-    // número que se suprimió físicamente antes: nace dado de baja (lista de supresión)
-    if (!existing) await this.suppression.enforce(id, n.e164);
     return this.get(id);
   }
 
@@ -218,7 +218,12 @@ export class ContactsService {
       await this.prisma.$transaction(async (tx) => {
         await tx.campaignRecipient.deleteMany({ where: { contactId: id } });
         await tx.contact.delete({ where: { id } });
-        if (c.phoneE164) await this.suppression.add(c.phoneE164, tx);
+        if (c.phoneE164) {
+          await this.suppression.add(c.phoneE164, tx);
+          // el número no puede quedar en claro en el registro de auditoría (p. ej. `test_campaign` de versiones anteriores):
+          // se sustituye por sus últimos 4 dígitos
+          await tx.$executeRaw`UPDATE "AuditLog" SET "data" = ("data" - 'phone') || jsonb_build_object('phoneLast4', right("data"->>'phone', 4)) WHERE "data"->>'phone' IN (${c.phoneE164}, ${c.waId ?? c.phoneE164})`;
+        }
         if (mediaIds.length) {
           const [msgs, lib, imports] = await Promise.all([
             tx.message.findMany({ where: { mediaId: { in: mediaIds } }, select: { mediaId: true }, distinct: ['mediaId'] }),

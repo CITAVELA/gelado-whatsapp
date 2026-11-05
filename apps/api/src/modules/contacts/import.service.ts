@@ -392,7 +392,12 @@ export class ImportService implements OnModuleInit {
   /** Relee el contacto que ganó la carrera (por teléfono o wa_id, ambos únicos; sin teléfono, por correo o código). */
   private findExisting(p: PlanRow): Promise<Existing | null> {
     const select = { id: true, deletedAt: true, consentStatus: true } as const;
-    if (p.phoneE164) return this.prisma.contact.findFirst({ where: { OR: [{ phoneE164: p.phoneE164 }, { waId: p.waId }] }, select });
+    if (p.phoneE164) {
+      // sin condiciones vacías: Prisma ignora `{ waId: undefined }` y el OR casaría con cualquier contacto
+      const or: Prisma.ContactWhereInput[] = [{ phoneE164: p.phoneE164 }];
+      if (p.waId) or.push({ waId: p.waId });
+      return this.prisma.contact.findFirst({ where: { OR: or }, select });
+    }
     if (p.data.email) return this.prisma.contact.findFirst({ where: { email: { equals: p.data.email, mode: 'insensitive' } }, select, orderBy: { createdAt: 'asc' } });
     return this.prisma.contact.findFirst({ where: { customerCode: p.data.customerCode }, select, orderBy: { createdAt: 'asc' } });
   }
