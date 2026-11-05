@@ -1,3 +1,4 @@
+import { stripNul } from '../../common/json';
 import { Controller, Get, HttpCode, Post, Query, Req, Res, ForbiddenException, BadRequestException, UnauthorizedException, type RawBodyRequest } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { config } from '../../common/config';
@@ -39,7 +40,7 @@ export class WebhooksController {
     }
     let payload: unknown;
     try {
-      payload = JSON.parse(raw!.toString('utf8'));
+      payload = JSON.parse(raw!.toString('utf8'), stripNul); // sin NUL: PostgreSQL no lo admite (F-4)
     } catch {
       throw new BadRequestException({ statusCode: 400, message: 'Cuerpo no válido' });
     }

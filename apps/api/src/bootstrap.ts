@@ -10,6 +10,8 @@ import express from 'express';
 import { AppModule } from './app.module';
 import { config } from './common/config';
 import { AllExceptionsFilter } from './common/http-exception.filter';
+import { stripNul } from './common/json';
+export { stripNul };
 
 /** Prefijos que NO son de la SPA. */
 const SERVER_PREFIXES = ['/api', '/webhooks', '/health', '/privacidad', '/storage', '/ws'];
@@ -55,6 +57,7 @@ export function configureApp(app: INestApplication) {
   // para la firma) va antes que el general, que al ver el cuerpo ya leído no vuelve a procesarlo.
   const webhookJson = express.json({
     limit: WEBHOOK_BODY_LIMIT,
+    reviver: stripNul,
     verify: (req, _res, buf) => {
       if (Buffer.isBuffer(buf)) (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
     },
@@ -66,7 +69,15 @@ export function configureApp(app: INestApplication) {
       res.status(status).json({ statusCode: status, message: status === 413 ? 'Cuerpo demasiado grande' : 'Cuerpo no válido' });
     }),
   );
-  ex.useBodyParser('json', { limit: '5mb' });
+  ex.useBodyParser('json', { limit: '5mb', reviver: stripNul });
+  // PostgreSQL no admite el carácter NUL en texto: en la URL se rechaza (400); en JSON se elimina (stripNul)
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (/%00/.test(req.originalUrl)) {
+      res.status(400).json({ statusCode: 400, message: 'La dirección contiene caracteres no válidos' });
+      return;
+    }
+    next();
+  });
   app.use('/api', apiCacheHeaders);
   app.use(cookieParser());
   const storageOrigin = c.STORAGE_DRIVER === 'supabase' && c.SUPABASE_URL ? new URL(c.SUPABASE_URL).origin : '';
@@ -112,7 +123,7 @@ export function configureApp(app: INestApplication) {
       if (req.method !== 'GET' || SERVER_PREFIXES.some((p) => req.path === p || req.path.startsWith(p + '/'))) return next();
       if (!req.accepts('html')) return next();
       res.setHeader('Cache-Control', 'no-cache');
-      res.sendFile(path.join(webDist, 'index.html'));
+      res.sendFile(path.join(webDist, 'index.html'), { dotfiles: 'allow' });
     });
   }
 }
