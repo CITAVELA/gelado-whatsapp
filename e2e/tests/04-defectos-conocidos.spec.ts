@@ -17,7 +17,7 @@ test('F-10 · tras enviar varios mensajes seguidos, ninguno se queda en «Envian
     await box.press('Enter');
     await page.waitForTimeout(150);
   }
-  await expect.poll(async () => (await simGet('/_sim/sent')).filter((s: any) => s.body?.to === p.wa).length, { timeout: 10_000 }).toBe(8);
+  await expect.poll(async () => (await simGet('/_sim/sent')).filter((s: any) => s.body?.to === p.wa && s.body?.type === 'text').length, { timeout: 10_000 }).toBe(8); // (fuera de horario hay además una respuesta automática interactiva)
   await page.waitForTimeout(3000);
   await expect(page.locator('.msg[data-status="PENDING"]')).toHaveCount(0);
 });

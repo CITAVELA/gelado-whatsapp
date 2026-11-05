@@ -9,7 +9,7 @@ Informe de cobertura y de fallos. Rama `claude/s8-qa` (desde `claude/mvp`). Todo
 | api (Vitest + Supertest, app Nest real, BD `gelado_test_s8`) | `cd apps/api && TEST_DATABASE_URL=…/gelado_test_s8?schema=app npx vitest run` | **21 ficheros, 694 pruebas, todas en verde** (557 s). 430 son nuevas (`qa-*`: 307 permisos, 32 reglas, 29 cobertura, 62 robustez); 11 de ellas son fallos documentados con `it.fails` |
 | web (Vitest + Testing Library) | `pnpm -F @gelado/web test` | **9 ficheros, 62 pruebas, todas en verde** (18 nuevas en `qa-formato`, 1 con `it.fails`) |
 | e2e (Playwright 1.63, Chromium, contra el build y el simulador) | `pnpm build` y `pnpm test:e2e` | **26 pruebas en verde** en 57 s: 21 comprobaciones y 5 defectos de interfaz documentados con `test.fail` (Playwright las cuenta como superadas mientras el defecto exista) |
-| Recorridos manuales con capturas | `pnpm -F @gelado/e2e recorridos` | 2 recorridos, 50 capturas 1440×900 (apartado 5) |
+| Recorridos manuales con capturas | `pnpm -F @gelado/e2e recorridos` | 2 recorridos, 55 capturas 1440×900 (apartado 5); regeneradas tras P16 (5 nuevas del importador de Superchat) |
 
 Las pruebas nuevas de este paso son `apps/api/test/qa-*.test.ts` (5 ficheros), `apps/web/src/features/inbox/qa-formato.test.tsx`, `e2e/tests/0*.spec.ts` y `e2e/recorridos/*.spec.ts`.
 
@@ -151,7 +151,7 @@ Contra el build de producción y el simulador (que firma los webhooks hacia la a
 | 01-bandeja | (b) ventana cerrada | Sin caja de texto libre; «Enviar plantilla» con variable y coste estimado; sale la plantilla; por la API el texto da 409 |
 | 01-bandeja | (c) PDF y foto | PDF de la biblioteca + PNG del ordenador con pie: salen como `document` e `image` |
 | 01-bandeja | (d) asignar, etiquetar, posponer, finalizar | Rastro en el historial (`ASSIGNED`, `LABEL_ADDED`, `SNOOZED`, `DONE`) y reapertura al escribir el cliente |
-| 02-admin | (e) importar CSV | Asistente completo con los problemas típicos; informe 6 creados / 3 omitidos / 1 baja; informe CSV; NO PUBLICIDAD = baja; emoji limpiado |
+| 02-admin | (e) importar CSV | Asistente completo con los problemas típicos; informe 7 creados / 2 omitidos / 1 «Sin WhatsApp» / 1 baja (tras P16); informe CSV; NO PUBLICIDAD = baja; emoji limpiado |
 | 02-admin | (f) crear plantilla | Marketing con botón de baja obligatorio y bloqueado, vista previa, «En revisión» y «Aprobada» por webhook; plantilla antigua «Sin botón de baja» deshabilitada en el asistente |
 | 02-admin | (g) campaña | Recuento (3 recibirán, 1 baja excluida), prueba a un número, lanzar, envío escalonado sin tocar al baja, embudo 3/2/1/1/1 + 1 baja, motivos, pestañas, exportar |
 | 02-admin | (h) permisos del agente | Sin Ajustes (ni por URL), sin Nueva plantilla/Sincronizar/Exportar/Lanzar; la API da 403 |
@@ -159,6 +159,7 @@ Contra el build de producción y el simulador (que firma los webhooks hacia la a
 | 03-publico-y-movil | (j) móvil 390×844 | Lista → conversación → responder → atrás, sin desbordes horizontales; contactos, campañas, plantillas y calidad caben |
 | 03-publico-y-movil | acceso | Credenciales malas en español; ruta protegida → login; sesión caducada → login; enlace de nueva contraseña de un solo uso (contraseñas distintas, entrar, no reutilizable); título con contador y cierre de sesión |
 | 04-defectos-conocidos | F-10 a F-14 | regresiones de los defectos de interfaz (corregidos en F4d) |
+| 05-p16-sin-whatsapp | P16 | Importar el export sintético de Superchat (6.560 filas) por la interfaz; contacto «Sin WhatsApp» en lista y ficha; campaña con audiencia que incluye contactos sin teléfono (apartado 7) |
 
 ## 5. Recorridos manuales con capturas
 
@@ -168,13 +169,13 @@ Guiados con Playwright (`e2e/recorridos/`), 1440×900, datos sintéticos. Las ca
 
 01 login · 02 bandeja al entrar (vacía: «No hay conversaciones abiertas. ¡Todo al día!») · 03 mensaje entrante en la lista (contador y «Sin asignar») · 04 conversación abierta con la ventana de 24 h · 05 escribiendo la respuesta · 06 respuesta enviada y leída (doble check azul; asignación automática al responder) · 07 modal «Adjuntar archivos» con la biblioteca · 08 PDF seleccionado con pie · 09 PDF enviado · 10 nota de voz grabando (0:02) · 11 nota de voz enviada (reproductor) · 12 menú Asignar · 13 menú Etiquetar · 14 asignada a Lolo y etiquetada PEDIDO (eventos en el historial) · 15 menú Posponer (Mañana, Lunes, 1 hora, 1 día, 1 semana, fecha y hora) · 16 pestaña Pospuestas · 17 finalizada con su historial · 18 reabierta sola cuando el cliente escribe · 19 ventana cerrada: solo plantilla · 20 modal de plantilla con vista previa y coste · 21 plantilla enviada.
 
-### 5.2 Administradora (`admin/`, 29 capturas)
+### 5.2 Administradora (`admin/`, 34 capturas)
 
-01 contactos vacío · 02 a 06 asistente de importación (subir, columnas, reglas, vista previa con problemas, informe) · 07 contactos importados (etiquetas, «Dado de baja») · 08 ficha del contacto de baja (origen NO PUBLICIDAD, derecho de supresión) · 09 listado de plantillas · 10 y 11 editor con vista previa y botón de baja obligatorio · 12 «En revisión» · 13 «Aprobada» · 14 campañas vacío · 15 asistente con recuento (4 seleccionados, 1 baja, 3 recibirán, coste 0,18 €) · 16 y 17 envío de prueba · 18 confirmación de lanzamiento · 19 informe al lanzar · 20 informe con embudo y motivos · 21 destinatarios · 22 pestaña Fallidos · 23 listado con resultado · 24 Calidad y costes · 25 a 29 Ajustes (equipo, horario, WhatsApp, privacidad, registro).
+01 contactos vacío · 02 a 06 asistente de importación (subir, columnas, reglas, vista previa con problemas, informe) · 07 contactos importados (etiquetas, «Dado de baja») · 08 ficha del contacto de baja (origen NO PUBLICIDAD, derecho de supresión) · 09 listado de plantillas · 10 y 11 editor con vista previa y botón de baja obligatorio · 12 «En revisión» · 13 «Aprobada» · 14 campañas vacío · 15 asistente con recuento (4 seleccionados, 1 baja, 3 recibirán, coste 0,18 €) · 16 y 17 envío de prueba · 18 confirmación de lanzamiento · 19 informe al lanzar · 20 informe con embudo y motivos · 21 destinatarios · 22 pestaña Fallidos · 23 listado con resultado · 24 a 28 **importador de Superchat (P16)**: columnas reconocidas, vista previa, informe, contactos «Sin WhatsApp» y su ficha con «Abrir conversación» deshabilitado · 29 Calidad y costes · 30 a 34 Ajustes (equipo, horario, WhatsApp, privacidad, registro).
 
 ## 6. Fallos encontrados (por prioridad)
 
-**Corregidos en F4d:** F-1, F-8, F-9, F-10, F-11, F-12, F-13, F-14, F-15 y F-16 (con sus pruebas ya en normal) más los cosméticos de iconos repetidos, avisos (ahora arriba a la derecha, máximo tres), fecha de «pospuso hasta» y porcentajes del informe. Siguen abiertos F-2 a F-7, F-17 y F-18 (los corrigen otros).
+**Corregidos en F4d:** F-1, F-8, F-9, F-10, F-11, F-12, F-13, F-14, F-15 y F-16 (con sus pruebas ya en normal) más los cosméticos de iconos repetidos, avisos (ahora arriba a la derecha, máximo tres), fecha de «pospuso hasta» y porcentajes del informe. F-2 a F-7 y F-18 se corrigieron después (orquestador, Paso 4b): se ha comprobado volviendo a pasar las pruebas `qa-*` sin la marca `it.fails`. Solo sigue abierto F-17 (campos de la política por rellenar: tarea de Julio, no de código).
 
 Ningún fallo crítico. Los de gravedad media afectan a la experiencia de uso o al cumplimiento y se pueden corregir sin tocar el modelo de datos.
 
@@ -224,14 +225,53 @@ Ningún fallo crítico. Los de gravedad media afectan a la experiencia de uso o 
 - Los selectores de hora (Ajustes → Horario, programación de campañas) usan el formato del navegador (aquí 12 h y `mm/dd/yyyy` por el Chromium de pruebas); en un Chrome en español saldrá 24 h y `dd/mm/aaaa`: comprobarlo en un navegador real.
 - El editor de plantillas promete «Os avisaremos aquí cuando esté aprobada»: no hay aviso en la app al aprobarse (solo cambia el estado en el listado).
 
-## 7. Cambios de infraestructura de pruebas (no tocan producción)
+## 7. Repaso tras P16 (Paso 4b: importador de Superchat y contactos «Sin WhatsApp»)
+
+Merge de `claude/mvp` (S12 + correcciones F-1…F-16 y N1–N10) en `claude/s8-qa`, `pnpm install`, `shared` compilado y `prisma generate`. BD de pruebas `gelado_test_s8` y `gelado_s8_e2e`.
+
+| Suite | Resultado |
+| --- | --- |
+| api: `s2-*`, `s6-*`, `s12-*`, `f4b-*`, `f4c-campanas`, `qa-*` (14 ficheros) | **576 pruebas en verde** (329 s), más `qa-p16` (9, nuevas) que da **585** |
+| web (todo) | **14 ficheros, 95 pruebas en verde** (`qa-formato`: 20, 1 con `it.fails`: F-19) |
+| e2e (todo, BD limpia) | **29 pruebas en verde** (1,3 min): las 26 anteriores + 3 de P16 |
+| recorridos | regenerados sin fallos (agente 21 capturas, admin 34) |
+| api completa (21+ ficheros) | **no repetida entera**: solo los ficheros pedidos; la suite completa de antes del merge fue 694 en verde |
+
+**Estado de los fallos de la primera pasada.** Con la marca `it.fails` quitada, las pruebas de F-1 a F-9, F-3, F-10 a F-16 y F-18 pasan: están corregidos. Las pruebas `qa-reglas`, `qa-robustez`, `e2e/04-defectos-conocidos` y `qa-formato` ya están en normal. Siguen siendo tareas pendientes de Julio: F-17 (campos de la política de privacidad).
+
+**Pruebas nuevas de P16**
+
+| Qué | Prueba |
+| --- | --- |
+| Importar `superchat-export-sintetico.csv` **por la interfaz**: columnas reconocidas, vista previa (con avisos), informe con **Creados 6.560, Sin WhatsApp 307, Dados de baja 3**; la base queda con 6.253 con WhatsApp (filtro `whatsapp=with`), 307 sin WhatsApp y 3 bajas | e2e 05 «importar el export sintético de Superchat…» y api `qa-p16` «importa 6.560 contactos…» |
+| Reimportar el mismo archivo no duplica (teléfono → correo → código), 0 creados, no reactiva las 3 bajas aunque se pida consentimiento inicial | api `qa-p16` «volver a importar el mismo archivo…» |
+| Mismo correo con otras mayúsculas, o mismo código sin correo → un solo contacto; fila sin teléfono, correo ni código → descartada con motivo | api `qa-p16` (2 pruebas) |
+| Un contacto sin teléfono: chip «Sin WhatsApp» en la lista y en la ficha, «Abrir conversación» deshabilitado, filtros Con/Sin WhatsApp, la API no abre su conversación, se edita, etiqueta y exporta | e2e 05 «un contacto sin teléfono muestra el chip…»; api `qa-p16` «un contacto sin teléfono no tiene conversación…» |
+| Al ponerle después un teléfono pasa a tener WhatsApp y se abre su conversación; un entrante de un número nuevo no se «cuela» en un contacto sin teléfono por el nombre | api `qa-p16` (2 pruebas) |
+| Campaña con 3 sin WhatsApp + 2 con WhatsApp en la etiqueta: el asistente dice «3 sin WhatsApp» y «2 recibirán el mensaje», solo se envía a los 2, el informe lista a los omitidos como «sin WhatsApp» | e2e 05 «campaña con audiencia que incluye contactos sin teléfono…» |
+| Normalización de Superchat: `+629731421` → `+34629731421`, fijo con aviso, incompleto sin teléfono, extranjero conservado, `617498222` normal | api `qa-p16` «normalización de teléfonos de Superchat» (y s12-telefonos) |
+
+**Ajustes que hubo que hacer en pruebas por cambios de P16 o del reloj (no son fallos):**
+- (e) del e2e: un teléfono no válido ya no descarta la fila, se importa «Sin WhatsApp» con aviso (7 creados, 2 omitidos, 4 incidencias); el aviso «NO PUBLICIDAD significa baja» ya no es una casilla.
+- (a), F-10 y recorrido de agente dependían de la hora: pasadas las 20:00 (fuera de horario) entra la respuesta automática y es el último mensaje de la lista y un envío más en el simulador. Las pruebas filtran por tipo de mensaje.
+
+**Fallos / observaciones nuevas** (ninguno crítico ni de dinero; sin `it.fails` salvo F-19)
+
+| ID | Gravedad | Qué | Dónde / prueba |
+| --- | --- | --- | --- |
+| F-19 | Bajo | Los números de 4 cifras salen sin punto de millar: «Contactos (6572)», «6560 filas», «Creados 6560», «6253». La documentación y el cliente escriben «6.560». Es el comportamiento de `Intl` con `es-ES` (CLDR agrupa desde 5 cifras); se arregla con `useGrouping: 'always'` | `apps/web/src/lib/format.ts` (`fmtNumber`); web `qa-formato` `it.fails` |
+| F-20 | Bajo | El informe de importación da «Creados 6560» y «Sin WhatsApp 307» pero no dice cuántos tienen WhatsApp (6.253): hay que restar | `ImportWizard.tsx` (observación) |
+| F-21 | Bajo | El aviso «Importación terminada» (toast, arriba a la derecha) tapa el paso «5 Importar» del indicador de pasos | captura `admin/26` |
+| — | Info | Un teléfono español incompleto (`+63995483`) sin correo ni código se descarta; con correo o código se importa «Sin WhatsApp». Es coherente con P16, pero conviene que Julio sepa que en el informe sale «Descartada» | `qa-p16` «normalización…» |
+
+## 8. Cambios de infraestructura de pruebas (no tocan producción)
 
 - `e2e/playwright.config.ts`: puertos configurables (`E2E_PORT`, `E2E_SIM_PORT`), `E2E_REUSE=1` para reutilizar servidores, `actionTimeout` de 10 s y copia temporal de la web compilada cuando la ruta del repo contiene carpetas ocultas (F-18).
 - `e2e/playwright.recorridos.config.ts` y script `pnpm -F @gelado/e2e recorridos` (micrófono falso de Chromium para la nota de voz).
 - `e2e/helpers.ts`, `e2e/helpers-capturas.ts`, `e2e/fixtures/` (PDF y PNG de prueba).
 - `apps/api/test/meta-simulator/simulator.ts`: `sendTemplateStatus` ahora también cambia el estado en el listado de plantillas del simulador (como la Meta real); sin esto una sincronización posterior devolvía la plantilla aprobada a «pendiente». Las 19 pruebas de s3 siguen verdes.
 
-## 8. Lo que no se ha podido probar
+## 9. Lo que no se ha podido probar
 
 - **Meta real**: por regla, nada contra la Graph API. Queda para la puesta en marcha con el número de prueba de Meta: firma real del App Secret, `pricing` real, 131049/131056 reales, límites reales del número y Resumable Upload.
 - **Supabase Storage y la BD de producción**: se usó el adaptador local y PostgreSQL local (comportamiento de `Range`, URLs firmadas reales, latencia).
@@ -242,7 +282,7 @@ Ningún fallo crítico. Los de gravedad media afectan a la experiencia de uso o 
 - **Render**: arranque con `render.yaml`, consumo real en reposo y despliegue.
 - **Accesibilidad**: solo comprobaciones de roles y etiquetas en las pruebas; no hay auditoría con lector de pantalla.
 
-## 9. Cómo repetirlo
+## 10. Cómo repetirlo
 
 ```bash
 pnpm install && pnpm build

@@ -34,7 +34,8 @@ test('(a) un mensaje entrante aparece en la bandeja en menos de 5 s, sin recarga
   expect(await page.evaluate(() => (window as any).__sinRecarga)).toBe(true); // la página no se recargó
   console.log(`Entrante visible en la bandeja en ${ms} ms`);
   expect(ms).toBeLessThan(5000);
-  await expect(card(page)).toContainText('tinte DOUSSE');
+  // fuera de horario la respuesta automática pasa a ser el último mensaje de la lista; el entrante está en la conversación
+  await expect(card(page)).toContainText(/tinte DOUSSE|fuera de nuestro horario/);
   await expect(page).toHaveTitle(/^\(\d+\) Gelado WhatsApp/);
 });
 
