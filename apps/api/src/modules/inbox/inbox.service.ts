@@ -11,6 +11,7 @@ import {
 } from '@gelado/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { MediaService } from '../media/media.service';
+import { StorageService } from '../storage/storage.service';
 import { MessagingService } from '../whatsapp/messaging.service';
 import {
   contactInclude,
@@ -47,6 +48,7 @@ export class InboxService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly media: MediaService,
+    private readonly storage: StorageService,
     private readonly messaging: MessagingService,
   ) {}
 
@@ -197,6 +199,8 @@ export class InboxService {
 
     const pageMsgs = page.flatMap((x) => (x.m ? [x.m] : []));
     const { quotedByWamid, reactionsByWamid } = await this.context(conversationId, pageMsgs);
+    // Firma de adjuntos en lote (una petición a Storage por página en vez de una por adjunto)
+    await this.storage.primeSignedUrls([...pageMsgs, ...quotedByWamid.values()].flatMap((m) => (m.media ? [m.media.storagePath] : [])));
     const items: TimelineItemDto[] = [];
     for (const x of page) {
       if (x.m) {

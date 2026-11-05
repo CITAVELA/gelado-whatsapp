@@ -20,6 +20,12 @@ export function rateFor(category: PricingCategory | null | undefined, rates: Rat
   }
 }
 
+/**
+ * Un mensaje solo cuenta para el gasto si Meta lo ha entregado (DELIVERED/READ), es `billable` y trae categoría.
+ * Es el único criterio: lo usan el informe de campaña y el gasto del mes de Calidad.
+ */
+export const COSTABLE_MESSAGE_STATUSES = ['DELIVERED', 'READ'] as const;
+
 export interface BillableMessage {
   pricingCategory: string | null;
   billable: boolean | null;

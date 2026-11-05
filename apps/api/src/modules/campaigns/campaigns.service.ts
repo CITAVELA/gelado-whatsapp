@@ -23,6 +23,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { MediaService } from '../media/media.service';
 import { SettingsService } from '../settings/settings.service';
+import { costableMessageWhere, QualityService } from '../quality/quality.service';
 import { MessagingService } from '../whatsapp/messaging.service';
 import { AudienceService } from './audience.service';
 import { CampaignRunnerService, resolveParams } from './campaign-runner.service';
@@ -57,6 +58,7 @@ export class CampaignsService {
     private readonly runner: CampaignRunnerService,
     private readonly messaging: MessagingService,
     private readonly settings: SettingsService,
+    private readonly quality: QualityService,
     private readonly media: MediaService,
     private readonly audit: AuditService,
     private readonly clock: CampaignClock,
@@ -112,8 +114,9 @@ export class CampaignsService {
     if (cur.status !== 'DRAFT') throw new ConflictException({ statusCode: 409, message: 'Solo se pueden editar los borradores' });
     await this.assertTemplateUsable(dto.templateId);
     const est = await this.estimate(dto);
-    const c = await this.prisma.campaign.update({
-      where: { id },
+    // Solo si SIGUE siendo borrador: si otro lo lanzó mientras tanto, no se pisa (409)
+    const upd = await this.prisma.campaign.updateMany({
+      where: { id, status: 'DRAFT' },
       data: {
         name: dto.name,
         templateId: dto.templateId,
@@ -125,16 +128,16 @@ export class CampaignsService {
         totalRecipients: est.willReceive,
         estimatedCost: est.estimatedCost,
       },
-      include: campaignInclude,
     });
-    return toCampaignDto(c);
+    if (!upd.count) throw new ConflictException({ statusCode: 409, message: 'Solo se pueden editar los borradores' });
+    return toCampaignDto(await this.load(id));
   }
 
-  async remove(id: string, userId: string): Promise<{ ok: true }> {
+  async remove(id: string, userId: string, ip?: string | null): Promise<{ ok: true }> {
     const c = await this.load(id);
     if (c.status !== 'DRAFT') throw new ConflictException({ statusCode: 409, message: 'Solo se pueden borrar los borradores' });
     await this.prisma.campaign.delete({ where: { id } });
-    await this.audit.log({ userId, action: 'delete_campaign', entityType: 'Campaign', entityId: id, data: { name: c.name } });
+    await this.audit.log({ userId, action: 'delete_campaign', entityType: 'Campaign', entityId: id, data: { name: c.name }, ip });
     return { ok: true };
   }
 
@@ -167,7 +170,7 @@ export class CampaignsService {
 
   // ───────────────────────── Lanzar y controlar ─────────────────────────
 
-  async launch(id: string, userId: string, scheduledAtOverride?: string | null): Promise<CampaignLaunchResultDto> {
+  async launch(id: string, userId: string, scheduledAtOverride?: string | null, ip?: string | null): Promise<CampaignLaunchResultDto> {
     const c = await this.load(id);
     if (c.status !== 'DRAFT') throw new ConflictException({ statusCode: 409, message: 'Solo se puede lanzar un borrador' });
     const t = await this.assertTemplateUsable(c.templateId);
@@ -193,44 +196,48 @@ export class CampaignsService {
     const estimatedCost = estimateCampaignCost(count.willReceive, t.category as 'MARKETING', rates);
 
     if (future) {
-      await this.prisma.campaign.update({ where: { id }, data: { status: 'SCHEDULED', scheduledAt, totalRecipients: count.willReceive, estimatedCost } });
-      await this.audit.log({ userId, action: 'schedule_campaign', entityType: 'Campaign', entityId: id, data: { scheduledAt, willReceive: count.willReceive } });
+      const sch = await this.prisma.campaign.updateMany({ where: { id, status: 'DRAFT' }, data: { status: 'SCHEDULED', scheduledAt, totalRecipients: count.willReceive, estimatedCost } });
+      if (!sch.count) throw new ConflictException({ statusCode: 409, message: 'La campaña ya se ha lanzado' });
+      await this.audit.log({ userId, action: 'schedule_campaign', entityType: 'Campaign', entityId: id, data: { scheduledAt, willReceive: count.willReceive }, ip });
       return { campaign: toCampaignDto(await this.load(id)), plan: count.plan, scheduled: true };
     }
+    // Lanzar ahora con el número en rojo/marcado/restringido o con los envíos detenidos no se permite (se puede programar para más tarde)
+    const blocked = await this.quality.blockingReason();
+    if (blocked) throw new ConflictException({ statusCode: 409, message: `No se puede lanzar ahora: ${blocked}. Revisa Calidad y la cuenta de WhatsApp.` });
     await this.prisma.campaign.update({ where: { id }, data: { scheduledAt: null, estimatedCost } });
     const started = await this.runner.start(id);
     if (!started) throw new ConflictException({ statusCode: 409, message: 'La campaña ya se ha lanzado' });
-    await this.audit.log({ userId, action: 'launch_campaign', entityType: 'Campaign', entityId: id, data: { willReceive: count.willReceive, plan: count.plan } });
+    await this.audit.log({ userId, action: 'launch_campaign', entityType: 'Campaign', entityId: id, data: { willReceive: count.willReceive, plan: count.plan }, ip });
     await this.runner.tick(id);
     return { campaign: toCampaignDto(await this.load(id)), plan: count.plan, scheduled: false };
   }
 
-  async pause(id: string, userId: string) {
+  async pause(id: string, userId: string, ip?: string | null) {
     await this.load(id);
     await this.runner.pause(id);
-    await this.audit.log({ userId, action: 'pause_campaign', entityType: 'Campaign', entityId: id });
+    await this.audit.log({ userId, action: 'pause_campaign', entityType: 'Campaign', entityId: id, ip });
     return this.get(id);
   }
 
-  async resume(id: string, userId: string) {
+  async resume(id: string, userId: string, ip?: string | null) {
     await this.load(id);
     await this.runner.resume(id);
-    await this.audit.log({ userId, action: 'resume_campaign', entityType: 'Campaign', entityId: id });
+    await this.audit.log({ userId, action: 'resume_campaign', entityType: 'Campaign', entityId: id, ip });
     await this.runner.tick(id);
     return this.get(id);
   }
 
-  async cancel(id: string, userId: string) {
+  async cancel(id: string, userId: string, ip?: string | null) {
     await this.load(id);
     await this.runner.cancel(id);
-    await this.audit.log({ userId, action: 'cancel_campaign', entityType: 'Campaign', entityId: id });
+    await this.audit.log({ userId, action: 'cancel_campaign', entityType: 'Campaign', entityId: id, ip });
     return this.get(id);
   }
 
   // ───────────────────────── Prueba (RF-5.4) ─────────────────────────
 
   /** Envía la plantilla a un número, sin contarlo en la campaña (no lleva campaignId). */
-  async test(id: string, phone: string, userId: string) {
+  async test(id: string, phone: string, userId: string, ip?: string | null) {
     const c = await this.load(id);
     const t = await this.assertTemplateUsable(c.templateId);
     const n = normalizePhone(phone);
@@ -243,7 +250,7 @@ export class CampaignsService {
     if (missing.length) throw new BadRequestException({ statusCode: 400, message: `Ese contacto no tiene datos para ${missing.join(', ')} y no hay texto de respaldo` });
     const conv = await this.messaging.ensureConversationForContact(contact.id);
     const msg = await this.messaging.sendTemplate(conv.id, c.templateId, params, { headerMediaFileId: c.headerMediaId, userId });
-    await this.audit.log({ userId, action: 'test_campaign', entityType: 'Campaign', entityId: id, data: { phone: n.e164 } });
+    await this.audit.log({ userId, action: 'test_campaign', entityType: 'Campaign', entityId: id, data: { phone: n.e164 }, ip });
     return { ok: true, messageId: msg.id, conversationId: conv.id, status: msg.status };
   }
 
@@ -255,7 +262,7 @@ export class CampaignsService {
       this.settings.get('rates'),
       this.prisma.campaignRecipient.groupBy({ by: ['errorCode', 'errorTitle'], where: { campaignId: id, status: 'FAILED' }, _count: { _all: true } }),
       this.prisma.campaignRecipient.groupBy({ by: ['skipReason'], where: { campaignId: id, status: 'SKIPPED' }, _count: { _all: true } }),
-      this.prisma.message.findMany({ where: { campaignId: id, direction: 'OUTBOUND' }, select: { pricingCategory: true, billable: true } }),
+      this.prisma.message.findMany({ where: { campaignId: id, ...costableMessageWhere() }, select: { pricingCategory: true, billable: true } }),
       this.prisma.campaignRecipient.findMany({ where: { campaignId: id, status: { in: ['QUEUED', 'SENDING'] } }, select: { plannedFor: true } }),
     ]);
     const cost = computeCost(msgs, rates);
@@ -270,14 +277,16 @@ export class CampaignsService {
     }
     const days = new Map<string, number>();
     const now = this.clock.now();
-    for (const q of queued) {
+    // Una cancelada no tiene nada pendiente ni plan: lo que no salió quedó SKIPPED «CANCELLED»
+    const pendingRows = c.status === 'CANCELLED' ? [] : queued;
+    for (const q of pendingRows) {
       const d = zonedParts(q.plannedFor && q.plannedFor > now ? q.plannedFor : now).ymd;
       days.set(d, (days.get(d) ?? 0) + 1);
     }
     return {
       campaign: toCampaignDto(c, { actualCost: cost.total }),
       funnel: { sent: c.sentCount, delivered: c.deliveredCount, read: c.readCount, replied: c.repliedCount },
-      pending: queued.length,
+      pending: pendingRows.length,
       failureReasons: [...reasons.values()].sort((a, b) => b.count - a.count),
       skipReasons: skipped.map((s) => ({ reason: s.skipReason ?? 'OTHER', title: SKIP_REASON_ES[s.skipReason ?? ''] ?? s.skipReason ?? 'Otro motivo', count: s._count._all })).sort((a, b) => b.count - a.count),
       cost: { estimated: c.estimatedCost != null ? Number(c.estimatedCost) : null, actual: cost.total, billableMessages: billable, byCategory: cost.byCategory, currency: c.currency },
@@ -323,7 +332,7 @@ export class CampaignsService {
   }
 
   /** CSV con «;» y BOM para que Excel lo abra bien en español. */
-  async exportCsv(id: string, userId: string): Promise<{ name: string; csv: string }> {
+  async exportCsv(id: string, userId: string, ip?: string | null): Promise<{ name: string; csv: string }> {
     const c = await this.load(id);
     const rows = await this.prisma.campaignRecipient.findMany({ where: { campaignId: id }, include: recipientInclude, orderBy: [{ sentAt: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }] });
     const fmt = (d: Date | null) => (d ? new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', dateStyle: 'short', timeStyle: 'short' }).format(d) : '');
@@ -336,7 +345,7 @@ export class CampaignsService {
         fmt(r.sentAt), fmt(r.deliveredAt), fmt(r.readAt), fmt(r.repliedAt), fmt(r.optedOutAt),
       ].map(csvCell).join(';'));
     }
-    await this.audit.log({ userId, action: 'export_campaign', entityType: 'Campaign', entityId: id, data: { rows: rows.length } });
+    await this.audit.log({ userId, action: 'export_campaign', entityType: 'Campaign', entityId: id, data: { rows: rows.length }, ip });
     const safe = c.name.replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 60) || 'campana';
     return { name: `campana_${safe}.csv`, csv: '﻿' + lines.join('\r\n') + '\r\n' };
   }

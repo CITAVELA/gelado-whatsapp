@@ -326,8 +326,10 @@ describe('S6 · Pausar, reanudar y cancelar (RF-5.6)', () => {
     expect(env.sim.sent).toHaveLength(5);
     const rep = (await a.get(`/api/campaigns/${d.id}`)).body;
     expect(rep.funnel.sent).toBe(5);
-    expect(rep.pending).toBe(15);
-    expect(rep.funnel.sent + rep.pending).toBe(rep.campaign.totalRecipients);
+    // F4c #15: lo que no salió queda SKIPPED «CANCELLED»; el informe no muestra pendientes
+    expect(rep.pending).toBe(0);
+    expect(rep.skipReasons).toEqual([{ reason: 'CANCELLED', title: expect.any(String), count: 15 }]);
+    expect(rep.funnel.sent).toBe(rep.campaign.totalRecipients);
     expect((await a.post(`/api/campaigns/${d.id}/resume`)).status).toBe(409);
     expect((await a.post(`/api/campaigns/${d.id}/cancel`)).status).toBe(409);
   });

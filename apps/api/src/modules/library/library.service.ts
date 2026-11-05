@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma, type LibraryFile, type MediaFile } from '@prisma/client';
 import { validateMediaForWhatsApp, type LibraryFileDto, type LibraryFolderDto } from '@gelado/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { MediaService } from '../media/media.service';
 import { StorageService } from '../storage/storage.service';
 
@@ -9,7 +10,7 @@ const nf = (what: string) => new NotFoundException({ statusCode: 404, message: `
 
 @Injectable()
 export class LibraryService {
-  constructor(private readonly prisma: PrismaService, private readonly media: MediaService, private readonly storage: StorageService) {}
+  constructor(private readonly prisma: PrismaService, private readonly media: MediaService, private readonly storage: StorageService, private readonly audit: AuditService) {}
 
   // ───── Carpetas ─────
 
@@ -64,10 +65,11 @@ export class LibraryService {
       ...(q.q?.trim() ? { name: { contains: q.q.trim(), mode: 'insensitive' } } : {}),
     };
     const rows = await this.prisma.libraryFile.findMany({ where, include: { media: true }, orderBy: [{ name: 'asc' }] });
+    await this.storage.primeSignedUrls(rows.map((r) => r.media.storagePath)); // una sola petición de firma para toda la lista
     return Promise.all(rows.map((r) => this.toDto(r)));
   }
 
-  async upload(file: { buffer: Buffer; mimetype: string; originalname: string; size: number }, dto: { name?: string; folderId?: string | null }, userId: string): Promise<LibraryFileDto> {
+  async upload(file: { buffer: Buffer; mimetype: string; originalname: string; size: number }, dto: { name?: string; folderId?: string | null }, userId: string, ip?: string | null): Promise<LibraryFileDto> {
     const check = validateMediaForWhatsApp(file.mimetype, file.size);
     if (!check.ok) throw new BadRequestException({ statusCode: 400, message: check.reason });
     if (!file.size) throw new BadRequestException({ statusCode: 400, message: 'El archivo está vacío' });
@@ -76,6 +78,7 @@ export class LibraryService {
     const m = await this.media.storeBuffer(file.buffer, file.mimetype, fileName, 'LIBRARY', userId);
     const name = (dto.name?.trim() || fileName.replace(/\.[a-z0-9]{1,5}$/i, '')).slice(0, 160);
     const lf = await this.prisma.libraryFile.create({ data: { name, folderId: dto.folderId ?? null, mediaFileId: m.id, createdById: userId }, include: { media: true } });
+    await this.audit.log({ userId, action: 'library_upload', entityType: 'LibraryFile', entityId: lf.id, data: { name, mimeType: file.mimetype, sizeBytes: file.size }, ip });
     return this.toDto(lf);
   }
 
@@ -92,10 +95,11 @@ export class LibraryService {
   }
 
   /** Borra la entrada; el archivo en Storage solo si ningún mensaje ni otra entrada lo usa. */
-  async deleteFile(id: string) {
+  async deleteFile(id: string, userId?: string | null, ip?: string | null) {
     const lf = await this.prisma.libraryFile.findUnique({ where: { id }, include: { media: true } });
     if (!lf) throw nf('Archivo');
     await this.prisma.libraryFile.delete({ where: { id } });
+    await this.audit.log({ userId, action: 'library_delete', entityType: 'LibraryFile', entityId: id, data: { name: lf.name }, ip });
     const [msgs, others] = await Promise.all([
       this.prisma.message.count({ where: { mediaId: lf.mediaFileId } }),
       this.prisma.libraryFile.count({ where: { mediaFileId: lf.mediaFileId } }),

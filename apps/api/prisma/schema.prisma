@@ -473,6 +473,7 @@ model CampaignRecipient {
   status      RecipientStatus @default(QUEUED)
   skipReason  String? // REVOKED, UNKNOWN_CONSENT, PHONE_INVALID, DAILY_LIMIT, DUPLICATE
   plannedFor  DateTime? // tanda / día previsto
+  claimedAt   DateTime? // cuándo pasó a SENDING (para devolver a la cola los huérfanos)
   messageId   String?         @unique @db.Uuid
   errorCode   Int?
   errorTitle  String?

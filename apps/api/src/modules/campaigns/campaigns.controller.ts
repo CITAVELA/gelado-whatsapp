@@ -1,9 +1,11 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { audienceCountSchema, campaignUpsertSchema, launchSchema, recipientsQuerySchema, testSendSchema } from '@gelado/shared';
 import type { AudienceCountRequest, CampaignUpsertDto } from '@gelado/shared';
 import { AdminOnly, CurrentUser, type AuthUser } from '../../common/decorators';
+import { attachmentDisposition } from '../../common/content-disposition';
 import { ZodPipe } from '../../common/zod.pipe';
+import { clientIp } from '../auth/auth.controller';
 import { CampaignsService } from './campaigns.service';
 import { z } from 'zod';
 
@@ -43,8 +45,8 @@ export class CampaignsController {
 
   @Delete(':id')
   @AdminOnly()
-  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser) {
-    return this.campaigns.remove(id, me.id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser, @Req() req: Request) {
+    return this.campaigns.remove(id, me.id, clientIp(req));
   }
 
   @Get(':id/recipients')
@@ -54,41 +56,41 @@ export class CampaignsController {
 
   @Get(':id/export')
   @AdminOnly()
-  async export(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser, @Res() res: Response) {
-    const { name, csv } = await this.campaigns.exportCsv(id, me.id);
+  async export(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser, @Req() req: Request, @Res() res: Response) {
+    const { name, csv } = await this.campaigns.exportCsv(id, me.id, clientIp(req));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+    res.setHeader('Content-Disposition', attachmentDisposition(name));
     res.send(csv);
   }
 
   @Post(':id/test')
   @AdminOnly()
-  test(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(testSendSchema)) dto: { phone: string }, @CurrentUser() me: AuthUser) {
-    return this.campaigns.test(id, dto.phone, me.id);
+  test(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(testSendSchema)) dto: { phone: string }, @CurrentUser() me: AuthUser, @Req() req: Request) {
+    return this.campaigns.test(id, dto.phone, me.id, clientIp(req));
   }
 
   @Post(':id/launch')
   @AdminOnly()
-  launch(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(launchSchema)) dto: z.infer<typeof launchSchema>, @CurrentUser() me: AuthUser) {
-    return this.campaigns.launch(id, me.id, dto.scheduledAt);
+  launch(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodPipe(launchSchema)) dto: z.infer<typeof launchSchema>, @CurrentUser() me: AuthUser, @Req() req: Request) {
+    return this.campaigns.launch(id, me.id, dto.scheduledAt, clientIp(req));
   }
 
   @Post(':id/pause')
   @AdminOnly()
-  pause(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser) {
-    return this.campaigns.pause(id, me.id);
+  pause(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser, @Req() req: Request) {
+    return this.campaigns.pause(id, me.id, clientIp(req));
   }
 
   @Post(':id/resume')
   @AdminOnly()
-  resume(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser) {
-    return this.campaigns.resume(id, me.id);
+  resume(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser, @Req() req: Request) {
+    return this.campaigns.resume(id, me.id, clientIp(req));
   }
 
   @Post(':id/cancel')
   @AdminOnly()
-  cancel(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser) {
-    return this.campaigns.cancel(id, me.id);
+  cancel(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser, @Req() req: Request) {
+    return this.campaigns.cancel(id, me.id, clientIp(req));
   }
 
   @Post(':id/duplicate')

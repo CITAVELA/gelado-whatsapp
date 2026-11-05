@@ -5,6 +5,8 @@ import { PrismaService } from '../../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { DomainEvents } from '../events/domain-events.service';
 import { JobsService, QUEUES } from '../jobs/jobs.service';
+import { phoneStopReason } from '../quality/blocking';
+import { QualityService, accountEventSeverity } from '../quality/quality.service';
 import { SettingsService } from '../settings/settings.service';
 import { MessagingService } from '../whatsapp/messaging.service';
 import { contactDisplayName } from '../inbox/mappers';
@@ -14,6 +16,8 @@ import { CampaignClock } from './campaigns.clock';
 import { audienceSchema } from '@gelado/shared';
 
 const MINUTE_GUARD_MS = 55_000;
+/** Un destinatario SENDING sin mensaje más de este tiempo se considera huérfano (el proceso murió entre reclamar y enviar). */
+const STUCK_SENDING_MS = 10 * 60_000;
 
 interface ContactFields {
   firstName: string | null;
@@ -62,6 +66,7 @@ export class CampaignRunnerService implements OnModuleInit {
     private readonly events: DomainEvents,
     private readonly messaging: MessagingService,
     private readonly settings: SettingsService,
+    private readonly quality: QualityService,
     private readonly audience: AudienceService,
     private readonly progress: CampaignProgressService,
     private readonly audit: AuditService,
@@ -89,8 +94,13 @@ export class CampaignRunnerService implements OnModuleInit {
       await this.stopWhere({ templateId: p.templateId, status: { in: ['RUNNING', 'SCHEDULED'] } }, `Parada automática: la plantilla «${p.name}» ${why} en Meta.`, 'PAUSED');
     });
     this.events.on('phone.quality', 'campaigns-stop', async (p) => {
-      if ((p.qualityRating ?? '').toUpperCase() !== 'RED') return;
-      await this.stopWhere({ status: 'RUNNING' }, 'Parada automática: la calidad del número ha bajado a rojo. Revisa la calidad antes de reanudar.', 'PAUSED');
+      const why = phoneStopReason(p.qualityRating, p.phoneStatus);
+      if (!why) return;
+      await this.stopWhere({ status: 'RUNNING' }, `Parada automática: ${why}. Revisa la cuenta antes de reanudar.`, 'PAUSED');
+    });
+    this.events.on('account.update', 'campaigns-stop', async (p) => {
+      if (accountEventSeverity(p.event, p.raw) !== 'critical') return;
+      await this.stopWhere({ status: 'RUNNING' }, 'Parada automática: Meta ha restringido la cuenta de WhatsApp. Revisa el aviso en el Administrador de WhatsApp antes de reanudar.', 'PAUSED');
     });
   }
 
@@ -118,6 +128,7 @@ export class CampaignRunnerService implements OnModuleInit {
   async start(campaignId: string): Promise<boolean> {
     const camp = await this.prisma.campaign.findUnique({ where: { id: campaignId } });
     if (!camp) return false;
+    if (await this.quality.blockingReason()) return false; // nunca arranca con un estado bloqueante (lo explican launch/tick)
     const aud = audienceSchema.parse(camp.audience);
     const [rows, defaults] = await Promise.all([this.audience.resolve(aud), this.settings.get('campaign_defaults')]);
     const receivers = rows.filter((r) => !r.excluded);
@@ -168,6 +179,10 @@ export class CampaignRunnerService implements OnModuleInit {
     if (c.template.status !== 'APPROVED') {
       throw new ConflictException({ statusCode: 409, message: `La plantilla «${c.template.displayName ?? c.template.name}» no está aprobada por Meta: no se puede reanudar` });
     }
+    const blocked = await this.quality.blockingReason();
+    if (blocked) {
+      throw new ConflictException({ statusCode: 409, message: `No se puede reanudar: ${blocked}. Revisa Calidad y la cuenta de WhatsApp y vuelve a intentarlo cuando se resuelva.` });
+    }
     const next = c.startedAt ? 'RUNNING' : 'SCHEDULED';
     await this.prisma.campaign.update({ where: { id: campaignId }, data: { status: next, stopReason: null } });
     if (next === 'RUNNING') {
@@ -187,6 +202,11 @@ export class CampaignRunnerService implements OnModuleInit {
       data: { status: 'CANCELLED', completedAt: this.clock.now(), stopReason: null },
     });
     if (!u.count) throw new ConflictException({ statusCode: 409, message: 'Solo se puede cancelar una campaña programada, en curso o pausada' });
+    // Lo que no ha salido no saldrá: QUEUED y SENDING sin mensaje pasan a SKIPPED «CANCELLED» (el informe no muestra pendientes)
+    await this.prisma.campaignRecipient.updateMany({
+      where: { campaignId, status: { in: ['QUEUED', 'SENDING'] }, messageId: null },
+      data: { status: 'SKIPPED', skipReason: 'CANCELLED' },
+    });
     await this.progress.recompute(campaignId);
   }
 
@@ -198,12 +218,19 @@ export class CampaignRunnerService implements OnModuleInit {
     this.ticking = true;
     try {
       const now = this.clock.now();
+      let blocked: string | null | undefined; // se consulta una sola vez por tick y solo si hay algo que arrancar o enviar
+      const blockingReason = async () => (blocked === undefined ? (blocked = await this.quality.blockingReason()) : blocked);
       if (!onlyCampaignId) {
         const due = await this.prisma.campaign.findMany({ where: { status: 'SCHEDULED', scheduledAt: { lte: now } }, select: { id: true } });
         for (const d of due) {
           const tpl = await this.prisma.campaign.findUnique({ where: { id: d.id }, include: { template: true } });
           if (tpl && tpl.template.status !== 'APPROVED') {
             await this.stopWhere({ id: d.id }, `Parada automática: la plantilla «${tpl.template.displayName ?? tpl.template.name}» ya no está aprobada.`, 'PAUSED');
+            continue;
+          }
+          const why = await blockingReason();
+          if (why) {
+            await this.stopWhere({ id: d.id }, `Parada automática: no se puede arrancar la campaña programada porque ${why}. Revisa la cuenta antes de reanudar.`, 'PAUSED');
             continue;
           }
           await this.start(d.id);
@@ -215,6 +242,13 @@ export class CampaignRunnerService implements OnModuleInit {
         orderBy: { startedAt: 'asc' },
       });
       if (!running.length) return;
+      // Red de seguridad: si se perdió el evento de calidad/cuenta, el estado bloqueante para las campañas en curso igualmente
+      const why = await blockingReason();
+      if (why) {
+        for (const c of running) await this.stopWhere({ id: c.id }, `Parada automática: ${why}. Revisa la cuenta antes de reanudar.`, 'PAUSED');
+        return;
+      }
+      if (!onlyCampaignId) await this.requeueStuck(running.map((c) => c.id), now);
       const defaults = await this.settings.get('campaign_defaults');
       let room = defaults.dailyLimit - (await this.audience.usedLast24h(now));
       for (const c of running) {
@@ -237,10 +271,26 @@ export class CampaignRunnerService implements OnModuleInit {
     }
   }
 
+  /**
+   * Destinatarios SENDING de más de 10 min sin mensaje (el proceso murió entre reclamar y enviar): vuelven a QUEUED.
+   * Una sola UPDATE con el índice (campaignId, status); `sendOne` no duplica porque comprueba si ya existe el mensaje.
+   * `claimedAt` lo fija `claim`; los SENDING antiguos sin fecha también se consideran huérfanos.
+   */
+  private async requeueStuck(campaignIds: string[], now: Date) {
+    const limit = new Date(now.getTime() - STUCK_SENDING_MS);
+    const n = await this.prisma.$executeRaw(Prisma.sql`
+      UPDATE "CampaignRecipient" r SET "status" = 'QUEUED'
+      WHERE r."campaignId" = ANY(${campaignIds}::uuid[]) AND r."status" = 'SENDING' AND r."messageId" IS NULL
+        AND (r."claimedAt" IS NULL OR r."claimedAt" <= ${limit})
+        AND NOT EXISTS (SELECT 1 FROM "Message" m JOIN "Conversation" c ON c."id" = m."conversationId"
+                        WHERE m."campaignId" = r."campaignId" AND c."contactId" = r."contactId" AND m."direction" = 'OUTBOUND')`);
+    if (n) this.log.warn(`${n} destinatarios SENDING huérfanos devueltos a la cola`);
+  }
+
   /** Reclama hasta `n` destinatarios vencidos (QUEUED → SENDING) de forma atómica: dos procesos nunca reciben el mismo. */
   private async claim(campaignId: string, n: number, now: Date): Promise<string[]> {
     const rows = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
-      UPDATE "CampaignRecipient" SET "status" = 'SENDING'
+      UPDATE "CampaignRecipient" SET "status" = 'SENDING', "claimedAt" = ${now}
       WHERE "id" IN (
         SELECT "id" FROM "CampaignRecipient"
         WHERE "campaignId" = ${campaignId}::uuid AND "status" = 'QUEUED' AND ("plannedFor" IS NULL OR "plannedFor" <= ${now})
