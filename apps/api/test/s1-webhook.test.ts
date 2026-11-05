@@ -224,7 +224,8 @@ describe('S1 · Estados de mensajes salientes (pruebas 1 y 10)', () => {
     // esperar a que Meta «reciba» el envío y adelantarse con el estado
     for (let i = 0; i < 100 && env.sim.sent.length === 0; i++) await new Promise((r) => setTimeout(r, 10));
     const wamid = env.sim.sent[0]!.id;
-    await env.sim.sendStatus({ wamid, status: 'delivered' });
+    // sin `biz_opaque_callback_data` (con él se enlaza solo: ver f4a-sending.test.ts)
+    await env.sim.sendStatus({ wamid, status: 'delivered', opaque: null });
     const ev = await env.t.prisma.webhookEvent.findFirstOrThrow({ where: { dedupeKey: `st:${wamid}:delivered` } });
     expect(ev.processedAt).toBeNull();
     expect(ev.error).toMatch(/antes de guardar/);

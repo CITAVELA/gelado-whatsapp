@@ -105,3 +105,12 @@ describe('B12/B4 · comprobaciones de arranque en producción', () => {
     ['SESSION_SECRET', 'dev-session-secret-local-only-0123456789'],
   ])('rechaza %s=%s', (k, v) => expect(() => loadConfig({ ...good, [k]: v })).toThrow(/producción/));
 });
+
+describe('Cuerpos demasiado grandes', () => {
+  it('JSON de más de 5 MB en /api → 413 en español (no 500)', async () => {
+    const cookie = await cookieFor(ADMIN_EMAIL);
+    const r = await t.http.post('/api/contacts').set('Cookie', cookie).set('X-Requested-With', 'XMLHttpRequest').set('Content-Type', 'application/json').send(JSON.stringify({ phone: 'x'.repeat(6 * 1024 * 1024) }));
+    expect(r.status).toBe(413);
+    expect(r.body.message).toMatch(/demasiado grande/);
+  });
+});

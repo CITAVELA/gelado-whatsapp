@@ -37,3 +37,15 @@ export function extFor(mime: string, fileName?: string | null): string {
   const m = /\.([a-z0-9]{1,8})$/i.exec(fileName ?? '');
   return m ? m[1]!.toLowerCase() : 'bin';
 }
+
+/** MIME que se aceptan de adjuntos entrantes: los que WhatsApp permite enviar (más el sticker). */
+const INBOUND_MIME_ALLOWED = new Set([...Object.keys(EXT_BY_MIME), 'image/webp']);
+
+/**
+ * MIME de un adjunto entrante. Meta lo indica, pero un cliente puede mandar casi cualquier cosa: lo que no está en
+ * la lista blanca se guarda como `application/octet-stream` (se sirve como descarga, nunca como HTML/SVG/JS).
+ */
+export function safeInboundMime(mime: string | null | undefined): string {
+  const m = baseMime(mime ?? '');
+  return INBOUND_MIME_ALLOWED.has(m) ? m : 'application/octet-stream';
+}

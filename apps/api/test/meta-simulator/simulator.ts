@@ -24,6 +24,8 @@
  *               sim.sendDelayMs = 300; lanza el envío sin esperar; cuando aparezca en sim.sent envía sendStatus() con ese id
  *   URL de media caducada: const id = sim.addInboundMedia(buf, mime); sim.expireMedia(id, 1) → las 1ª descargas dan 404 y
  *               la siguiente petición de info genera una URL válida; sim.deleteMedia(id) → la info da 404 (borrado)
+ *   Respuesta perdida: sim.dropResponses = 1 → el próximo envío se registra en sim.sent pero la conexión se corta sin respuesta
+ *   Estados con `biz_opaque_callback_data`: sendStatus lo añade solo si el envío lo llevaba (opaque:null lo omite)
  *   Ráfaga 130429: sim.failNext({ code: 130429, count: 5, httpStatus: 429 }) → los próximos 5 envíos fallan; path:'media'|'messages'
  *   Webhooks de otros campos (forma real de Meta):
  *               sim.sendTemplateStatus({ event:'APPROVED'|'REJECTED'|'PAUSED'|'DISABLED'…, templateId, name, language?, reason? })
@@ -75,6 +77,8 @@ export class MetaSimulator {
   phone = { quality_rating: 'GREEN', status: 'CONNECTED', messaging_limit_tier: 'TIER_2K', verified_name: 'Exclusivas Gelado', name_status: 'APPROVED' };
   /** retraso artificial antes de responder a /messages (para «estado antes que la respuesta») */
   sendDelayMs = 0;
+  /** los próximos N envíos se aceptan (quedan en `sent`) pero la conexión se corta sin responder: «Meta lo recibió, la app no lo sabe» */
+  dropResponses = 0;
 
   constructor(readonly opts: SimOptions) {}
 
@@ -108,6 +112,7 @@ export class MetaSimulator {
     this.failRules = [];
     this.webhooksSent = [];
     this.sendDelayMs = 0;
+    this.dropResponses = 0;
   }
 
   newWamid() {
@@ -154,8 +159,11 @@ export class MetaSimulator {
     });
   }
 
-  statusPayload(s: { wamid: string; status: string; recipient?: string; timestamp?: number; errorCode?: number; errorTitle?: string; pricing?: any }) {
+  statusPayload(s: { wamid: string; status: string; recipient?: string; timestamp?: number; errorCode?: number; errorTitle?: string; pricing?: any; opaque?: string | null }) {
     const st: any = { id: s.wamid, status: s.status, timestamp: String(s.timestamp ?? Math.floor(Date.now() / 1000)), recipient_id: s.recipient ?? '34600000000' };
+    // Como Meta: el estado devuelve el `biz_opaque_callback_data` que se mandó con el mensaje (`opaque: null` lo omite)
+    const opaque = s.opaque === undefined ? this.sent.find((r) => r.id === s.wamid)?.body?.biz_opaque_callback_data : s.opaque;
+    if (opaque) st.biz_opaque_callback_data = opaque;
     if (s.pricing !== undefined) st.pricing = s.pricing;
     else if (s.status !== 'failed') st.pricing = { billable: true, pricing_model: 'PMP', category: 'service', type: 'regular' };
     if (s.errorCode) st.errors = [{ code: s.errorCode, title: s.errorTitle ?? `Error ${s.errorCode}`, message: s.errorTitle ?? '', error_data: { details: 'Simulado' } }];
@@ -173,7 +181,7 @@ export class MetaSimulator {
     return status;
   }
 
-  async sendStatus(s: { wamid: string; status: string; recipient?: string; timestamp?: number; errorCode?: number; errorTitle?: string; pricing?: any; repeat?: number }) {
+  async sendStatus(s: { wamid: string; status: string; recipient?: string; timestamp?: number; errorCode?: number; errorTitle?: string; pricing?: any; opaque?: string | null; repeat?: number }) {
     const payload = this.statusPayload(s.pricing === null ? { ...s, pricing: undefined } : s);
     if (s.pricing === null) delete payload.entry[0].changes[0].value.statuses[0].pricing;
     let status = 0;
@@ -340,6 +348,11 @@ export class MetaSimulator {
       }
       const wamid = this.newWamid();
       this.sent.push({ id: wamid, path: p, body, at: Date.now() });
+      if (this.dropResponses > 0) {
+        this.dropResponses -= 1;
+        req.socket.destroy();
+        return;
+      }
       if (this.sendDelayMs) await new Promise((r) => setTimeout(r, this.sendDelayMs));
       return this.json(res, 200, { messaging_product: 'whatsapp', contacts: [{ input: body?.to, wa_id: body?.to }], messages: [{ id: wamid }] });
     }

@@ -20,6 +20,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       res.status(status).json({ statusCode: status, message: es[status] ?? 'Error', details: body });
       return;
     }
+    // Errores de body-parser/multer (p. ej. cuerpo demasiado grande, JSON mal formado) traen su estado HTTP
+    const st = (exception as any)?.status ?? (exception as any)?.statusCode;
+    if (typeof st === 'number' && st >= 400 && st < 500) {
+      const msg = st === 413 ? 'El contenido es demasiado grande' : st === 400 ? 'Petición no válida' : 'Petición rechazada';
+      res.status(st).json({ statusCode: st, message: msg });
+      return;
+    }
     this.log.error(exception instanceof Error ? exception.stack : String(exception));
     res.status(500).json({ statusCode: 500, message: 'Error interno del servidor' });
   }

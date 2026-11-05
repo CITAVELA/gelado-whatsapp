@@ -4,6 +4,7 @@ import { OPT_OUT_BUTTON_TEXT, OPT_OUT_CONFIRMATION, OPT_OUT_PAYLOAD, WINDOW_MS, 
 import { PrismaService } from '../../common/prisma.service';
 import { DomainEvents } from '../events/domain-events.service';
 import { ConsentService } from '../contacts/consent.service';
+import { SuppressionService } from '../contacts/suppression.service';
 import { JobsService, QUEUES } from '../jobs/jobs.service';
 import { previewFor } from '../inbox/mappers';
 import { MessageNotifier } from '../whatsapp/message-notifier.service';
@@ -92,6 +93,7 @@ export class InboundMessagesService implements OnModuleInit {
     private readonly notifier: MessageNotifier,
     private readonly statusSvc: MessageStatusService,
     private readonly messaging: MessagingService,
+    private readonly suppression: SuppressionService,
   ) {}
 
   onModuleInit() {
@@ -144,6 +146,8 @@ export class InboundMessagesService implements OnModuleInit {
     if (!created) throw new Error(`No se pudo guardar el mensaje ${m.id}`);
     const { message, contact, conversation, prevStatus, eventIds } = created;
     const reopened = prevStatus === 'DONE' || prevStatus === 'SNOOZED';
+    // Lista de supresión (derecho de supresión ejercido antes): si el número vuelve a escribir, nace dado de baja
+    if (contact.consentStatus !== 'REVOKED') await this.suppression.enforce(contact.id, contact.phoneE164);
 
     // Tiempo real
     await this.notifier.created(message.id, parsed.kind !== 'REACTION');
@@ -186,6 +190,10 @@ export class InboundMessagesService implements OnModuleInit {
         if (Object.keys(data).length) contact = await tx.contact.update({ where: { id: contact.id }, data });
       }
 
+      // Se bloquea la fila de la conversación antes de leer su estado: si alguien la pospone o finaliza a la vez,
+      // o su cambio se ve ya aquí (y se reabre) o espera a que este mensaje quede guardado (S9 #20). Sin el bloqueo,
+      // se leía «abierta», se escribía el mensaje y quedaba pospuesta/finalizada con un no leído escondido.
+      await tx.$queryRaw`SELECT id FROM "Conversation" WHERE "contactId" = ${contact.id}::uuid FOR UPDATE`;
       let conv = await tx.conversation.findUnique({ where: { contactId: contact.id } });
       if (!conv) conv = await tx.conversation.create({ data: { contactId: contact.id } });
       const prevStatus = conv.status;

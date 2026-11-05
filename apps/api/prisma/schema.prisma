@@ -264,6 +264,9 @@ model Message {
   errorCode         Int?
   errorTitle        String?
   errorDetails      String?
+  errorRetryable    Boolean? // si el fallo se puede reintentar a mano (null = según errorCode)
+  sendState         MessageSendState? // saliente: SENDING = el worker está llamando a Meta; UNCERTAIN = puede haber llegado sin guardar el wamid
+  sendStartedAt     DateTime? // cuándo se marcó SENDING
   sentOutsideWindow Boolean          @default(false) // cuenta para el límite de 24 h
   pricingCategory   String? // marketing, utility, service… (de los estados de Meta)
   billable          Boolean?
@@ -288,6 +291,12 @@ model Message {
   @@index([campaignId])
   @@index([direction, kind, sentAt])
   @@index([sentOutsideWindow, createdAt]) // uso del límite de 24 h (campañas, calidad)
+  @@index([status, createdAt], map: "Message_status_createdAt_idx")
+}
+
+enum MessageSendState {
+  SENDING
+  UNCERTAIN
 }
 
 enum ConversationEventType {

@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import ffmpegStatic from 'ffmpeg-static';
+import { baseMime } from './mime';
 
 /** ffmpeg-static; si no está disponible en la plataforma, el `ffmpeg` del sistema (docs/04). */
 export function ffmpegBinary(): string {
@@ -11,17 +12,48 @@ export function ffmpegBinary(): string {
   return 'ffmpeg';
 }
 
+/** Demuxer de entrada de ffmpeg para cada MIME de audio admitido. */
+const INPUT_FORMAT_BY_MIME: Record<string, string> = {
+  'audio/webm': 'matroska',
+  'audio/ogg': 'ogg',
+  'audio/opus': 'ogg',
+  'audio/mpeg': 'mp3',
+  'audio/mp4': 'mov',
+  'audio/aac': 'aac',
+  'audio/amr': 'amr',
+};
+
+/** Demuxer de entrada para un MIME de audio; null si no se admite (nunca se deja que ffmpeg lo adivine). */
+export function ffmpegInputFormat(mime: string): string | null {
+  return INPUT_FORMAT_BY_MIME[baseMime(mime)] ?? null;
+}
+
+/**
+ * Argumentos de ffmpeg. El formato de entrada se fuerza según el MIME (si no, ffmpeg lo detecta por contenido y un
+ * «audio» HLS/concat podría leer archivos locales) y el protocolo se limita a `file,pipe`: ni red ni otros esquemas.
+ */
+export function ffmpegArgs(format: string, inFile: string, outFile: string): string[] {
+  return [
+    '-hide_banner', '-loglevel', 'error', '-y', '-nostdin',
+    '-protocol_whitelist', 'file,pipe',
+    '-f', format, '-i', inFile,
+    '-vn', '-ac', '1', '-ar', '48000', '-c:a', 'libopus', '-b:a', '32k', '-application', 'voip', '-f', 'ogg', outFile,
+  ];
+}
+
 /**
  * Convierte un audio (webm/opus del navegador, ogg, m4a…) a OGG/Opus mono, el formato de las notas de voz
  * de WhatsApp. Usa archivos temporales (algunos contenedores no se pueden leer por tubería).
  */
-export async function convertToOggOpusMono(input: Buffer, inputExt = 'webm'): Promise<Buffer> {
+export async function convertToOggOpusMono(input: Buffer, inputMime = 'audio/webm'): Promise<Buffer> {
+  const format = ffmpegInputFormat(inputMime);
+  if (!format) throw new Error(`Formato de audio no admitido: ${inputMime}`);
   const dir = await mkdtemp(path.join(tmpdir(), 'gelado-voice-'));
   try {
-    const inFile = path.join(dir, `in.${inputExt.replace(/[^a-z0-9]/gi, '') || 'webm'}`);
+    const inFile = path.join(dir, 'in.bin');
     const outFile = path.join(dir, 'out.ogg');
     await writeFile(inFile, input);
-    await run(ffmpegBinary(), ['-hide_banner', '-loglevel', 'error', '-y', '-i', inFile, '-vn', '-ac', '1', '-ar', '48000', '-c:a', 'libopus', '-b:a', '32k', '-application', 'voip', '-f', 'ogg', outFile]);
+    await run(ffmpegBinary(), ffmpegArgs(format, inFile, outFile));
     const out = await readFile(outFile);
     if (!out.length) throw new Error('ffmpeg no generó audio');
     return out;

@@ -4,7 +4,7 @@ import { AuditModule } from './modules/audit/audit.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { HealthModule } from './modules/health/health.module';
-import { JobsModule } from './modules/jobs/jobs.service';
+import { JobsModule } from './modules/jobs/jobs.module';
 import { RealtimeModule } from './modules/realtime/realtime.gateway';
 import { StorageModule } from './modules/storage/storage.service';
 import { DomainEventsModule } from './modules/events/domain-events.service';

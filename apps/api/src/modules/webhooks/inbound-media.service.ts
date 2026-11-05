@@ -3,7 +3,7 @@ import { sha256 } from '../../common/tokens';
 import { PrismaService } from '../../common/prisma.service';
 import { JobsService, QUEUES } from '../jobs/jobs.service';
 import { MediaService } from '../media/media.service';
-import { extFor } from '../media/mime';
+import { extFor, safeInboundMime } from '../media/mime';
 import { MessageNotifier } from '../whatsapp/message-notifier.service';
 import { WhatsAppApiError, WhatsAppGateway } from '../whatsapp/whatsapp.gateway';
 
@@ -46,7 +46,7 @@ export class InboundMediaService implements OnModuleInit {
     if (!file || !info) throw lastErr ?? new Error('No se pudo descargar el adjunto');
 
     if (p.sha256 && info.sha256 && p.sha256 !== info.sha256) this.log.warn(`sha256 distinto en ${p.waMediaId}`);
-    const mime = (info.mime_type || p.mimeType || file.mimeType).split(';')[0]!;
+    const mime = safeInboundMime(info.mime_type || p.mimeType || file.mimeType);
     const fileName = p.fileName || `${msg.kind.toLowerCase()}-${msg.id.slice(0, 8)}.${extFor(mime)}`;
     const stored = await this.media.storeBuffer(file.data, mime, fileName, 'INBOUND', null);
     // Guardar también el id de WhatsApp: el archivo recibido podría reenviarse sin subirlo
