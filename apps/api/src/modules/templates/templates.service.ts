@@ -1,12 +1,14 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, BadGatewayException, OnModuleInit } from '@nestjs/common';
 import { Prisma, type Template } from '@prisma/client';
 import {
+  draftToComponents,
   editorToComponents,
   extractVariables,
   hasOptOutButton,
   isOptOutButtonText,
   validateTemplateEditor,
   type TemplateComponent,
+  type TemplateDraftDto,
   type TemplateEditorDto,
   type TemplateDto,
   type WaTemplate,
@@ -78,10 +80,12 @@ export class TemplatesService implements OnModuleInit {
 
   // ───────── consulta ─────────
 
-  async list(q: { status?: string; category?: string; q?: string; language?: string }): Promise<TemplateDto[]> {
-    const statuses = q.status ? q.status.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean) : null;
+  /** Los borradores locales (`LOCAL_DRAFT`) solo los ve la administradora (en el editor y en el listado de plantillas). */
+  async list(q: { status?: string; category?: string; q?: string; language?: string }, isAdmin = false): Promise<TemplateDto[]> {
+    let statuses = q.status ? q.status.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean) : null;
+    if (statuses && !isAdmin) statuses = statuses.filter((s) => s !== 'LOCAL_DRAFT');
     const where: Prisma.TemplateWhereInput = {
-      status: statuses ? { in: statuses as any } : { not: 'DELETED' },
+      status: statuses ? { in: statuses as any } : isAdmin ? { not: 'DELETED' } : { notIn: ['DELETED', 'LOCAL_DRAFT'] },
       category: q.category ? (q.category.toUpperCase() as any) : undefined,
       language: q.language || undefined,
       OR: q.q?.trim()
@@ -98,8 +102,10 @@ export class TemplatesService implements OnModuleInit {
     return t;
   }
 
-  async get(id: string): Promise<TemplateDto> {
-    return toTemplateDto(await this.getRow(id));
+  async get(id: string, isAdmin = false): Promise<TemplateDto> {
+    const t = await this.getRow(id);
+    if (t.status === 'LOCAL_DRAFT' && !isAdmin) throw new NotFoundException({ statusCode: 404, message: 'Plantilla no encontrada' });
+    return toTemplateDto(t);
   }
 
   // ───────── sincronización (RF-4.1) ─────────
@@ -146,6 +152,7 @@ export class TemplatesService implements OnModuleInit {
         qualityScore: w.quality_score?.score ?? null,
         hasOptOutButton: hasOptOutButton(components),
         lastSyncedAt: now,
+        draftData: Prisma.DbNull, // si había un borrador con ese nombre, pasa a ser la plantilla de Meta
       };
       if (!existing) {
         const row = await this.prisma.template.create({ data });
@@ -184,34 +191,52 @@ export class TemplatesService implements OnModuleInit {
 
   // ───────── crear y enviar a revisión (RF-4.2) ─────────
 
-  async create(dto: TemplateEditorDto, userId: string): Promise<TemplateDto> {
+  /** 400 con el detalle si el editor no está completo (misma validación para crear y para enviar un borrador). */
+  private assertValid(dto: TemplateEditorDto) {
     const errors = validateTemplateEditor(dto);
     if (errors.length) {
       throw new BadRequestException({ statusCode: 400, message: errors[0], code: 'VALIDATION', details: errors.map((message) => ({ message })) });
     }
-    const dup = await this.prisma.template.findUnique({ where: { name_language: { name: dto.name, language: dto.language } } });
-    if (dup) {
-      throw new ConflictException({
-        statusCode: 409,
-        message:
-          dup.status === 'DELETED'
-            ? 'Ese nombre ya se usó en una plantilla borrada y Meta no deja reutilizarlo durante un tiempo. Elige otro nombre.'
-            : 'Ya existe una plantilla con ese nombre en ese idioma. Cambia el nombre.',
-      });
-    }
+  }
 
+  /** (name, language) es único: un borrador reserva su nombre igual que una plantilla enviada. */
+  private async assertNameFree(name: string, language: string, exceptId?: string) {
+    const dup = await this.prisma.template.findUnique({ where: { name_language: { name, language } } });
+    if (dup && dup.id !== exceptId) throw this.nameTaken(dup.status);
+  }
+
+  private nameTaken(status: string) {
+    return new ConflictException({
+      statusCode: 409,
+      message:
+        status === 'DELETED'
+          ? 'Ese nombre ya se usó en una plantilla borrada y Meta no deja reutilizarlo durante un tiempo. Elige otro nombre.'
+          : status === 'LOCAL_DRAFT'
+            ? 'Ya hay un borrador con ese nombre en ese idioma. Cambia el nombre o ábrelo desde el listado.'
+            : 'Ya existe una plantilla con ese nombre en ese idioma. Cambia el nombre.',
+    });
+  }
+
+  /** Sube el ejemplo de cabecera (si lo hay), arma los componentes y crea la plantilla en Meta. */
+  private async sendToMeta(dto: TemplateEditorDto) {
     let headerHandle: string | undefined;
     if (dto.header.format === 'IMAGE' || dto.header.format === 'VIDEO' || dto.header.format === 'DOCUMENT') {
       headerHandle = await this.uploadHeaderExample(dto.header.format, dto.header.exampleMediaFileId!);
     }
     const components = editorToComponents(dto, { headerHandle });
-
     let created: { id: string; status: string; category: string };
     try {
       created = await this.gateway.createTemplate({ name: dto.name, language: dto.language, category: dto.category, components });
     } catch (e) {
       throw this.metaError(e, 'Meta no ha aceptado la plantilla');
     }
+    return { created, components };
+  }
+
+  async create(dto: TemplateEditorDto, userId: string): Promise<TemplateDto> {
+    this.assertValid(dto);
+    await this.assertNameFree(dto.name, dto.language);
+    const { created, components } = await this.sendToMeta(dto);
     const row = await this.prisma.template.create({
       data: {
         metaTemplateId: created.id ? String(created.id) : null,
@@ -234,6 +259,110 @@ export class TemplatesService implements OnModuleInit {
       data: { name: row.name, category: row.category, language: row.language, optOutButton: row.hasOptOutButton },
     });
     this.realtime.emit('template.updated', { templateId: row.id, status: row.status });
+    return toTemplateDto(row);
+  }
+
+  // ───────── borradores locales («Guardar borrador») ─────────
+
+  private draftColumns(dto: TemplateDraftDto) {
+    const components = draftToComponents(dto);
+    return {
+      name: dto.name,
+      displayName: dto.displayName || null,
+      language: dto.language,
+      category: dto.category,
+      status: 'LOCAL_DRAFT' as const,
+      components: components as unknown as Prisma.InputJsonValue,
+      hasOptOutButton: hasOptOutButton(components),
+      draftData: dto as unknown as Prisma.InputJsonValue,
+    };
+  }
+
+  private async draftRow(id: string): Promise<Template> {
+    const t = await this.getRow(id);
+    if (t.status !== 'LOCAL_DRAFT') {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'Esta plantilla ya no es un borrador (ya se envió a Meta), así que no se puede modificar desde aquí.',
+      });
+    }
+    return t;
+  }
+
+  /** Guarda un borrador nuevo sin llamar a Meta. Solo exige el nombre de Meta y el idioma. */
+  async createDraft(dto: TemplateDraftDto, userId: string): Promise<TemplateDto> {
+    await this.assertNameFree(dto.name, dto.language);
+    let row: Template;
+    try {
+      row = await this.prisma.template.create({ data: { ...this.draftColumns(dto), createdById: userId } });
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002') throw this.nameTaken('LOCAL_DRAFT');
+      throw e;
+    }
+    await this.audit.log({ userId, action: 'save_template_draft', entityType: 'Template', entityId: row.id, data: { name: row.name, language: row.language, created: true } });
+    this.realtime.emit('template.updated', { templateId: row.id, status: row.status });
+    return toTemplateDto(row);
+  }
+
+  /** Actualiza el mismo registro, solo mientras siga siendo borrador. */
+  async updateDraft(id: string, dto: TemplateDraftDto, userId: string): Promise<TemplateDto> {
+    await this.draftRow(id);
+    await this.assertNameFree(dto.name, dto.language, id);
+    let count: number;
+    try {
+      ({ count } = await this.prisma.template.updateMany({ where: { id, status: 'LOCAL_DRAFT' }, data: this.draftColumns(dto) }));
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002') throw this.nameTaken('LOCAL_DRAFT');
+      throw e;
+    }
+    if (!count) await this.draftRow(id); // otra persona lo envió o borró entre medias → 409/404
+    const row = await this.getRow(id);
+    await this.audit.log({ userId, action: 'save_template_draft', entityType: 'Template', entityId: id, data: { name: row.name, language: row.language, created: false } });
+    this.realtime.emit('template.updated', { templateId: id, status: row.status });
+    return toTemplateDto(row);
+  }
+
+  /**
+   * Envía a revisión un borrador con exactamente la misma validación y el mismo envío que `create`
+   * (Resumable Upload de la cabecera incluido). Si Meta falla, el borrador no cambia.
+   */
+  async submitDraft(id: string, dto: TemplateEditorDto, userId: string): Promise<TemplateDto> {
+    await this.draftRow(id);
+    this.assertValid(dto);
+    await this.assertNameFree(dto.name, dto.language, id);
+    const { created, components } = await this.sendToMeta(dto);
+    let row: Template;
+    try {
+      const u = await this.prisma.template.updateMany({
+        where: { id, status: 'LOCAL_DRAFT' },
+        data: {
+          metaTemplateId: created.id ? String(created.id) : null,
+          name: dto.name,
+          displayName: dto.displayName,
+          language: dto.language,
+          category: mapMetaCategory(created.category ?? dto.category),
+          status: mapMetaStatus(created.status ?? 'PENDING'),
+          components: components as unknown as Prisma.InputJsonValue,
+          hasOptOutButton: hasOptOutButton(components),
+          draftData: Prisma.DbNull,
+          rejectedReason: null,
+          lastSyncedAt: new Date(),
+        },
+      });
+      if (!u.count) await this.draftRow(id);
+      row = await this.getRow(id);
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002') throw this.nameTaken('PENDING');
+      throw e;
+    }
+    await this.audit.log({
+      userId,
+      action: 'submit_template_draft',
+      entityType: 'Template',
+      entityId: id,
+      data: { name: row.name, category: row.category, language: row.language, optOutButton: row.hasOptOutButton },
+    });
+    this.realtime.emit('template.updated', { templateId: id, status: row.status });
     return toTemplateDto(row);
   }
 
@@ -326,12 +455,17 @@ export class TemplatesService implements OnModuleInit {
     if (active) {
       throw new ConflictException({ statusCode: 409, message: 'Hay campañas programadas, en curso o en pausa que usan esta plantilla. Cancélalas antes de borrarla.' });
     }
-    if (t.status !== 'LOCAL_DRAFT') {
-      try {
-        await this.gateway.deleteTemplate(t.name, t.metaTemplateId ?? undefined);
-      } catch (e) {
-        if (!(e instanceof WhatsAppApiError && e.httpStatus === 404)) throw this.metaError(e, 'Meta no ha podido borrar la plantilla');
-      }
+    if (t.status === 'LOCAL_DRAFT') {
+      // Un borrador nunca existió en Meta: se borra del todo y su nombre queda libre
+      await this.prisma.template.delete({ where: { id } });
+      await this.audit.log({ userId, action: 'delete_template', entityType: 'Template', entityId: id, data: { name: t.name, previousStatus: t.status } });
+      this.realtime.emit('template.updated', { templateId: id, status: 'DELETED' });
+      return { ok: true };
+    }
+    try {
+      await this.gateway.deleteTemplate(t.name, t.metaTemplateId ?? undefined);
+    } catch (e) {
+      if (!(e instanceof WhatsAppApiError && e.httpStatus === 404)) throw this.metaError(e, 'Meta no ha podido borrar la plantilla');
     }
     const row = await this.prisma.template.update({ where: { id }, data: { status: 'DELETED', lastSyncedAt: new Date() } });
     await this.audit.log({ userId, action: 'delete_template', entityType: 'Template', entityId: id, data: { name: t.name, previousStatus: t.status } });
