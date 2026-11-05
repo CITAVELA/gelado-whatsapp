@@ -11,6 +11,9 @@ test-results/
 *.log
 .DS_Store
 storage-local/
+# Worktrees de agentes (los de Claude Code y los de rsc)
+.claude/worktrees/
+.worktrees/
 
 # rsc local state (hooks, seals, logs) and managed skill links — machine-local
 .rsc/

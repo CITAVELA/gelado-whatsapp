@@ -69,7 +69,7 @@ WABA `24936790469294569` · número `833139829886325` · portfolio `115003938195
 ## Harness de agentes: rsc-harness 3.7.5
 
 - Va en `.rsc.json`, `.claude/`, `02-DOCS/` y `01-TOOLS/`. `.rsc/` no viaja en git: en la nube lo monta el hook `.claude/hooks/nube-preparar.sh`; en local, `npx -y @ericrisco/rsc@3.7.5 sync`. Comprobación: `npx -y @ericrisco/rsc@3.7.5 doctor` («Harness health: healthy»).
-- `02-DOCS/wiki/harness/` y `02-DOCS/wiki/sdd/` son del harness. **La fuente de verdad del proyecto sigue siendo `docs/`** (con la precedencia de arriba); si chocan, manda `docs/`.
+- `02-DOCS/wiki/harness/` y `02-DOCS/wiki/sdd/` son del harness. La constitución SDD (`02-DOCS/wiki/sdd/constitution.md`) resume las reglas de este archivo, `docs/04` y `docs/05`. **La fuente de verdad del proyecto sigue siendo `docs/`** (con la precedencia de arriba); si chocan, manda `docs/`.
 - Flujo por ramas: `main` está cerrada para los agentes (commit y push a `main` bloqueados).
 - Aislamiento por worktrees activo: un `git worktree add` va siempre en `.worktrees/<rama>/` en la raíz, y no se cambia de rama en la carpeta principal si hay otra sesión activa en ella. Los subagentes paralelos trabajan cada uno en su worktree.
 - Apagados: autoactualización, decisor de carril por turno (`feature-gate`), gitmoji obligatorio e intercambio automático de `01-TOOLS/` y `02-DOCS/` (`knowledge-sync`).
