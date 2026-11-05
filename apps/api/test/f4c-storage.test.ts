@@ -4,7 +4,7 @@
 import { afterEach, afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWaTestEnv, seedConversation, PNG_1X1, type WaTestEnv } from './meta-simulator/harness';
 import { ADMIN_EMAIL, loginAs } from './utils/app';
-import { StorageService, SupabaseStorageDriver, SIGNED_URL_CACHE_MS } from '../src/modules/storage/storage.service';
+import { StorageService, SupabaseStorageDriver, SIGNED_URL_CACHE_MS, SIGNED_URL_TTL } from '../src/modules/storage/storage.service';
 import { MediaService } from '../src/modules/media/media.service';
 
 let env: WaTestEnv;
@@ -45,7 +45,7 @@ describe('F4c #18 · StorageService: firma en lote y caché', () => {
     await svc.primeSignedUrls(list);
     expect(calls).toHaveLength(1);
     expect(calls[0]!.url).toBe('https://x.supabase.test/storage/v1/object/sign/media');
-    expect(calls[0]!.body).toEqual({ expiresIn: 3600, paths: list });
+    expect(calls[0]!.body).toEqual({ expiresIn: SIGNED_URL_TTL, paths: list });
     const urls = await Promise.all(list.map((p) => svc.createSignedUrl(p)));
     expect(calls).toHaveLength(1);
     expect(urls[3]).toBe('https://x.supabase.test/storage/v1/object/sign/media/2026/11/obj-3.png?token=t-2026/11/obj-3.png');
