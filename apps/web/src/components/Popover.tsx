@@ -105,15 +105,20 @@ export function SubMenu({ icon, label, children, minWidth = 240 }: { icon?: stri
   const open = openSub === id;
   const sub = useRef<HTMLDivElement>(null);
   const [flip, setFlip] = useState(false);
+  const hoverAt = useRef(0);
   useLayoutEffect(() => {
     if (!open || !sub.current) return;
     const r = sub.current.getBoundingClientRect();
     setFlip(r.right > window.innerWidth - 8 && r.left - r.width > 0);
   }, [open]);
   return (
-    // En pantallas táctiles el toque dispara primero mouseenter (que abre) y luego click: el clic no debe volver a cerrarlo
-    <div className="sub-wrap" onMouseEnter={() => setOpenSub(id)}>
-      <button type="button" role="menuitem" aria-haspopup="menu" aria-expanded={open} className={`mi${open ? ' on' : ''}`} onClick={() => setOpenSub(id)}>
+    <div className="sub-wrap" onMouseEnter={() => { hoverAt.current = Date.now(); setOpenSub(id); }}>
+      <button type="button" role="menuitem" aria-haspopup="menu" aria-expanded={open} className={`mi${open ? ' on' : ''}`} onClick={(e) => {
+        // Un toque dispara primero mouseenter (que abre) y luego click: ese clic no debe volver a cerrarlo.
+        // Con ratón o teclado, pulsar un submenú abierto lo pliega (como indica aria-expanded).
+        const touch = (e.nativeEvent as PointerEvent).pointerType === 'touch' || Date.now() - hoverAt.current < 400;
+        setOpenSub(open && !touch ? null : id);
+      }}>
         {icon && <Icon name={icon} small />}
         <span className="mi-text">{label}</span>
         <span className="r">›</span>
