@@ -199,6 +199,12 @@ export class MetaSimulator {
     return this.envelope('message_template_status_update', value);
   }
   sendTemplateStatus(t: Parameters<MetaSimulator['templateStatusPayload']>[0]) {
+    // Como la Meta real: el estado también cambia en el listado (GET /message_templates) para que una sincronización posterior no lo revierta
+    const stored = [...this.templates.values()].find((x) => String(x.id) === String(t.templateId) || x.name === t.name);
+    if (stored) {
+      stored.status = t.event;
+      if (t.reason && t.reason !== 'NONE') stored.rejected_reason = t.reason;
+    }
     return this.postWebhook(this.templateStatusPayload(t));
   }
 

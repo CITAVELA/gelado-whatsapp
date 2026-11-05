@@ -40,7 +40,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
-  use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', screenshot: 'only-on-failure', locale: 'es-ES', timezoneId: 'Europe/Madrid' },
+  use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', actionTimeout: 10_000, screenshot: 'only-on-failure', locale: 'es-ES', timezoneId: 'Europe/Madrid' },
   projects: [{ name: 'chromium', use: { browserName: 'chromium', launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined } } }],
   webServer: [
     {
@@ -48,14 +48,14 @@ export default defineConfig({
       cwd: '..',
       port: Number(SIM_PORT),
       env: { ...env, META_SIM_PORT: SIM_PORT, META_SIM_WEBHOOK_URL: `http://localhost:${PORT}/webhooks/whatsapp` },
-      reuseExistingServer: false,
+      reuseExistingServer: !!process.env.E2E_REUSE,
     },
     {
       command: 'node apps/api/dist/main.js',
       cwd: '..',
       url: `http://localhost:${PORT}/health`,
       env,
-      reuseExistingServer: false,
+      reuseExistingServer: !!process.env.E2E_REUSE,
       timeout: 60_000,
     },
   ],
