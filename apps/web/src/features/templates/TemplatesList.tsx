@@ -11,7 +11,7 @@ import { NoOptOutPill, QualityPill, TemplateStatusChip, templateTitle } from './
 import { invalidateTemplates, useTemplates } from './queries';
 import type { DraftState } from './TemplateEditor';
 
-const STATUSES = ['APPROVED', 'PENDING', 'REJECTED', 'PAUSED', 'DISABLED', 'IN_APPEAL'] as const;
+const STATUSES = ['LOCAL_DRAFT', 'APPROVED', 'PENDING', 'REJECTED', 'PAUSED', 'DISABLED', 'IN_APPEAL'] as const;
 
 export function TemplatesList() {
   const { isAdmin } = useAuth();
@@ -37,6 +37,8 @@ export function TemplatesList() {
       setSyncing(false);
     }
   }
+
+  const openDraft = (t: TemplateDto) => nav(`/plantillas/borrador/${t.id}`);
 
   async function duplicate(t: TemplateDto) {
     try {
@@ -98,7 +100,7 @@ export function TemplatesList() {
             </thead>
             <tbody>
               {data.map((t) => (
-                <tr key={t.id} className="tpl-row" onClick={() => setDetail(t)}>
+                <tr key={t.id} className="tpl-row" onClick={() => (isAdmin && t.status === 'LOCAL_DRAFT' ? openDraft(t) : setDetail(t))}>
                   <td>
                     <div className="tpl-name">
                       <strong>{templateTitle(t)}</strong>
@@ -119,7 +121,9 @@ export function TemplatesList() {
                   <td onClick={(e) => e.stopPropagation()}>
                     {isAdmin && (
                       <div className="tpl-actions">
-                        {t.status === 'REJECTED' ? (
+                        {t.status === 'LOCAL_DRAFT' ? (
+                          <button className="btn" aria-label={`Editar borrador ${templateTitle(t)}`} onClick={() => openDraft(t)}><Icon name="edit" small /> Editar</button>
+                        ) : t.status === 'REJECTED' ? (
                           <button className="btn" onClick={() => duplicate(t)}>Duplicar y corregir</button>
                         ) : t.category === 'MARKETING' && !t.hasOptOutButton ? (
                           <button className="btn" onClick={() => duplicate(t)}>Duplicar con botón de baja</button>
@@ -157,12 +161,18 @@ export function TemplatesList() {
           title="Borrar plantilla"
           danger
           confirmText="Borrar"
-          text={<>Se borrará «{templateTitle(toDelete)}» también en Meta. Esta acción no se puede deshacer.</>}
+          text={
+            toDelete.status === 'LOCAL_DRAFT' ? (
+              <>Se borrará el borrador «{templateTitle(toDelete)}». Nunca se envió a Meta. Esta acción no se puede deshacer.</>
+            ) : (
+              <>Se borrará «{templateTitle(toDelete)}» también en Meta. Esta acción no se puede deshacer.</>
+            )
+          }
           onClose={() => setToDelete(null)}
           onConfirm={async () => {
             try {
               await api.del(`/api/templates/${toDelete.id}`);
-              toast('Plantilla borrada');
+              toast(toDelete.status === 'LOCAL_DRAFT' ? 'Borrador borrado' : 'Plantilla borrada');
               await invalidateTemplates();
             } catch (e) {
               toast((e as Error).message, true);
