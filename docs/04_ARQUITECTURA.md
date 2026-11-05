@@ -96,7 +96,8 @@ Render factura como tráfico de salida también las consultas del servicio a Sup
 - El navegador recibe **URLs firmadas** de corta duración (1 h); nunca la clave de servicio.
 - Entrantes: el worker pide la URL a Meta y descarga **en cuanto llega el webhook** (caduca en minutos), guarda en Storage y enlaza el mensaje.
 - Salientes: se sube a Storage → se sube a WhatsApp (`/media`) → se envía por id. El id de WhatsApp se guarda con su caducidad para reutilizarlo (biblioteca, cabeceras de campaña).
-- Notas de voz: el navegador graba (webm/opus u ogg/opus según navegador); el servidor convierte a **OGG/Opus mono** con ffmpeg (`ffmpeg-static`) antes de enviar.
+- Notas de voz: el navegador graba en el formato que admite (Chrome webm/opus, Firefox ogg/opus, Safari e iOS mp4/AAC); el servidor acepta los tres (el contenedor se reconoce por los bytes, no solo por el MIME declarado) y convierte siempre a **OGG/Opus mono** con ffmpeg (`ffmpeg-static`) antes de enviar. Fixtures de cada formato en `apps/api/test/fixtures/audio/`.
+- Notificaciones y sonido (RF-2.20): el permiso se pide solo con un clic; el sonido se desbloquea en el primer gesto del usuario (Safari crea el `AudioContext` suspendido). En iOS Safari normal no existe la API de notificaciones (solo con la web en la pantalla de inicio): se avisa en la bandeja y el sonido sigue funcionando.
 - Límites de tamaño por tipo según Meta (comprobar en la documentación vigente); validar antes de subir y avisar en la interfaz.
 
 ## Base de datos

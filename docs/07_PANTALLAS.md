@@ -63,7 +63,8 @@ Correo y contraseña; debajo «¿Olvidaste tu contraseña? Pídele un enlace a l
 ## P5 · Plantillas
 
 - **Listado**: nombre legible · nombre en Meta · categoría · idioma · estado (chip) · calidad · última actualización. Botones «Sincronizar» y «Nueva plantilla» (admin).
-- **Editor** (dos columnas, formulario + vista previa tipo WhatsApp en vivo): nombre legible (genera el nombre de Meta) · categoría · idioma · cabecera (ninguna/texto/imagen/vídeo/documento) · cuerpo con barra de formato y botón «Añadir variable» (pide ejemplo) · pie · botones (respuesta rápida, enlace, llamada; máx. según Meta) · casilla «Añadir botón No recibir más» (marcada en Marketing) · contadores de caracteres · Enviar a revisión.
+- **Editor** (dos columnas, formulario + vista previa tipo WhatsApp en vivo): nombre legible (genera el nombre de Meta) · categoría · idioma · cabecera (ninguna/texto/imagen/vídeo/documento) · cuerpo con barra de formato y botón «Añadir variable» (pide ejemplo) · pie · botones (respuesta rápida, enlace, llamada; máx. según Meta) · casilla «Añadir botón No recibir más» (marcada en Marketing) · contadores de caracteres · **Guardar borrador** · Enviar a revisión.
+- **Borradores** (solo admin): «Guardar borrador» guarda el editor sin enviarlo a Meta (estado «Borrador», `LOCAL_DRAFT`, contenido en `Template.draftData`); para guardar basta el nombre y el idioma. Desde el listado (filtro «Borrador») se reabre, se edita y se envía a revisión con la misma validación que una plantilla nueva (botón «No recibir más» en Marketing, ejemplos, cabecera multimedia). Si Meta rechaza el envío, sigue siendo borrador. Un borrador reserva su nombre; borrarlo lo elimina del todo (nunca existió en Meta) y libera el nombre. Los agentes no ven borradores, y no se pueden usar en el chat ni en campañas.
 - Estado rechazado: muestra el motivo de Meta y permite duplicar y corregir.
 
 ## P6 · Calidad y costes

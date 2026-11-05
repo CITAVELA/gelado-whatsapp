@@ -394,6 +394,7 @@ model Template {
   category        TemplateCategory
   status          TemplateStatus
   components      Json                         // HEADER/BODY/FOOTER/BUTTONS tal cual Meta
+  draftData       Json?                        // contenido del editor de un borrador (LOCAL_DRAFT); null en el resto
   rejectedReason  String?
   qualityScore    String?
   hasOptOutButton Boolean          @default(false)
