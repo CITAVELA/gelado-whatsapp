@@ -1,25 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AudienceCountDto, AudienceCountRequest, CampaignDto, CampaignRecipientsPage, CampaignReportDto, LabelDto } from '@gelado/shared';
 import { api, qs } from '../../lib/api';
 import { queryClient } from '../../lib/query';
 import { useSocketEvent } from '../../lib/socket';
+import { createBatchedRefresh } from '../inbox/refresh';
 
 export const invalidateCampaigns = () => queryClient.invalidateQueries({ queryKey: ['campaigns'] });
 
-/** Refresca las consultas de campañas cuando llega progreso por WebSocket (con antirrebote de 1 s). */
+/**
+ * Refresca las consultas de campañas cuando llega progreso por WebSocket: agrupado en ventanas de 4 s y, con la
+ * pestaña oculta, solo al volver a verla (el servidor emite un `campaign.progress` por cada mensaje enviado).
+ */
 export function useCampaignLive() {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+  const refresh = useMemo(() => createBatchedRefresh(() => void invalidateCampaigns(), 4000), []);
+  useEffect(() => () => refresh.dispose(), [refresh]);
   useSocketEvent(
     'campaign.progress',
-    useCallback(() => {
-      if (timer.current) return;
-      timer.current = setTimeout(() => {
-        timer.current = null;
-        void invalidateCampaigns();
-      }, 1000);
-    }, []),
+    useCallback(() => refresh.request(), [refresh]),
   );
 }
 

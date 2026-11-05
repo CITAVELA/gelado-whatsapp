@@ -250,6 +250,7 @@ function skipText(reason: string) {
     case 'PHONE_INVALID': return 'teléfono no válido';
     case 'DUPLICATE': return 'duplicado';
     case 'DELETED': return 'contacto borrado';
+    case 'CANCELLED': return 'campaña cancelada';
     default: return reason;
   }
 }
