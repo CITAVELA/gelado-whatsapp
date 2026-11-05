@@ -38,6 +38,42 @@ test('(a) un mensaje entrante aparece en la bandeja en menos de 5 s, sin recarga
   await expect(page).toHaveTitle(/^\(\d+\) Gelado WhatsApp/);
 });
 
+test('(a) aviso sonoro y notificación del navegador al entrar un mensaje; sin aviso si ya estás en esa conversación', async ({ browser }) => {
+  const ctx = await browser.newContext({ locale: 'es-ES', baseURL: `http://localhost:${process.env.E2E_PORT || '3100'}`, permissions: ['notifications'] });
+  await ctx.addInitScript(() => {
+    (window as any).__beeps = 0;
+    (window as any).__notifs = [] as string[];
+    const proto = (window.AudioContext ?? (window as any).webkitAudioContext)?.prototype;
+    if (proto) {
+      const orig = proto.createOscillator;
+      proto.createOscillator = function (...a: any[]) { (window as any).__beeps++; return orig.apply(this, a); };
+    }
+    const Real = window.Notification;
+    (window as any).Notification = class extends Real { constructor(t: string, o?: NotificationOptions) { super(t, o); (window as any).__notifs.push(`${t}|${o?.body ?? ''}`); } };
+    Object.defineProperty((window as any).Notification, 'permission', { get: () => 'granted' });
+  });
+  const page = await ctx.newPage();
+  await login(page, CRISTINA);
+  const a = phone(), b = phone();
+  const nameA = `Sonido ${a.wa.slice(-8)}`, nameB = `Otro ${b.wa.slice(-8)}`;
+  await inboundText(a.wa, 'Primer aviso', nameA);
+  await expect(card(page, nameA)).toBeVisible({ timeout: 5000 });
+  await expect.poll(() => page.evaluate(() => (window as any).__beeps)).toBeGreaterThanOrEqual(2); // dos pitidos
+  await expect.poll(() => page.evaluate(() => (window as any).__notifs)).toContainEqual(expect.stringContaining(`${nameA}|Primer aviso`));
+  // con la conversación A abierta y visible, otro mensaje de A no avisa; uno de B sí
+  await card(page, nameA).click();
+  await expect(chat(page)).toBeVisible();
+  const before = await page.evaluate(() => (window as any).__beeps);
+  await inboundText(a.wa, 'Segundo mensaje, ya estás mirando', nameA);
+  await expect(chat(page).getByText('Segundo mensaje, ya estás mirando')).toBeVisible({ timeout: 5000 });
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => (window as any).__beeps)).toBe(before);
+  await inboundText(b.wa, 'Soy otro cliente', nameB);
+  await expect(card(page, nameB)).toBeVisible({ timeout: 5000 });
+  await expect.poll(() => page.evaluate(() => (window as any).__beeps)).toBeGreaterThan(before);
+  await ctx.close();
+});
+
 test('(b) responder con texto: Enter envía, sale por la API de Meta y el cliente lo recibe', async ({ page }) => {
   await login(page, CRISTINA);
   await card(page).click();

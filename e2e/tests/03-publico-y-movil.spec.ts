@@ -4,7 +4,7 @@
  * + acceso: errores de login en español y pantallas protegidas.
  */
 import { expect, test } from '@playwright/test';
-import { CRISTINA, api, inboundText, json, login, phone, simPost } from '../helpers';
+import { CRISTINA, api, inboundText, json, login, phone } from '../helpers';
 
 test('(i) /privacidad responde 200 sin sesión, con el texto en el HTML y el ancla #supresion', async ({ request }) => {
   const r = await request.get('/privacidad');
@@ -51,6 +51,39 @@ test('el título de la pestaña lleva el contador de no leídos y el cierre de s
   await expect(page).toHaveURL(/\/login/);
   await page.goto('/bandeja');
   await expect(page).toHaveURL(/\/login/);
+});
+
+test('sesión caducada: si la cookie desaparece, la app devuelve al login en vez de quedarse rota', async ({ page, context }) => {
+  await login(page, CRISTINA);
+  await context.clearCookies();
+  await page.getByRole('link', { name: 'Contactos' }).click({ timeout: 3000 }).catch(() => undefined); // puede haber redirigido ya solo
+  await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
+  await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible();
+});
+
+test('el enlace de nueva contraseña de un solo uso: crear contraseña, entrar y no poder reutilizarlo', async ({ page }) => {
+  const admin = await api();
+  const email = `nueva${Date.now()}@gelado.eu`;
+  const inv = await json(await admin.post('/api/users', { data: { email, name: 'Persona Nueva', role: 'AGENT' } }));
+  const url = new URL(inv.link.url);
+  await page.goto(url.pathname);
+  await expect(page.getByText(`Crea la contraseña para`)).toBeVisible();
+  await page.getByLabel('Contraseña', { exact: true }).fill('una-clave-larga-123');
+  await page.getByLabel('Repite la contraseña').fill('una-clave-distinta');
+  await page.getByRole('button', { name: 'Crear contraseña' }).click();
+  await expect(page.getByRole('alert')).toContainText('Las contraseñas no coinciden');
+  await page.getByLabel('Repite la contraseña').fill('una-clave-larga-123');
+  await page.getByRole('button', { name: 'Crear contraseña' }).click();
+  await expect(page.getByText('Contraseña guardada')).toBeVisible();
+  await page.getByRole('link', { name: 'Entrar' }).click();
+  await page.getByLabel('Correo').fill(email);
+  await page.getByLabel('Contraseña').fill('una-clave-larga-123');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page).toHaveURL(/\/bandeja/);
+  // el enlace ya no vale
+  const again = await page.request.get(`/api/auth/token/${url.pathname.split('/').pop()}`);
+  expect((await again.json()).valid).toBe(false);
+  await admin.dispose();
 });
 
 test.describe('(j) móvil 390×844', () => {

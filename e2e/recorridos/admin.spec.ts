@@ -152,7 +152,7 @@ test('recorrido de administradora (María Iborra)', async ({ page }) => {
     const link = page.getByRole('link', { name: new RegExp(seccion) }).or(page.getByRole('tab', { name: new RegExp(seccion) })).or(page.getByRole('button', { name: new RegExp(seccion) })).first();
     if (await link.count()) {
       await link.click();
-      if (seccion === 'Privacidad') await expect(page.locator('.pv, .preview, [aria-label*="Vista previa"]').first().or(page.getByText('Vista previa').first())).toBeVisible();
+      if (seccion === 'Privacidad') await expect(page.getByLabel('Vista previa de la política')).toContainText('Política de privacidad', { timeout: 8000 });
       await page.waitForTimeout(1200);
       await shot(page, `ajustes-${seccion.toLowerCase()}`);
     }
