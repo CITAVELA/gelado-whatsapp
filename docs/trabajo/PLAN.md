@@ -41,8 +41,8 @@ Cambios fuera de lo propio (p. ej. `schema.prisma`, `endpoints.ts`): mínimos, e
 
 - [x] Paso 0 · base y contratos
 - [x] Paso 1 · S1, S2, S3, S4 (integrados)
-- [ ] Paso 2 · S5, S6, S7
-- [ ] Paso 2b · S11 · Consumo en Render (añadido al encargo el 05/11/2026): pg-boss sin sondeo rápido (despertar en proceso al encolar; 30 s en wa-inbound/wa-send, 60 s el resto; intervalos internos largos), compresión, caché de assets e index, ETag/304, sin sondeo en pestaña oculta, buildFilter y sin vistas previas en render.yaml, prueba de reposo 120 s con presupuesto de consultas (< 2 MB/h hacia la BD; < 3 GB/mes en total), sección «Consumo en Render» en docs/04. Dueño de `modules/jobs`, `bootstrap.ts` y `render.yaml`; revisa el orquestador
+- [x] Paso 2 · S5, S6, S7 (integrados)
+- [x] Paso 2b · S11 · Consumo en Render (añadido al encargo el 05/11/2026): pg-boss sin sondeo rápido (despertar en proceso al encolar; 30 s en wa-inbound/wa-send, 60 s el resto; intervalos internos largos), compresión, caché de assets e index, ETag/304, sin sondeo en pestaña oculta, buildFilter y sin vistas previas en render.yaml, prueba de reposo 120 s con presupuesto de consultas (< 2 MB/h hacia la BD; < 3 GB/mes en total), sección «Consumo en Render» en docs/04. Dueño de `modules/jobs`, `bootstrap.ts` y `render.yaml`; revisa el orquestador
 - [ ] Paso 3 · S8 (QA), S9 (código), S10 (seguridad)
 - [ ] Paso 4 · correcciones
 - [ ] Paso 5 · verificación final
@@ -52,3 +52,4 @@ Cambios fuera de lo propio (p. ej. `schema.prisma`, `endpoints.ts`): mínimos, e
 | Momento | Método | Salida app→BD | Entrada BD→app | Estimación |
 | --- | --- | --- | --- | --- |
 | Antes de S11 (05/11/2026, `claude/mvp` con el paso 2 integrado) | Build de producción en reposo 120 s, workers activos, proxy TCP que cuenta bytes | 632 KB / 120 s ≈ 19 MB/h | 140 KB / 120 s ≈ 4,2 MB/h | ≈ 14 GB/mes de salida solo en reposo |
+| Después de S11 (`claude/mvp` e26f581) | Mismo método, 120 s | 12,7 KB / 120 s ≈ 0,38 MB/h | 3,9 KB / 120 s ≈ 0,12 MB/h | ≈ 0,4 GB/mes en reposo (objetivo < 2 MB/h y < 3 GB/mes: cumplido) |
