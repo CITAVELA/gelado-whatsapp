@@ -11,6 +11,7 @@ import { DomainEventsModule } from './modules/events/domain-events.service';
 import { SettingsModule } from './modules/settings/settings.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { WebhookFieldRouterModule } from './modules/webhooks/webhook-field-router';
 import { MediaModule } from './modules/media/media.module';
 import { ContactsModule } from './modules/contacts/contacts.module';
 import { LabelsModule } from './modules/labels/labels.module';
@@ -23,7 +24,7 @@ import { QualityModule } from './modules/quality/quality.module';
 @Module({
   imports: [
     // Base (F0)
-    PrismaModule, AuditModule, AuthModule, UsersModule, HealthModule, JobsModule, RealtimeModule, StorageModule, DomainEventsModule, SettingsModule,
+    PrismaModule, AuditModule, AuthModule, UsersModule, HealthModule, JobsModule, RealtimeModule, StorageModule, DomainEventsModule, SettingsModule, WebhookFieldRouterModule,
     // Módulos funcionales (un dueño cada uno, ver docs/plan de trabajo)
     WhatsAppModule, WebhooksModule, MediaModule, ContactsModule, LabelsModule, InboxModule, LibraryModule, TemplatesModule, CampaignsModule, QualityModule,
   ],

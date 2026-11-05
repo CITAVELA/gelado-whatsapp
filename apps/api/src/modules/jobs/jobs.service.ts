@@ -34,16 +34,37 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly log = new Logger('Jobs');
   private boss: PgBoss | null = null;
   private workers: WorkerDef[] = [];
-  private handlers = new Map<string, JobHandler>();
+  /** varios módulos pueden registrar handlers en la misma cola (crons): se ejecutan en orden */
+  private handlers = new Map<string, Array<{ name: string; fn: JobHandler }>>();
   private started = false;
   /** En pruebas: true = send() ejecuta el handler en el acto (sin pg-boss) */
   inlineMode = config().NODE_ENV === 'test';
   /** Errores de jobs inline (para inspeccionarlos en pruebas) */
   inlineErrors: Array<{ queue: string; error: unknown }> = [];
 
-  register<T>(queue: QueueName, handler: JobHandler<T>, options: PgBoss.WorkOptions = {}) {
-    this.handlers.set(queue, handler as JobHandler);
-    this.workers.push({ queue, handler: handler as JobHandler, options });
+  /**
+   * Registra un handler. En colas de trabajo (wa-send…) debe haber uno; en crons (cron-*) puede haber varios
+   * (p. ej. plantillas y calidad en cron-hourly): se ejecutan en orden y el fallo de uno no para a los demás.
+   */
+  register<T>(queue: QueueName, handler: JobHandler<T>, options: PgBoss.WorkOptions = {}, name = queue) {
+    const list = this.handlers.get(queue) ?? [];
+    list.push({ name, fn: handler as JobHandler });
+    this.handlers.set(queue, list);
+    if (!this.workers.some((w) => w.queue === queue)) {
+      this.workers.push({ queue, handler: (data, job) => this.dispatch(queue, data, job), options });
+    }
+  }
+
+  private async dispatch(queue: string, data: any, job: PgBoss.Job<any>) {
+    const list = this.handlers.get(queue) ?? [];
+    if (list.length === 1) return list[0]!.fn(data, job);
+    for (const h of list) {
+      try {
+        await h.fn(data, job);
+      } catch (e) {
+        this.log.error(`Cron ${queue}/${h.name} falló: ${(e as Error)?.stack ?? e}`);
+      }
+    }
   }
 
   async onApplicationBootstrap() {
@@ -75,10 +96,9 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
   /** Encola un trabajo. En modo inline se ejecuta al momento (los errores se guardan en inlineErrors). */
   async send<T extends object>(queue: QueueName, data: T, options: PgBoss.SendOptions = {}): Promise<string | null> {
     if (this.inlineMode) {
-      const h = this.handlers.get(queue);
-      if (!h) return null;
+      if (!this.handlers.has(queue)) return null;
       try {
-        await h(data, { id: 'inline', name: queue, data } as PgBoss.Job<T>);
+        await this.dispatch(queue, data, { id: 'inline', name: queue, data } as PgBoss.Job<T>);
       } catch (error) {
         this.inlineErrors.push({ queue, error });
       }
@@ -90,9 +110,8 @@ export class JobsService implements OnApplicationBootstrap, OnModuleDestroy {
 
   /** Ejecuta el handler de una cola directamente (pruebas y tareas manuales). Propaga errores. */
   async runInline<T>(queue: QueueName, data: T) {
-    const h = this.handlers.get(queue);
-    if (!h) throw new Error(`Sin handler para ${queue}`);
-    await h(data, { id: 'inline', name: queue, data } as PgBoss.Job<T>);
+    if (!this.handlers.has(queue)) throw new Error(`Sin handler para ${queue}`);
+    await this.dispatch(queue, data, { id: 'inline', name: queue, data } as PgBoss.Job<T>);
   }
 
   hasHandler(queue: QueueName) {
