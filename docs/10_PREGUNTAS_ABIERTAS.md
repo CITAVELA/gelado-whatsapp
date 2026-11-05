@@ -21,6 +21,7 @@ Respondidas por Julio el 05/11/2026. Estas respuestas mandan sobre cualquier otr
 | P13 | Correo saliente | **Sin correo en el MVP**: la administradora genera enlaces de invitación y de nueva contraseña desde la app; avisos solo dentro de la app |
 | P14 | ERP y tienda | **Fuera** (Superchat tampoco estaba conectado al ERP) |
 | P15 | Chat interno y app instalable | Fase 2 |
+| P16 | Contactos sin móvil en la exportación de Superchat (05/11/2026, 19:21) | **Se importan también** (con correo y/o código), para un email marketing futuro en Fase 2. En el MVP no se envía ningún correo (P13 sigue igual); sin teléfono no hay conversación ni campañas de WhatsApp (se excluyen con motivo «Sin WhatsApp») |
 
 ## De Julio
 
