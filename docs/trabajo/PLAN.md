@@ -46,3 +46,9 @@ Cambios fuera de lo propio (p. ej. `schema.prisma`, `endpoints.ts`): mínimos, e
 - [ ] Paso 3 · S8 (QA), S9 (código), S10 (seguridad)
 - [ ] Paso 4 · correcciones
 - [ ] Paso 5 · verificación final
+
+## Medición de consumo (orquestador)
+
+| Momento | Método | Salida app→BD | Entrada BD→app | Estimación |
+| --- | --- | --- | --- | --- |
+| Antes de S11 (05/11/2026, `claude/mvp` con el paso 2 integrado) | Build de producción en reposo 120 s, workers activos, proxy TCP que cuenta bytes | 632 KB / 120 s ≈ 19 MB/h | 140 KB / 120 s ≈ 4,2 MB/h | ≈ 14 GB/mes de salida solo en reposo |
