@@ -16,7 +16,7 @@ const BLOCKING_CODES = [368, 131031, 133010];
 /** Eventos de account_update que no son una incidencia (informativos). */
 const ACCOUNT_INFO = /^(PARTNER_|VERIFIED_ACCOUNT|AUTH_INTL|BUSINESS_PRIMARY|ACCOUNT_UPDATE_INFO)/;
 const ACCOUNT_RECOVERED = /(LIFTED|REVIEW_COMPLETED|REINSTATE|RESTORED|APPROVED)/;
-const ACCOUNT_CRITICAL = /(RESTRICTION|DISABLED|BAN|DELETED|VIOLATION)/;
+const ACCOUNT_CRITICAL = /(RESTRICTION|DISABLED|BAN|DELETED)/;
 
 /**
  * Filtro de mensajes que cuentan para el gasto. ÚNICO criterio: lo usan el gasto del mes (aquí) y el informe de
@@ -35,6 +35,11 @@ export type AccountEventSeverity = 'recovered' | 'info' | 'critical' | 'warning'
 export function accountEventSeverity(event: string, raw: any): AccountEventSeverity {
   const ev = String(event ?? '').toUpperCase();
   if (ACCOUNT_RECOVERED.test(ev)) return 'recovered';
+  // DISABLED_UPDATE trae el estado real en ban_info: REINSTATE = la cuenta vuelve a estar activa
+  const banState = String(raw?.ban_info?.waba_ban_state ?? '').toUpperCase();
+  if (banState && ACCOUNT_RECOVERED.test(banState)) return 'recovered';
+  // Las infracciones de política son un aviso: no bloquean (no hay evento de recuperación); las restricciones sí
+  if (/VIOLATION/.test(ev)) return 'warning';
   if (ACCOUNT_INFO.test(ev)) return 'info';
   const restrictionInfo = raw?.restriction_info;
   if (/RESTRICTION/.test(ev) && Array.isArray(restrictionInfo) && restrictionInfo.length === 0) return 'recovered';

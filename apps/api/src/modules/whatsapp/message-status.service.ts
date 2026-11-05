@@ -36,12 +36,14 @@ export class MessageStatusService {
    */
   async markSent(messageId: string, wamid: string): Promise<Message> {
     const now = new Date();
-    const cur = await this.prisma.message.findUniqueOrThrow({ where: { id: messageId }, select: { status: true } });
-    const advance = cur.status === 'PENDING';
-    const m = await this.prisma.message.update({
-      where: { id: messageId },
-      data: { wamid, sendState: null, sendStartedAt: null, ...(advance ? { status: 'SENT', sentAt: now, errorCode: null, errorTitle: null, errorDetails: null, errorRetryable: null } : {}) },
+    // Avance condicional (N8): solo si sigue PENDING; si un estado enlazado por datos opacos ya lo hizo avanzar, no retrocede
+    const adv = await this.prisma.message.updateMany({
+      where: { id: messageId, status: 'PENDING' },
+      data: { wamid, sendState: null, sendStartedAt: null, status: 'SENT', sentAt: now, errorCode: null, errorTitle: null, errorDetails: null, errorRetryable: null },
     });
+    const advance = adv.count === 1;
+    if (!advance) await this.prisma.message.updateMany({ where: { id: messageId, OR: [{ wamid: null }, { wamid }] }, data: { wamid, sendState: null, sendStartedAt: null } });
+    const m = await this.prisma.message.findUniqueOrThrow({ where: { id: messageId } });
     if (advance) await this.publish(m, now);
     return m;
   }

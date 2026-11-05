@@ -167,6 +167,14 @@ export class CampaignRunnerService implements OnModuleInit {
 
   // ───────────────────────── Pausa, reanudación, cancelación ─────────────────────────
 
+  /** Motivo por el que una plantilla no se puede usar en campaña (no aprobada, o marketing sin «No recibir más»). */
+  static templateProblem(t: { status: string; category: string; hasOptOutButton: boolean; name: string; displayName: string | null }): string | null {
+    const n = `«${t.displayName ?? t.name}»`;
+    if (t.status !== 'APPROVED') return `la plantilla ${n} ya no está aprobada por Meta`;
+    if (t.category === 'MARKETING' && !t.hasOptOutButton) return `la plantilla de marketing ${n} no tiene el botón «No recibir más» (duplícala con el botón de baja)`;
+    return null;
+  }
+
   async pause(campaignId: string): Promise<void> {
     const u = await this.prisma.campaign.updateMany({ where: { id: campaignId, status: { in: ['RUNNING', 'SCHEDULED'] } }, data: { status: 'PAUSED', stopReason: null } });
     if (!u.count) throw new ConflictException({ statusCode: 409, message: 'Solo se puede pausar una campaña en curso o programada' });
@@ -176,9 +184,8 @@ export class CampaignRunnerService implements OnModuleInit {
   async resume(campaignId: string): Promise<void> {
     const c = await this.prisma.campaign.findUnique({ where: { id: campaignId }, include: { template: true } });
     if (!c || c.status !== 'PAUSED') throw new ConflictException({ statusCode: 409, message: 'Solo se puede reanudar una campaña pausada' });
-    if (c.template.status !== 'APPROVED') {
-      throw new ConflictException({ statusCode: 409, message: `La plantilla «${c.template.displayName ?? c.template.name}» no está aprobada por Meta: no se puede reanudar` });
-    }
+    const tplProblem = CampaignRunnerService.templateProblem(c.template);
+    if (tplProblem) throw new ConflictException({ statusCode: 409, message: `No se puede reanudar: ${tplProblem}` });
     const blocked = await this.quality.blockingReason();
     if (blocked) {
       throw new ConflictException({ statusCode: 409, message: `No se puede reanudar: ${blocked}. Revisa Calidad y la cuenta de WhatsApp y vuelve a intentarlo cuando se resuelva.` });
@@ -224,8 +231,9 @@ export class CampaignRunnerService implements OnModuleInit {
         const due = await this.prisma.campaign.findMany({ where: { status: 'SCHEDULED', scheduledAt: { lte: now } }, select: { id: true } });
         for (const d of due) {
           const tpl = await this.prisma.campaign.findUnique({ where: { id: d.id }, include: { template: true } });
-          if (tpl && tpl.template.status !== 'APPROVED') {
-            await this.stopWhere({ id: d.id }, `Parada automática: la plantilla «${tpl.template.displayName ?? tpl.template.name}» ya no está aprobada.`, 'PAUSED');
+          const tp = tpl ? CampaignRunnerService.templateProblem(tpl.template) : null;
+          if (tp) {
+            await this.stopWhere({ id: d.id }, `Parada automática: ${tp}.`, 'PAUSED');
             continue;
           }
           const why = await blockingReason();
@@ -238,7 +246,7 @@ export class CampaignRunnerService implements OnModuleInit {
       }
       const running = await this.prisma.campaign.findMany({
         where: { status: 'RUNNING', ...(onlyCampaignId ? { id: onlyCampaignId } : {}) },
-        include: { template: { select: { status: true, name: true, displayName: true } } },
+        include: { template: { select: { status: true, name: true, displayName: true, category: true, hasOptOutButton: true } } },
         orderBy: { startedAt: 'asc' },
       });
       if (!running.length) return;
@@ -252,8 +260,9 @@ export class CampaignRunnerService implements OnModuleInit {
       const defaults = await this.settings.get('campaign_defaults');
       let room = defaults.dailyLimit - (await this.audience.usedLast24h(now));
       for (const c of running) {
-        if (c.template.status !== 'APPROVED') {
-          await this.stopWhere({ id: c.id }, `Parada automática: la plantilla «${c.template.displayName ?? c.template.name}» ya no está aprobada por Meta.`, 'PAUSED');
+        const tp = CampaignRunnerService.templateProblem(c.template);
+        if (tp) {
+          await this.stopWhere({ id: c.id }, `Parada automática: ${tp}.`, 'PAUSED');
           continue;
         }
         const last = this.lastDispatch.get(c.id);
@@ -330,6 +339,13 @@ export class CampaignRunnerService implements OnModuleInit {
     }
 
     const template = await this.prisma.template.findUniqueOrThrow({ where: { id: campaign.templateId } });
+    // Justo antes de enviar: la plantilla sigue aprobada y, si es de marketing, con «No recibir más» (regla 5 de CLAUDE.md)
+    const tplProblem = CampaignRunnerService.templateProblem(template);
+    if (tplProblem) {
+      await requeue();
+      await this.stopWhere({ id: campaign.id, status: 'RUNNING' }, `Parada automática: ${tplProblem}.`, 'PAUSED');
+      return;
+    }
     const keys = templateVariableKeys(template.components as unknown as TemplateComponent[]);
     const { params, missing } = resolveParams(keys, (campaign.variableMapping ?? {}) as Record<string, VariableSource>, contact);
     if (missing.length) {

@@ -6,6 +6,7 @@ import { Icon } from '../components/Icon';
 import { Popover, MenuItem } from '../components/Popover';
 import { Avatar } from '../components/ui';
 import { useAuth } from '../lib/auth';
+import { queryClient } from '../lib/query';
 import { api } from '../lib/api';
 import { useSocketEvent } from '../lib/socket';
 import { useInboxCounts } from '../features/inbox/hooks';
@@ -18,7 +19,14 @@ function AlertBanner() {
   const [live, setLive] = useState<AlertDto[] | null>(null);
   useSocketEvent('alert', useCallback((p: { alerts: AlertDto[] }) => setLive(p.alerts), []));
   const alerts = live ?? data ?? [];
+  const { isAdmin } = useAuth();
   if (!alerts.length) return null;
+  async function resolve(id: string) {
+    if (!window.confirm('¿Marcar este aviso como resuelto? Hazlo solo después de comprobar la cuenta en Meta.')) return;
+    await api.post(`/api/alerts/${id}/resolve`).catch(() => undefined);
+    setLive(null);
+    void queryClient.invalidateQueries({ queryKey: ['alerts'] });
+  }
   return (
     <>
       {alerts.map((a) => (
@@ -26,6 +34,7 @@ function AlertBanner() {
           <Icon name="warn" small />
           <span className="grow">{a.message}</span>
           <NavLink to={a.link ?? '/calidad'}>Ver calidad</NavLink>
+          {isAdmin && <button className="btn ghost" style={{ height: 28 }} onClick={() => void resolve(a.id)}>Marcar como resuelto</button>}
         </div>
       ))}
     </>

@@ -42,6 +42,13 @@ export class AlertsService {
     return r.count > 0;
   }
 
+  /** La administradora marca una alerta como resuelta (p. ej. tras revisar la cuenta en Meta). Devuelve si existía. */
+  async resolveById(id: string) {
+    const r = await this.prisma.alert.updateMany({ where: { id, resolvedAt: null }, data: { resolvedAt: new Date() } });
+    if (r.count) await this.broadcast();
+    return r.count > 0;
+  }
+
   async active(): Promise<AlertDto[]> {
     const rows = await this.prisma.alert.findMany({ where: { resolvedAt: null }, orderBy: [{ level: 'desc' }, { createdAt: 'desc' }] });
     return rows.map((a) => ({

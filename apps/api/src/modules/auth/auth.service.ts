@@ -76,6 +76,13 @@ export class AuthService {
     return (await this.validateSessionEx(token))?.user ?? null;
   }
 
+  /** Comprueba la sesión sin deslizar su caducidad (revalidación periódica de sockets). */
+  async peekSession(token: string | undefined): Promise<boolean> {
+    if (!token) return false;
+    const s = await this.prisma.session.findUnique({ where: { tokenHash: sha256(token) }, include: { user: { select: { active: true } } } });
+    return !!s && s.expiresAt.getTime() > Date.now() && s.user.active;
+  }
+
   /** Como validateSession, e indica si se ha deslizado la caducidad (para renovar la cookie). */
   async validateSessionEx(token: string | undefined): Promise<{ user: AuthUser; slid: boolean } | null> {
     if (!token) return null;

@@ -1,4 +1,8 @@
-import { BadRequestException, Controller, Get, Headers, Query, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Headers, HttpCode, NotFoundException, Param, ParseUUIDPipe, Post, Query, Req, UnauthorizedException } from '@nestjs/common';
+import type { Request } from 'express';
+import { AdminOnly, CurrentUser, type AuthUser } from '../../common/decorators';
+import { AuditService } from '../audit/audit.service';
+import { clientIp } from '../auth/auth.controller';
 import { timingSafeEqual, createHash } from 'node:crypto';
 import { zonedParts, type StatusDto } from '@gelado/shared';
 import { Public } from '../../common/decorators';
@@ -14,6 +18,7 @@ export class QualityController {
     private readonly alerts: AlertsService,
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
+    private readonly audit: AuditService,
   ) {}
 
   @Get('quality')
@@ -31,6 +36,16 @@ export class QualityController {
   @Get('alerts')
   activeAlerts() {
     return this.alerts.active();
+  }
+
+  /** La administradora da por resuelta una alerta (salida manual si Meta no manda el evento de recuperación). */
+  @Post('alerts/:id/resolve')
+  @HttpCode(200)
+  @AdminOnly()
+  async resolveAlert(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() me: AuthUser, @Req() req: Request) {
+    if (!(await this.alerts.resolveById(id))) throw new NotFoundException({ statusCode: 404, message: 'La alerta no existe o ya estaba resuelta' });
+    await this.audit.log({ userId: me.id, action: 'resolve_alert', entityType: 'Alert', entityId: id, ip: clientIp(req) });
+    return { ok: true };
   }
 
   /** Revisión diaria automática: sin sesión, con `Authorization: Bearer <STATUS_TOKEN>`. */

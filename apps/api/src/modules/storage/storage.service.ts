@@ -22,7 +22,8 @@ export interface StorageDriver {
   remove(objectPaths: string[]): Promise<void>;
 }
 
-export const SIGNED_URL_TTL = 3600;
+/** Las URLs se firman por 2 h y se reutilizan como mucho 50 min: el navegador siempre recibe ≥ 70 min de vida (N7). */
+export const SIGNED_URL_TTL = 2 * 3600;
 /** Una URL firmada de 1 h se reutiliza hasta 50 min: al navegador siempre le quedan más de 10 min de validez. */
 export const SIGNED_URL_CACHE_MS = 50 * 60_000;
 const SIGNED_URL_CACHE_MAX = 5000;

@@ -108,6 +108,7 @@ export const ENDPOINTS: EndpointDef[] = [
   { method: 'GET', path: '/api/quality', role: 'any', module: 'quality', desc: 'Calidad, límite, uso 24 h, histórico' },
   { method: 'GET', path: '/api/quality/costs', role: 'any', module: 'quality', desc: 'Gasto del mes (?month=YYYY-MM)' },
   { method: 'GET', path: '/api/alerts', role: 'any', module: 'quality', desc: 'Alertas activas (banner)' },
+  { method: 'POST', path: '/api/alerts/:id/resolve', role: 'admin', module: 'quality', desc: 'Marcar una alerta como resuelta (auditado)' },
 
   // Ajustes
   { method: 'GET', path: '/api/settings', role: 'any', module: 'settings', desc: 'Ajustes legibles por todos (horario, tarifas…)' },

@@ -62,7 +62,8 @@ export class RealtimeGateway implements OnGatewayConnection, OnModuleInit, OnMod
     const sockets = (await (this.server as any)?.fetchSockets?.()) ?? [];
     for (const sock of sockets) {
       const token = sock.data?.token as string | undefined;
-      const ok = await this.auth.validateSession(token).catch(() => null);
+      // Solo lectura (N9): no desliza la caducidad; una pestaña inactiva no mantiene viva la sesión para siempre
+      const ok = await this.auth.peekSession(token).catch(() => null);
       if (!ok) sock.disconnect(true);
     }
   }
