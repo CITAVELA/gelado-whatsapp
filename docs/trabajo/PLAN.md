@@ -40,8 +40,9 @@ Cambios fuera de lo propio (p. ej. `schema.prisma`, `endpoints.ts`): mínimos, e
 ## Estado
 
 - [x] Paso 0 · base y contratos
-- [ ] Paso 1 · S1, S2, S3, S4
+- [x] Paso 1 · S1, S2, S3, S4 (integrados)
 - [ ] Paso 2 · S5, S6, S7
+- [ ] Paso 2b · S11 · Consumo en Render (añadido al encargo el 05/11/2026): pg-boss sin sondeo rápido (despertar en proceso al encolar; 30 s en wa-inbound/wa-send, 60 s el resto; intervalos internos largos), compresión, caché de assets e index, ETag/304, sin sondeo en pestaña oculta, buildFilter y sin vistas previas en render.yaml, prueba de reposo 120 s con presupuesto de consultas (< 2 MB/h hacia la BD; < 3 GB/mes en total), sección «Consumo en Render» en docs/04. Dueño de `modules/jobs`, `bootstrap.ts` y `render.yaml`; revisa el orquestador
 - [ ] Paso 3 · S8 (QA), S9 (código), S10 (seguridad)
 - [ ] Paso 4 · correcciones
 - [ ] Paso 5 · verificación final
