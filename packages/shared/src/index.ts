@@ -1,3 +1,4 @@
+import './zod-es';
 export * from './enums';
 export * from './common';
 export * from './meta-errors';
@@ -17,3 +18,4 @@ export * from './quality';
 export * from './ws';
 export * from './whatsapp';
 export * from './endpoints';
+export { zodErrorMapEs } from './zod-es';

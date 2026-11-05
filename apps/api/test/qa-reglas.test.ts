@@ -196,7 +196,8 @@ describe('M7 · borrado lógico, borrado físico con registro y supresión compl
     const log = await prisma().auditLog.findFirstOrThrow({ where: { action: 'hard_delete_contact' } });
     expect(JSON.stringify(log)).not.toContain('34622333444');
   });
-  it.fails('derecho de supresión: tras el borrado físico no queda el teléfono ni el texto en los eventos crudos del webhook (WebhookEvent.payload)', async () => {
+  // CORREGIDO F-3 (F4b)
+  it('derecho de supresión: tras el borrado físico no queda el teléfono ni el texto en los eventos crudos del webhook (WebhookEvent.payload)', async () => {
     const { a, contact } = await contactWithHistory();
     await a.del(`/api/contacts/${contact.id}?hard=true`);
     const raw = await prisma().webhookEvent.findMany();
@@ -249,8 +250,8 @@ describe('T4 · todo lo que pasa en la conversación queda en su historial', () 
 });
 
 describe('T5 · interfaz en español, Europe/Madrid, EUR', () => {
-  // FALLO F-2: los errores de zod llegan en inglés («phone: Required»)
-  it.fails('los errores de validación de los formularios están en español (sin mensajes por defecto de zod)', async () => {
+  // CORREGIDO F-2: los errores de zod llegan en inglés («phone: Required»)
+  it('los errores de validación de los formularios están en español (sin mensajes por defecto de zod)', async () => {
     const a = await loginAs(env.t, ADMIN_EMAIL);
     const bad: Array<[string, string, any]> = [
       ['post', '/api/contacts', {}],

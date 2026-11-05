@@ -41,8 +41,8 @@ describe('Búsquedas con caracteres raros (conversaciones y contactos): nunca 50
 });
 
 describe('Búsquedas · fallos conocidos', () => {
-  // FALLO F-4: el carácter NUL (\u0000) llega a Postgres y da 500
-  it.fails('q con carácter NUL en /api/conversations → nunca 500', async () => {
+  // CORREGIDO F-4: el carácter NUL (\u0000) llega a Postgres y da 500
+  it('q con carácter NUL en /api/conversations → nunca 500', async () => {
     const r = await a.get('/api/conversations').query({ q: 'a\u0000b' });
     expect(r.status).toBeLessThan(500);
   });
@@ -78,8 +78,8 @@ describe('Identificadores y parámetros mal formados → 4xx, nunca 500', () => 
   it.fails('GET /api/contacts?includeLabelIds=no-uuid → 4xx', async () => {
     expect((await a.get('/api/contacts?includeLabelIds=no-uuid')).status).toBeLessThan(500);
   });
-  // FALLO F-6: fecha de filtro no válida en el registro de actividad → 500
-  it.fails('GET /api/audit?from=ayer → 4xx', async () => {
+  // CORREGIDO F-6: fecha de filtro no válida en el registro de actividad → 500
+  it('GET /api/audit?from=ayer → 4xx', async () => {
     expect((await a.get('/api/audit?from=ayer')).status).toBeLessThan(500);
   });
 
@@ -114,22 +114,22 @@ describe('Identificadores y parámetros mal formados → 4xx, nunca 500', () => 
     expect(r.status).toBe(400);
   });
 
-  // FALLO F-7: el límite del cuerpo JSON responde 500 en lugar de 413
-  it.fails('un cuerpo JSON enorme (> límite) → 413, no 500', async () => {
+  // CORREGIDO F-7: el límite del cuerpo JSON responde 500 en lugar de 413
+  it('un cuerpo JSON enorme (> límite) → 413, no 500', async () => {
     const r = await a.agent.post('/api/contacts').set('X-Requested-With', 'XMLHttpRequest').send({ phone: '+34600111222', notes: 'x'.repeat(12 * 1024 * 1024) });
     expect([400, 413]).toContain(r.status);
   });
 });
 
 describe('Texto con caracteres que Postgres no admite', () => {
-  // FALLO F-4
-  it.fails('una nota interna con carácter NUL (\\u0000) no da 500', async () => {
+  // CORREGIDO F-4
+  it('una nota interna con carácter NUL (\\u0000) no da 500', async () => {
     const { conversation } = await seedConversation(env.t);
     const r = await a.post(`/api/conversations/${conversation.id}/messages`, { type: 'note', body: 'hola\u0000mundo' });
     expect(r.status).toBeLessThan(500);
   });
-  // FALLO F-4 (webhook: Meta reintentaría sin fin)
-  it.fails('un entrante de Meta con \\u0000 en el texto no se pierde: el webhook responde 200 y el mensaje queda guardado', async () => {
+  // CORREGIDO F-4 (webhook: Meta reintentaría sin fin)
+  it('un entrante de Meta con \\u0000 en el texto no se pierde: el webhook responde 200 y el mensaje queda guardado', async () => {
     expect(await env.sim.sendInbound({ from: '34600111222', type: 'text', text: { body: 'hola\u0000mundo' } })).toBe(200);
     await new Promise((r) => setTimeout(r, 300));
     const n = await prisma().message.count({ where: { direction: 'INBOUND' } });

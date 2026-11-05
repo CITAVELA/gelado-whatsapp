@@ -1,4 +1,4 @@
-import { Global, Injectable, Module, Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Global, Injectable, Module, Controller, Get, Query } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { AdminOnly } from '../../common/decorators';
@@ -38,10 +38,19 @@ export class AuditService {
   async list(q: { action?: string; userId?: string; from?: string; to?: string; page?: number; pageSize?: number }) {
     const page = Math.max(1, Number(q.page) || 1);
     const pageSize = Math.min(200, Math.max(1, Number(q.pageSize) || 50));
+    const parseDate = (v: string | undefined, name: string) => {
+      if (!v) return undefined;
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) throw new BadRequestException({ statusCode: 400, message: `Fecha «${name}» no válida (usa AAAA-MM-DD)` });
+      return d;
+    };
+    if (q.userId && !/^[0-9a-f-]{36}$/i.test(q.userId)) throw new BadRequestException({ statusCode: 400, message: 'Usuario no válido' });
+    const from = parseDate(q.from, 'desde');
+    const to = parseDate(q.to, 'hasta');
     const where: Prisma.AuditLogWhereInput = {
       action: q.action || undefined,
       userId: q.userId || undefined,
-      createdAt: q.from || q.to ? { gte: q.from ? new Date(q.from) : undefined, lte: q.to ? new Date(q.to) : undefined } : undefined,
+      createdAt: from || to ? { gte: from, lte: to } : undefined,
     };
     const [items, total] = await Promise.all([
       this.prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * pageSize, take: pageSize, include: { user: { select: { name: true } } } }),
