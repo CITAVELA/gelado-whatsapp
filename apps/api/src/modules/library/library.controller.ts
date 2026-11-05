@@ -1,7 +1,9 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
+import type { Request } from 'express';
 import { libraryFileUpdateSchema, libraryFolderSchema } from '@gelado/shared';
 import { AdminOnly, CurrentUser, type AuthUser } from '../../common/decorators';
 import { ZodPipe } from '../../common/zod.pipe';
+import { clientIp } from '../auth/auth.controller';
 import { UploadInterceptor } from '../media/media.controller';
 import { LibraryService } from './library.service';
 
@@ -45,11 +47,11 @@ export class LibraryController {
   @Post('files')
   @AdminOnly()
   @UseInterceptors(UploadInterceptor)
-  upload(@UploadedFile() file: Express.Multer.File | undefined, @Body() body: { name?: string; folderId?: string }, @CurrentUser() me: AuthUser) {
+  upload(@UploadedFile() file: Express.Multer.File | undefined, @Body() body: { name?: string; folderId?: string }, @CurrentUser() me: AuthUser, @Req() req: Request) {
     if (!file) throw new BadRequestException({ statusCode: 400, message: 'Falta el archivo (campo «file»)' });
     const folderId = body?.folderId && body.folderId !== 'null' ? body.folderId : null;
     if (folderId && !/^[0-9a-f-]{36}$/i.test(folderId)) throw new BadRequestException({ statusCode: 400, message: 'Identificador no válido' });
-    return this.lib.upload(file, { name: body?.name, folderId }, me.id);
+    return this.lib.upload(file, { name: body?.name, folderId }, me.id, clientIp(req));
   }
 
   @Patch('files/:id')
@@ -60,8 +62,8 @@ export class LibraryController {
 
   @Delete('files/:id')
   @AdminOnly()
-  async deleteFile(@Param('id', uuid) id: string) {
-    await this.lib.deleteFile(id);
+  async deleteFile(@Param('id', uuid) id: string, @CurrentUser() me: AuthUser, @Req() req: Request) {
+    await this.lib.deleteFile(id, me.id, clientIp(req));
     return { ok: true };
   }
 }

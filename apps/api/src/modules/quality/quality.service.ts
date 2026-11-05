@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { computeCost, dailyLimitForTier, WINDOW_MS, zonedTimeToUtc, type CostsDto, type QualityRating, type QualityStatusDto, type WaPhoneNumberInfo } from '@gelado/shared';
+import type { Prisma } from '@prisma/client';
+import { COSTABLE_MESSAGE_STATUSES, computeCost, dailyLimitForTier, WINDOW_MS, zonedTimeToUtc, type CostsDto, type QualityRating, type QualityStatusDto, type WaPhoneNumberInfo } from '@gelado/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { config } from '../../common/config';
 import { SettingsService } from '../settings/settings.service';
 import { WhatsAppGateway } from '../whatsapp/whatsapp.gateway';
 import { DomainEvents } from '../events/domain-events.service';
 import { AlertsService } from './alerts.service';
+import { phoneStopReason } from './blocking';
 
 export { normalizeRating as normRating } from '../settings/rating';
 import { normalizeRating as normRating } from '../settings/rating';
@@ -16,7 +18,28 @@ const ACCOUNT_INFO = /^(PARTNER_|VERIFIED_ACCOUNT|AUTH_INTL|BUSINESS_PRIMARY|ACC
 const ACCOUNT_RECOVERED = /(LIFTED|REVIEW_COMPLETED|REINSTATE|RESTORED|APPROVED)/;
 const ACCOUNT_CRITICAL = /(RESTRICTION|DISABLED|BAN|DELETED|VIOLATION)/;
 
-const PRICING_STATUSES = ['DELIVERED', 'READ'] as const;
+/**
+ * Filtro de mensajes que cuentan para el gasto. ÚNICO criterio: lo usan el gasto del mes (aquí) y el informe de
+ * campaña, para que ambas cifras cuadren (solo entregados/leídos, facturables y con categoría de precio).
+ */
+export const costableMessageWhere = (): Prisma.MessageWhereInput => ({
+  direction: 'OUTBOUND',
+  billable: true,
+  pricingCategory: { not: null },
+  status: { in: [...COSTABLE_MESSAGE_STATUSES] },
+});
+
+export type AccountEventSeverity = 'recovered' | 'info' | 'critical' | 'warning';
+
+/** Clasifica un evento de `account_update`: lo comparten las alertas y las paradas de campañas. */
+export function accountEventSeverity(event: string, raw: any): AccountEventSeverity {
+  const ev = String(event ?? '').toUpperCase();
+  if (ACCOUNT_RECOVERED.test(ev)) return 'recovered';
+  if (ACCOUNT_INFO.test(ev)) return 'info';
+  const restrictionInfo = raw?.restriction_info;
+  if (/RESTRICTION/.test(ev) && Array.isArray(restrictionInfo) && restrictionInfo.length === 0) return 'recovered';
+  return ACCOUNT_CRITICAL.test(ev) ? 'critical' : 'warning';
+}
 
 /** Calidad, límite diario, alertas y costes (docs/06 · Calidad y límites, Costes). */
 @Injectable()
@@ -111,17 +134,14 @@ export class QualityService {
 
   async onAccountUpdate(p: { event: string; raw: any }) {
     const ev = p.event;
-    if (ACCOUNT_RECOVERED.test(ev)) {
+    const severity = accountEventSeverity(ev, p.raw);
+    if (severity === 'recovered') {
       await this.alerts.resolve('account');
       return;
     }
-    if (ACCOUNT_INFO.test(ev)) return;
+    if (severity === 'info') return;
     const restrictionInfo = p.raw?.restriction_info;
-    if (/RESTRICTION/.test(ev) && Array.isArray(restrictionInfo) && restrictionInfo.length === 0) {
-      await this.alerts.resolve('account');
-      return;
-    }
-    const critical = ACCOUNT_CRITICAL.test(ev);
+    const critical = severity === 'critical';
     const detail = Array.isArray(restrictionInfo) && restrictionInfo[0]?.restriction_type ? ` (${restrictionInfo[0].restriction_type})` : '';
     await this.alerts.raise({
       dedupeKey: 'account',
@@ -183,6 +203,26 @@ export class QualityService {
     return this.prisma.qualitySnapshot.findFirst({ orderBy: { createdAt: 'desc' } });
   }
 
+  /**
+   * Motivo (en español) por el que NO se puede enviar campañas ahora, o null. Bloquea: último snapshot en ROJO o con el
+   * número FLAGGED/RESTRICTED, o una alerta crítica activa de la cuenta o de «Envíos detenidos». Son dos consultas
+   * pequeñas; solo se llama cuando hay campañas que arrancar, reanudar o enviar.
+   */
+  async blockingReason(): Promise<string | null> {
+    const snap = await this.latestSnapshot();
+    const why = phoneStopReason(snap?.qualityRating, snap?.phoneStatus);
+    if (why) return why;
+    const alert = await this.prisma.alert.findFirst({ where: { resolvedAt: null, level: 'CRITICAL', dedupeKey: { in: ['account', 'sending_stopped'] } }, orderBy: { createdAt: 'desc' } });
+    if (!alert) return null;
+    if (alert.dedupeKey === 'sending_stopped') {
+      // Si ya ha salido un mensaje bien después del aviso, el bloqueo ha pasado: se cierra aquí sin esperar al sondeo horario
+      await this.resolveSendingStopped();
+      if (!(await this.alerts.activeByKey('sending_stopped'))) return null;
+      return 'los envíos están detenidos por un error grave de Meta (envía un mensaje de prueba cuando lo hayas resuelto)';
+    }
+    return 'Meta ha restringido la cuenta de WhatsApp';
+  }
+
   /** Destinatarios únicos con mensaje fuera de ventana en las últimas 24 h móviles. */
   async usedLast24h(now = new Date()) {
     const since = new Date(now.getTime() - WINDOW_MS);
@@ -230,10 +270,7 @@ export class QualityService {
     const rates = await this.settings.get('rates');
     const rows = await this.prisma.message.findMany({
       where: {
-        direction: 'OUTBOUND',
-        billable: true,
-        pricingCategory: { not: null },
-        status: { in: [...PRICING_STATUSES] },
+        ...costableMessageWhere(),
         OR: [{ deliveredAt: { gte: start, lt: end } }, { deliveredAt: null, readAt: { gte: start, lt: end } }, { deliveredAt: null, readAt: null, sentAt: { gte: start, lt: end } }],
       },
       select: { pricingCategory: true, billable: true, campaignId: true, deliveredAt: true, readAt: true, sentAt: true },

@@ -79,7 +79,10 @@ export class CampaignProgressService implements OnModuleInit {
   /** Copia el estado del mensaje al destinatario. Los estados solo avanzan; el mensaje es la fuente de verdad. */
   async syncFromMessage(recipientId: string, msg: Message): Promise<void> {
     const r = await this.prisma.campaignRecipient.findUnique({ where: { id: recipientId } });
-    if (!r || r.status === 'SKIPPED') return;
+    if (!r) return;
+    // Cancelada mientras se enviaba: si el mensaje llegó a salir, el destinatario vuelve a contar como enviado
+    const cancelledButSent = r.status === 'SKIPPED' && r.skipReason === 'CANCELLED';
+    if (r.status === 'SKIPPED' && !cancelledButSent) return;
     const data: Prisma.CampaignRecipientUpdateInput = {};
     if (!r.messageId) data.message = { connect: { id: msg.id } };
     const readAt = msg.readAt ?? r.readAt;
@@ -91,14 +94,16 @@ export class CampaignProgressService implements OnModuleInit {
 
     if (msg.status === 'FAILED') {
       data.status = 'FAILED';
+      if (cancelledButSent) data.skipReason = null;
       data.errorCode = msg.errorCode;
       data.errorTitle = msg.errorTitle;
     } else {
       const derived = msg.status === 'READ' ? 'READ' : msg.status === 'DELIVERED' ? 'DELIVERED' : msg.status === 'SENT' ? 'SENT' : 'SENDING';
       // Un destinatario FAILED no vuelve atrás salvo reintento (el mensaje vuelve a PENDING/SENT)
-      const cur = r.status === 'FAILED' ? -1 : (RANK[r.status] ?? 0);
+      const cur = r.status === 'FAILED' || cancelledButSent ? -1 : (RANK[r.status] ?? 0);
       if ((RANK[derived] ?? 0) > cur) {
         data.status = derived;
+        if (cancelledButSent) data.skipReason = null;
         if (r.status === 'FAILED') {
           data.errorCode = null;
           data.errorTitle = null;

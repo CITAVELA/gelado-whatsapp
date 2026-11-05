@@ -126,6 +126,7 @@ export const SKIP_REASON_ES: Record<string, string> = {
   DUPLICATE: 'Teléfono duplicado',
   DELETED: 'Contacto borrado',
   EXCLUDED_LABEL: 'Excluido por etiqueta',
+  CANCELLED: 'Campaña cancelada antes de enviarlo',
 };
 
 export const recipientsQuerySchema = z.object({
