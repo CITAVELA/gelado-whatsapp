@@ -154,8 +154,14 @@ export class InboxService {
   }
 
   /** Nueva conversación (RF-3.8): crea el contacto si no existe. Un teléfono = un contacto = una conversación. */
-  async create(dto: { phone: string; firstName?: string }): Promise<ConversationDetailDto> {
-    const n = normalizePhone(dto.phone);
+  async create(dto: { phone?: string; contactId?: string; firstName?: string }): Promise<ConversationDetailDto> {
+    if (dto.contactId && !dto.phone) {
+      // Por contacto: sin teléfono (P16) ensureConversationForContact lo rechaza con «Sin WhatsApp»
+      const c = await this.prisma.contact.findFirst({ where: { id: dto.contactId, deletedAt: null }, select: { id: true } });
+      if (!c) throw new NotFoundException({ statusCode: 404, message: 'Contacto no encontrado' });
+      return this.detail((await this.messaging.ensureConversationForContact(c.id)).id);
+    }
+    const n = normalizePhone(dto.phone!);
     if (!n.ok) throw new BadRequestException({ statusCode: 400, message: n.reason });
     let contact = await this.prisma.contact.findFirst({ where: { OR: [{ phoneE164: n.e164 }, { waId: n.waId }] } });
     if (!contact) {

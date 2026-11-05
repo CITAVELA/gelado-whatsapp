@@ -159,7 +159,7 @@ export function createMockApi(opts: MockOptions = {}): InboxApi & { _reset(): vo
   }
   function conv(id: string, c: ContactDto, p: Partial<Conv>): Conv {
     return {
-      id, contactId: c.id, displayName: c.displayName, phoneE164: c.phoneE164, status: 'OPEN', snoozedUntil: null, assignee: null, starred: false,
+      id, contactId: c.id, displayName: c.displayName, phoneE164: c.phoneE164 ?? '', status: 'OPEN', snoozedUntil: null, assignee: null, starred: false,
       unreadCount: 0, lastMessageAt: null, lastMessagePreview: null, lastMessageKind: null, lastMessageDirection: null, windowExpiresAt: null,
       contactLabels: c.labels, conversationLabels: [], lastCampaignName: null, lastInboundAt: null, windowOpen: false, contact: { ...c, conversationId: id }, ...p,
     };

@@ -329,6 +329,7 @@ export function CampaignWizard() {
                   <span className="hint"><b className="mono" style={{ color: 'var(--ink)' }}>{fmtNumber(c.excludedRevoked)}</b> dados de baja (no reciben nunca)</span>
                   <span className="hint"><b className="mono" style={{ color: 'var(--ink)' }}>{fmtNumber(c.excludedInvalid)}</b> teléfono no válido</span>
                   {c.excludedDuplicate > 0 && <span className="hint"><b className="mono" style={{ color: 'var(--ink)' }}>{fmtNumber(c.excludedDuplicate)}</b> duplicados</span>}
+                  {c.excludedNoPhone > 0 && <span className="hint" data-testid="excl-nophone"><b className="mono" style={{ color: 'var(--ink)' }}>{fmtNumber(c.excludedNoPhone)}</b> sin WhatsApp</span>}
                   {c.excludedDeleted > 0 && <span className="hint"><b className="mono" style={{ color: 'var(--ink)' }}>{fmtNumber(c.excludedDeleted)}</b> borrados</span>}
                   <span className="total">{fmtNumber(c.willReceive)} recibirán el mensaje</span>
                 </>

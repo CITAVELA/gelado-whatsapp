@@ -168,6 +168,10 @@ const RULES: Array<{ field: ImportField; names: string[] }> = [
   { field: 'notes', names: ['notas', 'nota', 'observaciones', 'comentarios', 'notes'] },
 ];
 
+/** Columnas de la exportación de Superchat que no se importan (P9: el historial empieza de cero). */
+const SUPERCHAT_IGNORED = ['id', 'genero', 'ultimo mensaje enviado en', 'ultimo mensaje recibido en', 'ids de campana', 'nombres de campanas', 'campana recibida en'];
+const isIgnoredColumn = (n: string) => SUPERCHAT_IGNORED.includes(n) || n.startsWith('ultimo mensaje') || /\bcampanas?\b/.test(n);
+
 export function suggestMapping(columns: string[]): Record<string, ImportField> {
   const out: Record<string, ImportField> = {};
   const used = new Set<ImportField>();
@@ -175,6 +179,7 @@ export function suggestMapping(columns: string[]): Record<string, ImportField> {
   // primero coincidencia exacta; después contiene (p. ej. «Teléfono principal»)
   const pick = (i: number, exact: boolean): ImportField | null => {
     const n = normalized[i]!;
+    if (isIgnoredColumn(n)) return null;
     for (const r of RULES) {
       if (r.field !== 'labels' && used.has(r.field)) continue;
       if (exact ? r.names.includes(n) : r.names.some((x) => x.length > 3 && n.includes(x))) return r.field;

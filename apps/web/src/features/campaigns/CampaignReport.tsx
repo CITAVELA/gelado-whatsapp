@@ -206,7 +206,7 @@ export function CampaignReport() {
                 {recipients.data.items.map((r) => (
                   <tr key={r.id}>
                     <td style={{ fontWeight: 600 }}>{r.displayName}</td>
-                    <td className="mono">{r.phoneE164}</td>
+                    <td className="mono">{r.phoneE164 ?? '—'}</td>
                     <td>{recipientPill(r)}{r.skipReason && r.status === 'SKIPPED' && <span className="hint"> · {skipText(r.skipReason)}</span>}</td>
                     <td className="hint">{fmtDateTime(recipientDate(r))}</td>
                     <td>{r.conversationId ? <Link to={`/bandeja/c/${r.conversationId}`}>Abrir chat</Link> : <Link to="/contactos">Ver contacto</Link>}</td>
@@ -248,6 +248,7 @@ function skipText(reason: string) {
   switch (reason) {
     case 'REVOKED': return 'dado de baja';
     case 'PHONE_INVALID': return 'teléfono no válido';
+    case 'NO_PHONE': return 'sin WhatsApp';
     case 'DUPLICATE': return 'duplicado';
     case 'DELETED': return 'contacto borrado';
     case 'CANCELLED': return 'campaña cancelada';

@@ -147,7 +147,7 @@ export class InboundMessagesService implements OnModuleInit {
     const { message, contact, conversation, prevStatus, eventIds } = created;
     const reopened = prevStatus === 'DONE' || prevStatus === 'SNOOZED';
     // Lista de supresión (derecho de supresión ejercido antes): si el número vuelve a escribir, nace dado de baja
-    if (contact.consentStatus !== 'REVOKED') await this.suppression.enforce(contact.id, contact.phoneE164);
+    if (contact.consentStatus !== 'REVOKED' && contact.phoneE164) await this.suppression.enforce(contact.id, contact.phoneE164);
 
     // Tiempo real
     await this.notifier.created(message.id, parsed.kind !== 'REACTION');

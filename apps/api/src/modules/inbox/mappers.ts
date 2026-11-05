@@ -35,9 +35,9 @@ export function toUserMini(u: { id: string; name: string } | null | undefined): 
   return u ? { id: u.id, name: u.name, initials: initials(u.name) } : null;
 }
 
-export function contactDisplayName(c: { firstName: string | null; lastName: string | null; profileName: string | null; company?: string | null; phoneE164: string }): string {
+export function contactDisplayName(c: { firstName: string | null; lastName: string | null; profileName: string | null; company?: string | null; phoneE164: string | null; email?: string | null; customerCode?: string | null }): string {
   const full = [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
-  return full || c.profileName || c.company || c.phoneE164;
+  return full || c.profileName || c.company || c.phoneE164 || c.email || c.customerCode || 'Sin nombre';
 }
 
 export function toContactDto(c: ContactRow): ContactDto {
@@ -71,7 +71,7 @@ export function toConversationListItem(c: ConversationRow, extra: { lastCampaign
     id: c.id,
     contactId: c.contactId,
     displayName: contactDisplayName(c.contact),
-    phoneE164: c.contact.phoneE164,
+    phoneE164: c.contact.phoneE164 ?? '', // una conversación siempre es de un contacto con teléfono
     status: c.status,
     snoozedUntil: c.snoozedUntil?.toISOString() ?? null,
     assignee: toUserMini(c.assignee),

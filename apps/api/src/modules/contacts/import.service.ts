@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Injectable, Logger, NotFoundExc
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import {
-  importOptionsSchema,
+  IMPORT_ISSUE_CODE_ES, importOptionsSchema,
   type ImportJobDto, type ImportOptionsDto, type ImportPreviewDto, type ImportRowIssue, type ImportUploadResultDto,
 } from '@gelado/shared';
 import { PrismaService } from '../../common/prisma.service';
@@ -14,9 +14,10 @@ import { ConsentService } from './consent.service';
 import { SUPPRESSED_NOTE, SuppressionService } from './suppression.service';
 import { csvCell } from './contacts.service';
 import { MAX_IMPORT_BYTES, detectKind, parseFile, suggestMapping, type ParsedFile } from './import.parser';
-import { analyzeRows, type Analysis, type PlanRow } from './import.rules';
+import { analyzeRows, countByCode, type Analysis, type PlanRow } from './import.rules';
 
 const BATCH = 500;
+const isSuppressed = (p: PlanRow, suppressed: Set<string>) => !!p.phoneE164 && suppressed.has(p.phoneE164);
 const MAX_STORED_ISSUES = 20_000;
 const LABEL_COLORS = ['#2457C5', '#C2333A', '#1E7A3D', '#B08A00', '#6B737C', '#7B3FA0', '#1F6F8B', '#9B5B12'];
 const OPT_OUT_NOTE = 'Etiqueta NO PUBLICIDAD en la importación';
@@ -28,7 +29,11 @@ interface Resolved {
   existing: Map<string, Existing>;
 }
 
-interface JobResult { optedOut: number; labelsCreated: number; failureMessage?: string | null }
+interface JobResult { optedOut: number; labelsCreated: number; withoutWhatsapp?: number; issuesByCode?: ImportJobDto['issuesByCode']; failureMessage?: string | null }
+
+/** Texto y valor de un contacto ya existente según cómo se ha detectado (teléfono, correo o código). */
+const existsText = (p: PlanRow) => `Ya existe un contacto con ese ${p.phoneE164 ? 'teléfono' : p.data.email ? 'correo' : 'código'}`;
+const planValue = (p: PlanRow) => p.phoneE164 ?? p.data.email ?? p.data.customerCode;
 
 @Injectable()
 export class ImportService implements OnModuleInit {
@@ -92,21 +97,39 @@ export class ImportService implements OnModuleInit {
   private validateOptions(opts: ImportOptionsDto, columns: string[]) {
     const unknown = Object.keys(opts.mapping).filter((c) => !columns.includes(c));
     if (unknown.length) throw new BadRequestException({ statusCode: 400, message: `Columnas que no están en el archivo: ${unknown.join(', ')}` });
-    if (!Object.values(opts.mapping).includes('phone')) {
-      throw new BadRequestException({ statusCode: 400, code: 'NO_PHONE_COLUMN', message: 'Indica qué columna contiene el teléfono móvil' });
+    const mapped = Object.values(opts.mapping);
+    if (!mapped.includes('phone') && !mapped.includes('email') && !mapped.includes('customerCode')) {
+      throw new BadRequestException({ statusCode: 400, code: 'NO_PHONE_COLUMN', message: 'Indica qué columna contiene el teléfono móvil (o, al menos, el correo o el código)' });
     }
   }
 
   private async resolve(parsed: ParsedFile, opts: ImportOptionsDto): Promise<Resolved> {
     const analysis = analyzeRows(parsed.rows, opts);
     const existing = new Map<string, Existing>();
-    const phones = analysis.plans.map((p) => p.phoneE164);
+    // Deduplicación contra la BD: por teléfono; los contactos sin teléfono, por correo (sin mayúsculas) y, sin correo, por código
+    const phones = analysis.plans.flatMap((p) => (p.phoneE164 ? [p.phoneE164] : []));
     for (let i = 0; i < phones.length; i += 5000) {
       const rows = await this.prisma.contact.findMany({
         where: { phoneE164: { in: phones.slice(i, i + 5000) } },
         select: { id: true, phoneE164: true, deletedAt: true, consentStatus: true },
       });
-      for (const r of rows) existing.set(r.phoneE164, r);
+      for (const r of rows) existing.set(`p:${r.phoneE164}`, r);
+    }
+    const emails = analysis.plans.flatMap((p) => (!p.phoneE164 && p.data.email ? [p.data.email] : []));
+    for (let i = 0; i < emails.length; i += 5000) {
+      const rows = await this.prisma.$queryRaw<Array<Existing & { mail: string }>>(Prisma.sql`
+        SELECT "id", "deletedAt", "consentStatus", lower("email") AS mail FROM "Contact"
+        WHERE lower("email") = ANY(${emails.slice(i, i + 5000)}::text[]) ORDER BY ("deletedAt" IS NOT NULL), "createdAt", "id"`);
+      for (const r of rows) if (!existing.has(`e:${r.mail}`)) existing.set(`e:${r.mail}`, { id: r.id, deletedAt: r.deletedAt, consentStatus: r.consentStatus });
+    }
+    const codes = analysis.plans.flatMap((p) => (!p.phoneE164 && !p.data.email && p.data.customerCode ? [p.data.customerCode] : []));
+    for (let i = 0; i < codes.length; i += 5000) {
+      const rows = await this.prisma.contact.findMany({
+        where: { customerCode: { in: codes.slice(i, i + 5000) } },
+        select: { id: true, customerCode: true, deletedAt: true, consentStatus: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      });
+      for (const r of rows) if (!existing.has(`c:${r.customerCode}`)) existing.set(`c:${r.customerCode}`, r);
     }
     return { analysis, existing };
   }
@@ -124,24 +147,24 @@ export class ImportService implements OnModuleInit {
     let skippedExisting = 0;
     let willOptOut = 0;
     const sample: ImportPreviewDto['sample'] = [];
-    const suppressed = await this.suppression.suppressedAmong(analysis.plans.filter((p) => !existing.get(p.phoneE164)).map((p) => p.phoneE164));
+    const suppressed = await this.suppression.suppressedAmong(analysis.plans.filter((p) => p.phoneE164 && !existing.get(p.key)).map((p) => p.phoneE164!));
     const extraIssues: ImportRowIssue[] = [];
     for (const p of analysis.plans) {
-      const ex = existing.get(p.phoneE164);
+      const ex = existing.get(p.key);
       let action: 'create' | 'update' | 'skip';
       let reason: string | undefined;
       if (!ex || ex.deletedAt) action = 'create';
       else if (opts.onDuplicate === 'skip') {
         action = 'skip';
-        reason = 'Ya existe un contacto con ese teléfono';
+        reason = existsText(p);
         skippedExisting++;
-        extraIssues.push({ row: p.row, reason: 'Ya existe un contacto con ese teléfono (se omite)', value: p.phoneE164, kind: 'skipped' });
+        extraIssues.push({ row: p.row, reason: `${existsText(p)} (se omite)`, value: planValue(p), kind: 'skipped', code: 'EXISTS_SKIPPED' });
       } else action = 'update';
       if (action === 'create') willCreate++;
       else if (action === 'update') willUpdate++;
       // la baja NO PUBLICIDAD se aplica siempre (también a existentes omitidos) y los números suprimidos antes nacen de baja
-      if ((p.optOut || suppressed.has(p.phoneE164)) && ex?.consentStatus !== 'REVOKED') willOptOut++;
-      if (sample.length < 15) sample.push({ row: p.row, phoneE164: p.phoneE164, name: [p.data.firstName, p.data.lastName].filter(Boolean).join(' ') || p.data.company || '', labels: p.labels.concat(p.optOut ? ['(BAJA)'] : []), action, reason });
+      if ((p.optOut || (p.phoneE164 && suppressed.has(p.phoneE164))) && ex?.consentStatus !== 'REVOKED') willOptOut++;
+      if (sample.length < 15) sample.push({ row: p.row, phoneE164: p.phoneE164, name: [p.data.firstName, p.data.lastName].filter(Boolean).join(' ') || p.data.company || p.data.email || '', labels: p.labels.concat(p.optOut ? ['(BAJA)'] : []), action, reason });
     }
     const all = [...analysis.issues, ...extraIssues].sort((a, b) => a.row - b.row);
     const problems = all.filter((i) => i.kind !== 'warning' || true);
@@ -150,6 +173,7 @@ export class ImportService implements OnModuleInit {
     return {
       jobId, totalRows: parsed.rows.length, willCreate, willUpdate, willSkip, willOptOut,
       invalidPhone: analysis.invalidPhone, emptyRows: analysis.emptyRows, duplicatesInFile: analysis.duplicatesInFile, skippedExisting,
+      withoutWhatsapp: analysis.withoutWhatsapp, issuesByCode: countByCode(all),
       totalIssues: problems.length, issues: problems.slice(0, 200), sample,
     };
   }
@@ -235,7 +259,7 @@ export class ImportService implements OnModuleInit {
         if (id) ids.add(id);
         else if (!warnedLabels.has(n)) {
           warnedLabels.add(n);
-          issues.push({ row: p.row, reason: `Aviso: la etiqueta ${n} no existe (no se crea)`, value: n, kind: 'warning' });
+          issues.push({ row: p.row, reason: `Aviso: la etiqueta ${n} no existe (no se crea)`, value: n, kind: 'warning', code: 'LABEL_MISSING' });
         }
       }
       return [...ids];
@@ -250,12 +274,12 @@ export class ImportService implements OnModuleInit {
 
     // «Omitir existentes» no toca los datos, pero una baja (NO PUBLICIDAD) del archivo se aplica siempre: nunca se pierde
     const skipExisting = async (p: PlanRow, ex: Existing) => {
-      issues.push({ row: p.row, reason: 'Ya existe un contacto con ese teléfono (se omite)', value: p.phoneE164, kind: 'skipped' });
+      issues.push({ row: p.row, reason: `${existsText(p)} (se omite)`, value: planValue(p), kind: 'skipped', code: 'EXISTS_SKIPPED' });
       if (p.optOut && ex.consentStatus !== 'REVOKED') {
         const r = await this.consent.setConsent(ex.id, 'REVOKED', 'LEGACY_LABEL', { userId, note: OPT_OUT_NOTE });
         if (r.changed) {
           optedOut++;
-          issues.push({ row: p.row, reason: 'Aviso: se omiten los datos, pero se aplica la baja NO PUBLICIDAD', value: p.phoneE164, kind: 'warning' });
+          issues.push({ row: p.row, reason: 'Aviso: se omiten los datos, pero se aplica la baja NO PUBLICIDAD', value: planValue(p), kind: 'warning', code: 'OPT_OUT_APPLIED' });
         }
       }
     };
@@ -267,7 +291,7 @@ export class ImportService implements OnModuleInit {
       const revived: Array<{ p: PlanRow; ex: Existing }> = [];
       const updatedRows: Array<{ p: PlanRow; ex: Existing }> = [];
       for (const p of batch) {
-        const ex = existing.get(p.phoneE164);
+        const ex = existing.get(p.key);
         if (!ex) news.push(p);
         else if (ex.deletedAt) revived.push({ p, ex });
         else if (opts.onDuplicate === 'skip') await skipExisting(p, ex);
@@ -275,22 +299,22 @@ export class ImportService implements OnModuleInit {
       }
 
       // números suprimidos antes (borrado físico): nacen dados de baja
-      const suppressed = await this.suppression.suppressedAmong(news.map((p) => p.phoneE164));
+      const suppressed = await this.suppression.suppressedAmong(news.flatMap((p) => (p.phoneE164 ? [p.phoneE164] : [])));
       try {
         await this.createBatch(news, userId, opts, labelsFor, suppressed);
         created += news.length;
-        optedOut += news.filter((p) => p.optOut || suppressed.has(p.phoneE164)).length;
+        optedOut += news.filter((p) => p.optOut || isSuppressed(p, suppressed)).length;
       } catch {
         // carrera con otra alta (p. ej. un entrante): fila a fila; si el teléfono ya existe, se aplica la ruta de actualización
         for (const p of news) {
           try {
             await this.createBatch([p], userId, opts, labelsFor, suppressed);
             created++;
-            if (p.optOut || suppressed.has(p.phoneE164)) optedOut++;
+            if (p.optOut || isSuppressed(p, suppressed)) optedOut++;
           } catch (err) {
-            const ex = await this.findByPhoneOrWaId(p);
+            const ex = await this.findExisting(p);
             if (!ex) {
-              issues.push({ row: p.row, reason: `No se pudo crear el contacto: ${(err as Error).message.slice(0, 120)}`, value: p.phoneE164, kind: 'skipped' });
+              issues.push({ row: p.row, reason: `No se pudo crear el contacto: ${(err as Error).message.slice(0, 120)}`, value: planValue(p), kind: 'skipped', code: 'CREATE_FAILED' });
             } else if (ex.deletedAt) revived.push({ p, ex });
             else if (opts.onDuplicate === 'skip') await skipExisting(p, ex);
             else updatedRows.push({ p, ex });
@@ -321,7 +345,7 @@ export class ImportService implements OnModuleInit {
 
     issues.sort((a, b) => a.row - b.row);
     const skipped = totalRows - created - updated;
-    const result: JobResult = { optedOut, labelsCreated };
+    const result: JobResult = { optedOut, labelsCreated, withoutWhatsapp: analysis.withoutWhatsapp, issuesByCode: countByCode(issues) };
     const prev = (await this.getJob(jobId)).options as any;
     await this.prisma.importJob.update({
       where: { id: jobId },
@@ -339,7 +363,7 @@ export class ImportService implements OnModuleInit {
     if (!plans.length) return;
     const now = new Date();
     const ids = plans.map(() => randomUUID());
-    const status = (p: PlanRow) => (p.optOut || suppressed.has(p.phoneE164) ? 'REVOKED' : opts.initialConsent);
+    const status = (p: PlanRow) => (p.optOut || isSuppressed(p, suppressed) ? 'REVOKED' : opts.initialConsent);
     await this.prisma.$transaction(async (tx) => {
       const r = await tx.contact.createMany({
         data: plans.map((p, k) => ({
@@ -356,7 +380,7 @@ export class ImportService implements OnModuleInit {
           : [
               p.optOut
                 ? { contactId: ids[k]!, status: 'REVOKED' as const, source: 'LEGACY_LABEL' as const, note: OPT_OUT_NOTE, userId }
-                : suppressed.has(p.phoneE164)
+                : isSuppressed(p, suppressed)
                   ? { contactId: ids[k]!, status: 'REVOKED' as const, source: 'MANUAL' as const, note: SUPPRESSED_NOTE, userId }
                   : { contactId: ids[k]!, status: status(p) as 'GRANTED', source: 'IMPORT' as const, note: 'Consentimiento inicial de la importación', userId },
             ],
@@ -365,12 +389,12 @@ export class ImportService implements OnModuleInit {
     }, { timeout: 60_000 });
   }
 
-  /** Relee el contacto que ganó la carrera (por teléfono o wa_id, ambos únicos). */
-  private findByPhoneOrWaId(p: PlanRow): Promise<Existing | null> {
-    return this.prisma.contact.findFirst({
-      where: { OR: [{ phoneE164: p.phoneE164 }, { waId: p.waId }] },
-      select: { id: true, deletedAt: true, consentStatus: true },
-    });
+  /** Relee el contacto que ganó la carrera (por teléfono o wa_id, ambos únicos; sin teléfono, por correo o código). */
+  private findExisting(p: PlanRow): Promise<Existing | null> {
+    const select = { id: true, deletedAt: true, consentStatus: true } as const;
+    if (p.phoneE164) return this.prisma.contact.findFirst({ where: { OR: [{ phoneE164: p.phoneE164 }, { waId: p.waId }] }, select });
+    if (p.data.email) return this.prisma.contact.findFirst({ where: { email: { equals: p.data.email, mode: 'insensitive' } }, select, orderBy: { createdAt: 'asc' } });
+    return this.prisma.contact.findFirst({ where: { customerCode: p.data.customerCode }, select, orderBy: { createdAt: 'asc' } });
   }
 
   /** Contacto borrado antes que vuelve en el archivo: se reactiva con los datos del archivo y conserva su consentimiento. */
@@ -395,7 +419,7 @@ export class ImportService implements OnModuleInit {
     return {
       id: j.id, fileName: j.fileName, status: j.status as ImportJobDto['status'], totalRows: j.totalRows, processedRows: j.processedRows,
       created: j.created, updated: j.updated, skipped: j.skipped, errors: errors.slice(0, 500), errorCount: res.errorCount ?? errors.length,
-      optedOut: res.optedOut ?? 0, labelsCreated: res.labelsCreated ?? 0, failureMessage: res.failureMessage ?? null,
+      optedOut: res.optedOut ?? 0, labelsCreated: res.labelsCreated ?? 0, withoutWhatsapp: res.withoutWhatsapp ?? 0, issuesByCode: res.issuesByCode ?? {}, failureMessage: res.failureMessage ?? null,
       createdAt: j.createdAt.toISOString(), finishedAt: j.finishedAt?.toISOString() ?? null,
     };
   }
@@ -404,8 +428,8 @@ export class ImportService implements OnModuleInit {
     const j = await this.getJob(jobId);
     const errors = Array.isArray(j.errors) ? (j.errors as unknown as ImportRowIssue[]) : [];
     const kindEs = { skipped: 'Descartada', merged: 'Unida', warning: 'Aviso' } as const;
-    const lines = [['Fila', 'Resultado', 'Motivo', 'Valor'].join(';')];
-    for (const e of errors) lines.push([e.row, kindEs[e.kind ?? 'skipped'], e.reason, e.value ?? ''].map(csvCell).join(';'));
+    const lines = [['Fila', 'Resultado', 'Motivo', 'Valor', 'Tipo'].join(';')];
+    for (const e of errors) lines.push([e.row, kindEs[e.kind ?? 'skipped'], e.reason, e.value ?? '', e.code ? IMPORT_ISSUE_CODE_ES[e.code] : ''].map(csvCell).join(';'));
     lines.push('');
     lines.push(['Resumen', `Filas: ${j.totalRows}`, `Creados: ${j.created}`, `Actualizados: ${j.updated}`, `Omitidos: ${j.skipped}`].map(csvCell).join(';'));
     return { csv: '﻿' + lines.join('\r\n') + '\r\n', fileName: `informe-importacion-${j.fileName.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '_')}.csv` };

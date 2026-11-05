@@ -42,7 +42,7 @@ export function toCampaignDto(c: CampaignRow, extra: { actualCost?: number | nul
 }
 
 export const recipientInclude = {
-  contact: { select: { id: true, firstName: true, lastName: true, profileName: true, company: true, phoneE164: true, conversation: { select: { id: true } } } },
+  contact: { select: { id: true, firstName: true, lastName: true, profileName: true, company: true, phoneE164: true, email: true, customerCode: true, conversation: { select: { id: true } } } },
 } satisfies Prisma.CampaignRecipientInclude;
 export type RecipientRow = Prisma.CampaignRecipientGetPayload<{ include: typeof recipientInclude }>;
 

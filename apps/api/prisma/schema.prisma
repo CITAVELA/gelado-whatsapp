@@ -87,7 +87,7 @@ enum ConsentSource {
 
 model Contact {
   id            String        @id @default(uuid()) @db.Uuid
-  phoneE164     String        @unique // +34617498222
+  phoneE164     String?       @unique // +34617498222; null = contacto «Sin WhatsApp» (solo correo y/o código, P16). CHECK: teléfono, correo o código
   waId          String?       @unique // wa_id que manda Meta
   firstName     String?
   lastName      String?
@@ -478,9 +478,9 @@ model CampaignRecipient {
   id          String          @id @default(uuid()) @db.Uuid
   campaignId  String          @db.Uuid
   contactId   String          @db.Uuid
-  phoneE164   String // copia en el momento del envío
+  phoneE164   String? // copia en el momento del envío (null = Sin WhatsApp)
   status      RecipientStatus @default(QUEUED)
-  skipReason  String? // REVOKED, UNKNOWN_CONSENT, PHONE_INVALID, DAILY_LIMIT, DUPLICATE
+  skipReason  String? // REVOKED, UNKNOWN_CONSENT, PHONE_INVALID, NO_PHONE, DAILY_LIMIT, DUPLICATE
   plannedFor  DateTime? // tanda / día previsto
   claimedAt   DateTime? // cuándo pasó a SENDING (para devolver a la cola los huérfanos)
   messageId   String?         @unique @db.Uuid

@@ -9,6 +9,7 @@ import { api, qs } from '../../lib/api';
 import { fmtListTime, fmtNumber } from '../../lib/format';
 import { ConsentChangeModal } from './ConsentBlock';
 import { errMsg, useLabels, useRefreshContact } from './hooks';
+import { NoWhatsappPill } from './NoWhatsappPill';
 
 // ── Columnas ──
 const COLUMNS = [
@@ -34,7 +35,7 @@ function loadCols(): Set<ColKey> {
 }
 
 // ── Filtros en la URL ──
-export interface Filters { q: string; include: string[]; exclude: string[]; consent: ConsentStatus | ''; invalid: boolean; sort: 'name' | 'createdAt' | 'lastActivity'; page: number }
+export interface Filters { q: string; include: string[]; exclude: string[]; consent: ConsentStatus | ''; invalid: boolean; whatsapp: '' | 'with' | 'without'; sort: 'name' | 'createdAt' | 'lastActivity'; page: number }
 
 export function readFilters(sp: URLSearchParams): Filters {
   const consent = sp.get('consent');
@@ -45,14 +46,15 @@ export function readFilters(sp: URLSearchParams): Filters {
     exclude: sp.getAll('exclude'),
     consent: consent === 'UNKNOWN' || consent === 'GRANTED' || consent === 'REVOKED' ? consent : '',
     invalid: sp.get('invalid') === '1',
+    whatsapp: sp.get('whatsapp') === 'with' || sp.get('whatsapp') === 'without' ? (sp.get('whatsapp') as 'with' | 'without') : '',
     sort: sort === 'createdAt' || sort === 'lastActivity' ? sort : 'name',
     page: Math.max(1, Number(sp.get('page')) || 1),
   };
 }
 export function filtersToApi(f: Filters, extra: Record<string, unknown> = {}) {
-  return { q: f.q, includeLabelIds: f.include, excludeLabelIds: f.exclude, consent: f.consent, phoneInvalid: f.invalid ? 'true' : '', sort: f.sort, ...extra };
+  return { q: f.q, includeLabelIds: f.include, excludeLabelIds: f.exclude, consent: f.consent, phoneInvalid: f.invalid ? 'true' : '', whatsapp: f.whatsapp, sort: f.sort, ...extra };
 }
-const activeCount = (f: Filters) => f.include.length + f.exclude.length + (f.consent ? 1 : 0) + (f.invalid ? 1 : 0);
+const activeCount = (f: Filters) => f.include.length + f.exclude.length + (f.consent ? 1 : 0) + (f.invalid ? 1 : 0) + (f.whatsapp ? 1 : 0);
 
 export function ContactListPage() {
   const [sp, setSp] = useSearchParams();
@@ -86,6 +88,7 @@ export function ContactListPage() {
     next.exclude.forEach((x) => p.append('exclude', x));
     if (next.consent) p.set('consent', next.consent);
     if (next.invalid) p.set('invalid', '1');
+    if (next.whatsapp) p.set('whatsapp', next.whatsapp);
     if (next.sort !== 'name') p.set('sort', next.sort);
     if (next.page > 1) p.set('page', String(next.page));
     setSp(p, { replace: true });
@@ -198,8 +201,14 @@ export function ContactListPage() {
                     <option value="GRANTED">Con consentimiento</option>
                     <option value="REVOKED">Dado de baja</option>
                   </select>
+                  <h4>WhatsApp</h4>
+                  <select className="ct-select" style={{ width: '100%' }} value={f.whatsapp} onChange={(e) => update({ whatsapp: e.target.value })} aria-label="Filtrar por WhatsApp">
+                    <option value="">Con y sin WhatsApp</option>
+                    <option value="with">Con WhatsApp (tienen teléfono)</option>
+                    <option value="without">Sin WhatsApp</option>
+                  </select>
                   <label className="opt" style={{ marginTop: 6 }}><input type="checkbox" className="ct-check" checked={f.invalid} onChange={(e) => update({ invalid: e.target.checked })} />Solo teléfono no válido</label>
-                  {nFilters > 0 && <button className="btn ghost" onClick={() => { update({ include: [], exclude: [], consent: '', invalid: false }); filterDd.setOpen(false); }}>Quitar filtros</button>}
+                  {nFilters > 0 && <button className="btn ghost" onClick={() => { update({ include: [], exclude: [], consent: '', invalid: false, whatsapp: '' }); filterDd.setOpen(false); }}>Quitar filtros</button>}
                 </div>
               )}
             </div>
@@ -270,14 +279,14 @@ export function ContactListPage() {
                   <tr key={c.id} className={`ct-row${selected.has(c.id) ? ' sel' : ''}`} onClick={() => navigate(`/contactos/${c.id}`)}>
                     <td onClick={(e) => e.stopPropagation()}><input type="checkbox" className="ct-check" checked={selected.has(c.id)} onChange={() => toggle(c.id)} aria-label={`Seleccionar ${c.displayName}`} /></td>
                     <td style={{ fontWeight: 600 }}>{c.firstName || c.lastName || c.company ? c.displayName : <><span className="hint" style={{ fontWeight: 400 }}>Sin nombre</span>{c.profileName ? <span className="hint" style={{ fontWeight: 400 }}> · perfil «{c.profileName}»</span> : null}</>}</td>
-                    {cols.has('phone') && <td className="mono">{formatPhone(c.phoneE164)}</td>}
+                    {cols.has('phone') && <td className="mono">{c.phoneE164 ? formatPhone(c.phoneE164) : <NoWhatsappPill />}</td>}
                     {cols.has('email') && <td>{c.email}</td>}
                     {cols.has('company') && <td>{c.company}</td>}
                     {cols.has('code') && <td className="mono">{c.customerCode}</td>}
                     {cols.has('taxId') && <td className="mono">{c.taxId}</td>}
                     {cols.has('landline') && <td className="mono">{c.landline}</td>}
                     {cols.has('labels') && <td><span className="row" style={{ gap: 4 }}>{c.labels.map((l) => <LabelChip key={l.id} label={l} />)}</span></td>}
-                    {cols.has('consent') && <td><span className="row" style={{ gap: 4 }}><ConsentPill status={c.consentStatus} />{c.phoneInvalid && <span className="pill p-warn">Teléfono no válido</span>}</span></td>}
+                    {cols.has('consent') && <td><span className="row" style={{ gap: 4 }}><ConsentPill status={c.consentStatus} />{!c.phoneE164 && !cols.has('phone') && <NoWhatsappPill />}{c.phoneInvalid && <span className="pill p-warn">Teléfono no válido</span>}</span></td>}
                     {cols.has('activity') && <td className="hint">{fmtListTime(c.lastActivityAt)}</td>}
                   </tr>
                 ))}
@@ -343,10 +352,10 @@ function NewContactModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Nuevo contacto" onClose={onClose} width={560} footer={<>
       <button className="btn" onClick={onClose}>Cancelar</button>
-      <button className="btn primary" form="nc-form" type="submit" disabled={busy || !f.phone.trim()}>Crear contacto</button>
+      <button className="btn primary" form="nc-form" type="submit" disabled={busy || (!f.phone.trim() && !f.email.trim())}>Crear contacto</button>
     </>}>
       <form id="nc-form" onSubmit={submit} className="ct-fgrid">
-        <div className="full">{field('phone', 'Teléfono móvil (WhatsApp) *')}<div className="hint" style={{ marginTop: 4 }}>Vale 617498222, +34 617 49 82 22 o un número extranjero con prefijo.</div></div>
+        <div className="full">{field('phone', 'Teléfono móvil (WhatsApp)')}<div className="hint" style={{ marginTop: 4 }}>Vale 617498222, +34 617 49 82 22 o un número extranjero con prefijo. Pon un teléfono o un correo; sin teléfono el contacto queda «Sin WhatsApp».</div></div>
         {field('firstName', 'Nombre')}
         {field('lastName', 'Apellidos')}
         {field('company', 'Empresa')}

@@ -11,6 +11,7 @@ import { ConsentBlock } from './ConsentBlock';
 import { ContactFields } from './ContactFields';
 import { errMsg, useContact, useOpenConversation, useRefreshContact, useSaveContact } from './hooks';
 import { LabelPicker } from './LabelPicker';
+import { NoWhatsappPill } from './NoWhatsappPill';
 
 /** Ficha completa /contactos/:id */
 export function ContactDetailPage() {
@@ -37,10 +38,10 @@ export function ContactDetailPage() {
         <Avatar name={c.displayName} />
         <div>
           <h1>{c.displayName}</h1>
-          <div className="sub mono">{formatPhone(c.phoneE164)} · alta {fmtDateTime(c.createdAt)}</div>
+          <div className="sub mono">{c.phoneE164 ? formatPhone(c.phoneE164) : <NoWhatsappPill />} · alta {fmtDateTime(c.createdAt)}</div>
         </div>
         <div className="row" style={{ marginLeft: 'auto' }}>
-          <button className="btn primary" onClick={() => open(c)}><Icon name="chat" small />Abrir conversación</button>
+          <button className="btn primary" onClick={() => open(c)} disabled={!c.phoneE164} title={c.phoneE164 ? undefined : 'Sin WhatsApp: este contacto no tiene teléfono'}><Icon name="chat" small />Abrir conversación</button>
           {isAdmin && <button className="btn danger" onClick={() => setDel('soft')}><Icon name="trash" small />Borrar</button>}
         </div>
       </div>

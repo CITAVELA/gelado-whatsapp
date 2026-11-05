@@ -5,11 +5,11 @@ import { PrismaService } from '../../common/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { CampaignClock } from './campaigns.clock';
 
-export type ExclusionReason = 'EXCLUDED_LABEL' | 'DELETED' | 'REVOKED' | 'PHONE_INVALID' | 'DUPLICATE';
+export type ExclusionReason = 'EXCLUDED_LABEL' | 'DELETED' | 'REVOKED' | 'NO_PHONE' | 'PHONE_INVALID' | 'DUPLICATE';
 
 export interface ResolvedContact {
   contactId: string;
-  phoneE164: string;
+  phoneE164: string | null;
   /** null = recibirá la campaña */
   excluded: ExclusionReason | null;
 }
@@ -62,9 +62,10 @@ export class AudienceService {
       if (excludedByLabel.has(c.id)) excluded = 'EXCLUDED_LABEL';
       else if (c.deletedAt) excluded = 'DELETED';
       else if (c.consentStatus === 'REVOKED') excluded = 'REVOKED';
+      else if (!c.phoneE164) excluded = 'NO_PHONE'; // sin teléfono no hay WhatsApp (P16), también en selección manual
       else if (c.phoneInvalid) excluded = 'PHONE_INVALID';
       else {
-        const k = phoneKey(c);
+        const k = phoneKey({ waId: c.waId, phoneE164: c.phoneE164 });
         if (seenPhones.has(k)) excluded = 'DUPLICATE';
         else seenPhones.add(k);
       }
@@ -131,6 +132,7 @@ export class AudienceService {
       excludedRevoked: by('REVOKED'),
       excludedInvalid: by('PHONE_INVALID'),
       excludedDuplicate: by('DUPLICATE'),
+      excludedNoPhone: by('NO_PHONE'),
       willReceive,
       dailyLimit: defaults.dailyLimit,
       usedLast24h: used,
