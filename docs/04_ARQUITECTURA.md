@@ -72,6 +72,18 @@ Reutilizar de CITAVELA lo que ya existe y funciona (cliente de la Graph API, ver
 | Cada hora | Sincronizar plantillas y datos de calidad/límite del número | — |
 | Cada día 03:00 | Limpieza de eventos de webhook procesados de más de 90 días | — |
 
+## Consumo en Render
+
+Render factura como tráfico de salida también las consultas del servicio a Supabase (Hobby: 5 GB/mes; exceso 0,15 USD/GB). Con pg-boss sondeando cada segundo salían ~30 GB/mes en reposo. **Objetivo: < 3 GB/mes en total y < 2 MB/h hacia la base de datos en reposo.**
+
+- **Despertar en proceso.** Todos los trabajos nacen en este proceso (webhook, API, crons). `JobsService.send()` encola y despierta en el acto al worker de esa cola (`boss.notifyWorker`); al terminar un trabajo el worker vuelve a consultar una vez por si hay más. El sondeo queda solo como red de seguridad (reintentos con `startAfter`, trabajos que sobreviven a un reinicio). El mensaje entrante sigue siendo visible en < 5 s (en la práctica < 1 s).
+- **Intervalos.** Sondeo: `wa-inbound` y `wa-send` 30 s; `wa-media-download`, `campaign-dispatch`, `campaign-send` y `contacts-import` 60 s. Mantenimiento interno de pg-boss (caducar/archivar/borrar) cada 30 min; monitor de estados y monitor de reloj apagados. Conexiones de pg-boss persistentes (`idleTimeoutMillis: 0`): sin ello cada sondeo abría una conexión TLS nueva.
+- **Crons propios.** El planificador de pg-boss (`schedule`) está apagado. Un `setTimeout` alineado al minuto llama a los handlers de `cron-every-minute` (reencolar eventos atascados, lanzar/avanzar campañas, despertar pospuestas), `cron-hourly` (minuto :07, hora de Madrid) y `cron-daily-cleanup` (03:00). Lo pendiente vive en la BD, así que un reinicio no pierde nada; con una campaña en marcha el ritmo (20/min) sigue siendo exacto.
+- **API y web.** Compresión gzip; `/assets/*` con huella `immutable` 1 año; `index.html` `no-cache`; ETag/304 en los GET que se refrescan (alertas 2 min, contadores 2 min, campañas 30 s) y sin sondeo con la pestaña oculta (`refetchIntervalInBackground: false`; el tiempo real va por socket).
+- **render.yaml.** `buildFilter` ignora `docs/**`, `02-DOCS/**`, `01-TOOLS/**` y `**/*.md`; vistas previas apagadas.
+- **Presupuesto.** `apps/api/test/s11-idle.test.ts` mide con un proxy TCP los bytes reales hacia/desde PostgreSQL durante 120 s en reposo y falla si superan 2 MB/h x 120/3600 x 0,7 (el 30 % restante es margen para TLS). Medición actual en el informe de S11 (≈ 0,5 MB/h y ≈ 13 consultas/min, unos 0,35 GB/mes; antes: ≈ 22 MB/h y 500 consultas/min).
+- **Vigilarlo la primera semana.** Render → Metrics → tráfico de salida (Outbound Bandwidth) del servicio. Si de noche la curva no es plana (sin uso, debería rondar cero), hay un sondeo: revisar `pg_stat_statements` en Supabase (consultas más repetidas) y los intervalos de arriba. Objetivo del mes: < 3 GB.
+
 ## Tiempo real
 
 - La web abre un WebSocket autenticado con la cookie de sesión.

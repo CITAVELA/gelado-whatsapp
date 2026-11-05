@@ -99,7 +99,7 @@ enum ConsentSource {
 
 model Contact {
   id             String        @id @default(uuid()) @db.Uuid
-  phoneE164      String        @unique          // +34617498222
+  phoneE164      String?       @unique          // +34617498222; null = «Sin WhatsApp» (P16); varios NULL permitidos
   waId           String?       @unique          // wa_id que manda Meta
   firstName      String?
   lastName       String?
@@ -471,9 +471,9 @@ model CampaignRecipient {
   id           String          @id @default(uuid()) @db.Uuid
   campaignId   String          @db.Uuid
   contactId    String          @db.Uuid
-  phoneE164    String                       // copia en el momento del envío
+  phoneE164    String?                      // copia en el momento del envío (null = Sin WhatsApp)
   status       RecipientStatus @default(QUEUED)
-  skipReason   String?                      // REVOKED, UNKNOWN_CONSENT, PHONE_INVALID, DAILY_LIMIT, DUPLICATE
+  skipReason   String?                      // REVOKED, UNKNOWN_CONSENT, PHONE_INVALID, NO_PHONE, DAILY_LIMIT, DUPLICATE
   plannedFor   DateTime?                    // tanda / día previsto
   messageId    String?         @unique @db.Uuid
   errorCode    Int?
@@ -574,10 +574,11 @@ model AuditLog {
 
 ## Reglas que el modelo debe garantizar
 
-1. `Contact.phoneE164` único; normalizar siempre antes de guardar (libphonenumber, país por defecto ES).
+1. **Si hay teléfono**, `Contact.phoneE164` es E.164 y único; normalizar siempre antes de guardar (libphonenumber, país por defecto ES). `phoneE164` puede ser NULL (contacto «Sin WhatsApp», P16): la BD exige teléfono, correo o código (`CHECK "Contact_identity_check"`) y el alta manual exige teléfono o correo. Un contacto sin teléfono no tiene `Conversation` ni recibe campañas (`skipReason = NO_PHONE`). Índice `lower("email")` para deduplicar la importación por correo.
 2. Una sola `Conversation` por contacto.
 3. `Message.wamid` único: un webhook repetido no duplica mensajes.
 4. Los estados de un mensaje solo avanzan (SENT → DELIVERED → READ); un estado que llega tarde no hace retroceder. FAILED gana a todo.
 5. `consentStatus = REVOKED` excluye de cualquier campaña sin excepción, y no se puede volver a activar sin un `ConsentEvent` con origen y usuario. UNKNOWN y GRANTED reciben campañas.
 6. Los contadores de `Campaign` se recalculan desde `CampaignRecipient` (no solo incrementos), para que el informe cuadre siempre.
 7. Borrar un contacto es borrado lógico (`deletedAt`); el borrado físico es una acción de administradora con registro en `AuditLog` (derecho de supresión).
+8. **Lista de supresión** (`SuppressedPhone`, derecho de supresión): al borrar físicamente un contacto con teléfono solo queda el HMAC-SHA256 de su E.164, con una sal aleatoria propia que se genera la primera vez y se guarda en `Setting` (`suppression_salt`; no depende de `SESSION_SECRET`, así que rotar el secreto de sesión no invalida la lista). Toda alta de contacto pasa por `ContactFactory` (alta manual, nueva conversación, prueba de campaña, mensaje entrante; la importación aplica la misma regla en bloque): un número suprimido nace `REVOKED` (origen MANUAL, nota «Suprimido previamente») con su `ConsentEvent`. La lista solo se consulta al **crear** el contacto; si una persona con usuario reactiva después a un contacto dado de baja, su hash se quita de la lista (no se vuelve a dar de baja solo). La supresión física también sustituye el número de los registros de `AuditLog` (`data.phone`) por sus últimos 4 dígitos. **Límite conocido:** el archivo CSV/XLSX de una importación se conserva en Storage (es el que permite repetir el informe) y contiene los números tal como venían; si hay que garantizar la supresión total, hay que borrar también ese archivo (Biblioteca de importaciones) cuando ninguna otra importación lo use.

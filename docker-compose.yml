@@ -1,0 +1,12 @@
+# Solo para desarrollo local. Producción: Supabase (ver docs/04).
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: gelado
+      POSTGRES_PASSWORD: gelado
+      POSTGRES_DB: gelado
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+volumes:
+  pgdata: {}

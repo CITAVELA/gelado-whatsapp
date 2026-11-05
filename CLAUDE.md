@@ -49,18 +49,20 @@ pnpm workspaces · `apps/web` React + Vite + TypeScript · `apps/api` NestJS (AP
 - Modelo y esfuerzo por subagente: los de `docs/11`.
 - Al terminar: informe final según `docs/11` (sección 4).
 
-## Comandos (los define la Fase 0; mantener esta lista al día)
+## Comandos (mantener esta lista al día)
 
 ```bash
 pnpm install
-pnpm db:up            # PostgreSQL local (Docker o servicio del sistema)
-pnpm db:migrate       # prisma migrate dev
-pnpm db:seed
-pnpm dev              # api + web + simulador de Meta
-pnpm test             # unitarias e integración
-pnpm test:e2e         # Playwright contra el simulador
-pnpm build
+pnpm db:up            # PostgreSQL local (Docker si hay daemon; si no, servicio del sistema)
+pnpm db:deploy        # aplica migraciones (prisma migrate deploy); pnpm db:migrate = migrate dev para crear nuevas
+pnpm db:seed          # usuarios (con SEED_DEV_PASSWORD en dev o enlaces de invitación), etiquetas, ajustes
+pnpm dev              # api :3000 + web :5173 (proxy a la api) + simulador de Meta :4010
+pnpm test             # unitarias e integración (BD gelado_test, se recrea sola)
+pnpm test:e2e         # Playwright contra el build (pnpm build antes) y el simulador (BD gelado_e2e)
+pnpm build            # shared + web + api; producción: pnpm db:deploy && pnpm start
 ```
+
+Notas: Prisma vive en `apps/api/prisma`. `prisma migrate reset` está bloqueado para agentes: las BD de prueba se recrean con `DROP SCHEMA` (solo bases locales `*_test`/`*_e2e`). Plan y propiedad de archivos: `docs/trabajo/PLAN.md`.
 
 ## Datos de Meta (no secretos)
 
