@@ -66,7 +66,12 @@ Campos del webhook a suscribir: `messages`, `message_template_status_update`, `m
 | `WA_WABA_ID`, `WA_PHONE_NUMBER_ID`, `META_BUSINESS_ID` | `24936790469294569`, `833139829886325`, `115003938195726` |
 | `WORKER_ENABLED` | `true` (si un día se separa el worker, `false` en la web) |
 
-La app **se niega a arrancar** en producción si falta algún secreto o si `META_GRAPH_BASE_URL` apunta al simulador.
+La app **se niega a arrancar** en producción si falta algún secreto, si `META_GRAPH_BASE_URL` no es `https://` (p. ej. el simulador), si `STORAGE_DRIVER` no es `supabase`, si `APP_URL` no es la dirección `https://` pública, o si `STATUS_TOKEN`/`SESSION_SECRET` tienen menos de 32 caracteres. El mensaje de error dice cuál falla.
+
+Notas:
+- `APP_URL` debe ser **exactamente** la dirección pública (el WebSocket solo acepta conexiones desde ese origen).
+- Rotar `SESSION_SECRET` cierra todas las sesiones; no afecta a la lista de supresión (usa su propia sal guardada en la BD).
+- El esquema `pgboss` lo crea pg-boss al arrancar: con la Data API de Supabase desactivada no queda expuesto.
 
 ### Despliegue
 
@@ -74,7 +79,8 @@ La app **se niega a arrancar** en producción si falta algún secreto o si `META
 2. Render: «New → Blueprint» con este repositorio (`render.yaml`), rellenar las variables marcadas `sync: false`. Despliega desde `main`; el arranque ejecuta `prisma migrate deploy`.
 3. Primera vez: `pnpm db:seed` desde la Shell de Render (sin `SEED_DEV_PASSWORD`) → imprime los enlaces de invitación de María, Cristina y Lolo. También se generan después en Ajustes → Equipo.
 4. Comprobar `https://<servicio>.onrender.com/health` y `/privacidad`.
-5. Seguir `docs/09_MIGRACION_Y_PUESTA_EN_MARCHA.md` (D4 suscribir la app a la WABA, prueba real, modo Live). **No se llama nunca a `/register`**.
+5. Importar contactos (D2 de `docs/09`): primero la exportación general de Superchat y después las tres listas (Peluquería, Barbería, Estética) con «Añadir etiqueta» y «Si existe: actualizar»; revisar con María los avisos (país distinto, fijo, teléfono corregido o incompleto). El CSV real **nunca** se sube al repositorio.
+6. Seguir `docs/09_MIGRACION_Y_PUESTA_EN_MARCHA.md` (D4 suscribir la app a la WABA, prueba real, modo Live). **No se llama nunca a `/register`**.
 
 ### Revisión diaria
 
