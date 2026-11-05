@@ -30,7 +30,7 @@ export function errMsg(e: unknown, fallback = 'No se ha podido completar la acci
 
 // ── Consultas ──
 export function useInboxCounts() {
-  return useQuery({ queryKey: K.counts, queryFn: () => inboxApi.counts(), refetchInterval: 60_000 });
+  return useQuery({ queryKey: K.counts, queryFn: () => inboxApi.counts(), refetchInterval: 120_000 });
 }
 
 export function useConversationList(params: ListParams) {

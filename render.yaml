@@ -9,6 +9,16 @@ services:
     plan: starter
     branch: main
     autoDeploy: true
+    # Solo se redespliega si cambia código: ignora documentación y harness (cada despliegue cuesta minutos de build)
+    buildFilter:
+      ignoredPaths:
+        - docs/**
+        - 02-DOCS/**
+        - 01-TOOLS/**
+        - "**/*.md"
+    # Sin vistas previas de pull requests (cada una sería un servicio extra facturable)
+    previews:
+      generation: off
     healthCheckPath: /health
     buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm build
     startCommand: pnpm db:deploy && pnpm start

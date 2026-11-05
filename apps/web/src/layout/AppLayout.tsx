@@ -14,7 +14,7 @@ import { useInboxRealtime } from '../features/inbox/useInboxRealtime';
 export { useInboxCounts };
 
 function AlertBanner() {
-  const { data } = useQuery({ queryKey: ['alerts'], queryFn: () => api.get<AlertDto[]>('/api/alerts'), refetchInterval: 60_000 });
+  const { data } = useQuery({ queryKey: ['alerts'], queryFn: () => api.get<AlertDto[]>('/api/alerts'), refetchInterval: 120_000 });
   const [live, setLive] = useState<AlertDto[] | null>(null);
   useSocketEvent('alert', useCallback((p: { alerts: AlertDto[] }) => setLive(p.alerts), []));
   const alerts = live ?? data ?? [];

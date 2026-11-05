@@ -25,7 +25,7 @@ export function useCampaignLive() {
 
 export function useCampaigns() {
   useCampaignLive();
-  return useQuery({ queryKey: ['campaigns', 'list'], queryFn: () => api.get<CampaignDto[]>('/api/campaigns'), refetchInterval: 15_000 });
+  return useQuery({ queryKey: ['campaigns', 'list'], queryFn: () => api.get<CampaignDto[]>('/api/campaigns'), refetchInterval: 30_000 });
 }
 
 export function useCampaignReport(id: string | undefined) {

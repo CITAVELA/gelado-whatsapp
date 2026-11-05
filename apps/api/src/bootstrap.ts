@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import path from 'node:path';
@@ -27,6 +28,8 @@ export function configureApp(app: INestApplication) {
   const ex = app as NestExpressApplication;
   ex.set('trust proxy', 1); // Render
   ex.disable('x-powered-by');
+  // Compresión gzip de texto (JSON, HTML, JS, CSS): menos tráfico de salida en Render
+  app.use(compression({ threshold: 1024, filter: (req, res) => !req.path.startsWith('/ws') && compression.filter(req, res) }));
   ex.useBodyParser('json', { limit: '5mb' });
   app.use(cookieParser());
   const storageOrigin = c.STORAGE_DRIVER === 'supabase' && c.SUPABASE_URL ? new URL(c.SUPABASE_URL).origin : '';
@@ -57,7 +60,16 @@ export function configureApp(app: INestApplication) {
   // SPA compilada (mismo origen, sin CORS). En desarrollo la sirve Vite con proxy.
   const webDist = c.WEB_DIST_DIR || path.resolve(__dirname, '../../web/dist');
   if (fs.existsSync(path.join(webDist, 'index.html'))) {
-    app.use(express.static(webDist, { index: false, maxAge: '1h' }));
+    // /assets/* lleva huella en el nombre (Vite): caché de un año. El resto (favicon…) 1 h; index.html siempre revalida.
+    app.use(
+      express.static(webDist, {
+        index: false,
+        maxAge: '1h',
+        setHeaders: (res, filePath) => {
+          if (filePath.split(path.sep).includes('assets')) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        },
+      }),
+    );
     app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
       if (req.method !== 'GET' || SERVER_PREFIXES.some((p) => req.path === p || req.path.startsWith(p + '/'))) return next();
       if (!req.accepts('html')) return next();
