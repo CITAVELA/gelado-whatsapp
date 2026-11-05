@@ -6,11 +6,40 @@ const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Hora HH:mm');
 export const timeRangeSchema = z.object({ from: hhmm, to: hhmm });
 export type TimeRange = z.infer<typeof timeRangeSchema>;
 
-/** Ajuste `business_hours`: hasta dos tramos por día; [] = cerrado. */
-export const businessHoursSchema = z.object({
-  timezone: z.string().default(APP_TZ),
-  days: z.object(Object.fromEntries(WEEKDAYS.map((d) => [d, z.array(timeRangeSchema).max(2)])) as Record<Weekday, z.ZodArray<typeof timeRangeSchema>>),
-});
+/** ¿Es una zona horaria IANA que el motor conoce? */
+function isValidTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat('es-ES', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const DAY_LABEL: Record<Weekday, string> = { mon: 'el lunes', tue: 'el martes', wed: 'el miércoles', thu: 'el jueves', fri: 'el viernes', sat: 'el sábado', sun: 'el domingo' };
+
+/** Ajuste `business_hours`: hasta dos tramos por día; [] = cerrado. Zona válida, «desde» < «hasta» y tramos sin solaparse. */
+export const businessHoursSchema = z
+  .object({
+    timezone: z.string().default(APP_TZ).refine(isValidTimeZone, 'La zona horaria no existe (por ejemplo, Europe/Madrid)'),
+    days: z.object(Object.fromEntries(WEEKDAYS.map((d) => [d, z.array(timeRangeSchema).max(2, 'Máximo dos tramos por día')])) as Record<Weekday, z.ZodArray<typeof timeRangeSchema>>),
+  })
+  .superRefine((bh, ctx) => {
+    for (const d of WEEKDAYS) {
+      const ranges = bh.days[d];
+      if (ranges.some((r) => hhmmToMinutes(r.from) >= hhmmToMinutes(r.to))) {
+        ctx.addIssue({ code: 'custom', path: ['days', d], message: `Revisa ${DAY_LABEL[d]}: la hora de cierre tiene que ser posterior a la de apertura` });
+        continue;
+      }
+      const sorted = [...ranges].sort((a, b) => hhmmToMinutes(a.from) - hhmmToMinutes(b.from));
+      for (let i = 1; i < sorted.length; i++) {
+        if (hhmmToMinutes(sorted[i]!.from) < hhmmToMinutes(sorted[i - 1]!.to)) {
+          ctx.addIssue({ code: 'custom', path: ['days', d], message: `Revisa ${DAY_LABEL[d]}: los dos tramos se solapan` });
+          break;
+        }
+      }
+    }
+  });
 export type BusinessHours = z.infer<typeof businessHoursSchema>;
 
 export const autoReplyButtonSchema = z.object({

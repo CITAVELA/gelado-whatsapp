@@ -68,6 +68,8 @@ test('el enlace de nueva contraseña de un solo uso: crear contraseña, entrar y
   const url = new URL(inv.link.url);
   await page.goto(url.pathname);
   await expect(page.getByText(`Crea la contraseña para`)).toBeVisible();
+  // F-16: saludo neutro, sin género
+  await expect(page.getByText('Te damos la bienvenida, Persona Nueva')).toBeVisible();
   await page.getByLabel('Contraseña', { exact: true }).fill('una-clave-larga-123');
   await page.getByLabel('Repite la contraseña').fill('una-clave-distinta');
   await page.getByRole('button', { name: 'Crear contraseña' }).click();

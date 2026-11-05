@@ -153,14 +153,14 @@ describe('Ajustes: valores que romperían el funcionamiento si se aceptaran', ()
   async function currentHours() {
     return (await a.get('/api/settings')).body.business_hours ?? (await a.get('/api/settings')).body.businessHours;
   }
-  // FALLO F-8
-  it.fails('una zona horaria que no existe se rechaza (si no, cada mensaje entrante fallaría al comprobar el horario)', async () => {
+  // F-8
+  it('una zona horaria que no existe se rechaza (si no, cada mensaje entrante fallaría al comprobar el horario)', async () => {
     const cur = await currentHours();
     const r = await a.put('/api/settings/business_hours', { ...cur, timezone: 'Marte/Olimpo' });
     expect(r.status).toBe(400);
   });
-  // FALLO F-9
-  it.fails('un tramo con «hasta» anterior a «desde» o tramos solapados se rechazan', async () => {
+  // F-9
+  it('un tramo con «hasta» anterior a «desde» o tramos solapados se rechazan', async () => {
     const cur = await currentHours();
     const bad1 = await a.put('/api/settings/business_hours', { ...cur, days: { ...cur.days, mon: [{ from: '14:00', to: '09:00' }] } });
     const bad2 = await a.put('/api/settings/business_hours', { ...cur, days: { ...cur.days, mon: [{ from: '09:00', to: '14:00' }, { from: '13:00', to: '18:00' }] } });

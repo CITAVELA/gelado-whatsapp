@@ -37,7 +37,7 @@ export function fmtEur(n: number | null | undefined) {
 export function fmtBytes(n: number) {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
-  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n / 1024 / 1024)} MB`;
 }
 /** Tiempo restante legible: «22 h», «45 min» */
 export function fmtRemaining(untilIso: string | null | undefined, now = Date.now()) {
@@ -49,4 +49,24 @@ export function fmtRemaining(untilIso: string | null | undefined, now = Date.now
 }
 export function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
+}
+
+/** Idioma de una plantilla en español: «es» → «Español», «ca» → «Catalán», «en_US» → «Inglés». */
+const LANG_ES: Record<string, string> = { es: 'Español', ca: 'Catalán', en: 'Inglés', fr: 'Francés', pt: 'Portugués', it: 'Italiano', de: 'Alemán' };
+export function fmtLanguage(code: string | null | undefined) {
+  if (!code) return '—';
+  return LANG_ES[code.toLowerCase().split(/[_-]/)[0]!] ?? code;
+}
+/** Estado de la verificación del nombre que devuelve Meta (en inglés) → español. */
+const NAME_STATUS_ES: Record<string, string> = {
+  APPROVED: 'aprobado',
+  AVAILABLE_WITHOUT_REVIEW: 'disponible',
+  DECLINED: 'rechazado',
+  EXPIRED: 'caducado',
+  PENDING_REVIEW: 'pendiente de revisión',
+  NONE: 'sin verificar',
+};
+export function fmtNameStatus(status: string | null | undefined) {
+  if (!status) return '';
+  return NAME_STATUS_ES[status.toUpperCase()] ?? 'en revisión';
 }

@@ -68,6 +68,10 @@ export const KIND_PREVIEW: Partial<Record<MessageKind, string>> = {
   IMAGE: 'Foto', AUDIO: 'Audio', VOICE: 'Nota de voz', VIDEO: 'Vídeo', DOCUMENT: 'Documento', STICKER: 'Sticker',
   LOCATION: 'Ubicación', CONTACTS: 'Contacto', TEMPLATE: 'Plantilla', REACTION: 'Reacción', UNSUPPORTED: 'Mensaje no soportado',
 };
+/** Quita el emoji inicial de una vista previa («📄 catalogo.pdf» → «catalogo.pdf»): la lista ya pinta un icono propio. */
+export function stripLeadingEmoji(text: string): string {
+  return text.replace(/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u, '') || text;
+}
 export function previewIcon(kind: MessageKind | null): string | null {
   switch (kind) {
     case 'IMAGE': case 'STICKER': return 'image';

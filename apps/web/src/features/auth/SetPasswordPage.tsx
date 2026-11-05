@@ -51,7 +51,7 @@ export function SetPasswordPage() {
       </AuthShell>
     );
   return (
-    <AuthShell subtitle={info.purpose === 'INVITE' ? `Bienvenida, ${info.name}` : 'Nueva contraseña'}>
+    <AuthShell subtitle={info.purpose === 'INVITE' ? `Te damos la bienvenida, ${info.name}` : 'Nueva contraseña'}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div className="hint">Crea la contraseña para <strong>{info.email}</strong> (mínimo {PASSWORD_MIN} caracteres).</div>
         <div>

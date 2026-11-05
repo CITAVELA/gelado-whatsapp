@@ -159,7 +159,13 @@ export class InboxService {
     if (!n.ok) throw new BadRequestException({ statusCode: 400, message: n.reason });
     let contact = await this.prisma.contact.findFirst({ where: { OR: [{ phoneE164: n.e164 }, { waId: n.waId }] } });
     if (!contact) {
-      contact = await this.prisma.contact.create({ data: { phoneE164: n.e164, waId: n.waId, firstName: dto.firstName?.trim() || null } });
+      try {
+        contact = await this.prisma.contact.create({ data: { phoneE164: n.e164, waId: n.waId, firstName: dto.firstName?.trim() || null } });
+      } catch (e) {
+        // Doble clic / petición concurrente con el mismo teléfono nuevo: ganó la otra, se relee su contacto.
+        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e;
+        contact = await this.prisma.contact.findFirstOrThrow({ where: { OR: [{ phoneE164: n.e164 }, { waId: n.waId }] } });
+      }
     } else if (contact.deletedAt) {
       contact = await this.prisma.contact.update({ where: { id: contact.id }, data: { deletedAt: null } });
     }

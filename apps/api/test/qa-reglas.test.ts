@@ -75,8 +75,8 @@ describe('M2 · una sola Conversation por contacto (también con concurrencia)',
     expect(env.t.jobs.inlineErrors).toEqual([]);
   });
 
-  // FALLO F-1: la carrera crea contacto/conversación dos veces y la BD rechaza la segunda → 500
-  it.fails('POST /api/conversations a la vez con el mismo teléfono → una sola conversación y ningún 500', async () => {
+  // F-1: la carrera crea contacto/conversación dos veces; la segunda relee la existente (antes: 500)
+  it('POST /api/conversations a la vez con el mismo teléfono → una sola conversación y ningún 500', async () => {
     const a = await loginAs(env.t, ADMIN_EMAIL);
     const rs = await Promise.all(Array.from({ length: 4 }, () => a.post('/api/conversations', { phone: '655 222 333' })));
     expect(rs.every((r) => r.status < 300), JSON.stringify(rs.map((r) => [r.status, r.body]))).toBe(true);

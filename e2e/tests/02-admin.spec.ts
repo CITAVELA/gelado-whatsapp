@@ -46,7 +46,7 @@ test('(e) importar un CSV: mapear, reglas, vista previa, importar e informe', as
   await expect(page.getByRole('combobox').nth(2)).toHaveValue('phone');
   await page.getByRole('button', { name: /Siguiente: reglas/ }).click();
   // 3 · reglas (por defecto: ES, actualizar duplicados, NO PUBLICIDAD = baja)
-  await expect(page.getByText(/La etiqueta NO PUBLICIDAD significa baja/)).toBeVisible();
+  await expect(page.getByTestId('nopub-note')).toContainText('significa baja');
   await page.getByRole('button', { name: /Siguiente/ }).click();
   // 4 · vista previa con problemas
   await expect(page.getByText('Vista previa del resultado')).toBeVisible();

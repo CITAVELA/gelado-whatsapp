@@ -72,10 +72,10 @@ describe('QA · formato en español, EUR y Europe/Madrid', () => {
   });
   it('tamaños de archivo legibles', () => {
     expect(fmtBytes(398)).toBe('398 B');
-    expect(fmtBytes(5 * 1024 * 1024)).toMatch(/^5[.,]0 MB$/);
+    expect(fmtBytes(5 * 1024 * 1024)).toBe('5,0 MB');
   });
-  // FALLO F-15 (bajo): fmtBytes usa el punto decimal inglés («5.0 MB») en una interfaz en español («5,0 MB»)
-  it.fails('los tamaños usan coma decimal', () => {
+  // F-15: fmtBytes usa coma decimal española («5,5 MB»)
+  it('los tamaños usan coma decimal', () => {
     expect(fmtBytes(5.5 * 1024 * 1024)).toBe('5,5 MB');
   });
 });
