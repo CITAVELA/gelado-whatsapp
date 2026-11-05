@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { privacyPlaceholders } from '@gelado/shared';
 import { AdminOnly, Public } from '../../common/decorators';
 import { PrivacyService } from './privacy.service';
+import { SettingsService } from './settings.service';
 
 /** Página pública /privacidad (RF-7.6): HTML completo desde el servidor, sin sesión y sin JavaScript. */
 @Controller('privacidad')
@@ -20,7 +21,14 @@ export class PrivacyPublicController {
 
 @Controller('api/settings/privacy')
 export class PrivacyAdminController {
-  constructor(private readonly privacy: PrivacyService) {}
+  constructor(private readonly privacy: PrivacyService, private readonly settings: SettingsService) {}
+
+  /** Texto actual del editor (GET /api/settings no lo incluye). */
+  @Get()
+  @AdminOnly()
+  current() {
+    return this.settings.get('privacy_policy');
+  }
 
   /** Vista previa del editor: HTML saneado + campos entre corchetes pendientes. */
   @Post('preview')

@@ -1,0 +1,14 @@
+/* Calidad y costes (P6) */
+.q-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; }
+.q-dot.GREEN { background: #1E7A3D; }
+.q-dot.YELLOW { background: #E0A100; }
+.q-dot.RED { background: #C0262D; }
+.q-dot.UNKNOWN { background: #9AA2AB; }
+.bar.warn i { background: #E0A100; }
+.bar.bad i { background: #C0262D; }
+.q-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.q-hist { display: flex; flex-direction: column; gap: 10px; font-size: 13px; max-height: 320px; overflow-y: auto; }
+.q-hist > div { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.q-month { height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; background: #fff; font-size: 13px; }
+.q-num { text-align: right; }
+@media (max-width: 900px) { .q-two { grid-template-columns: 1fr; } }
