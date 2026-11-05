@@ -11,3 +11,7 @@ onlyBuiltDependencies:
   - esbuild
   - ffmpeg-static
   - "@nestjs/core"
+# Avisos de seguridad (S10 M7): dependencias transitivas fijadas a versiones corregidas
+overrides:
+  multer: 2.5.0
+  "path-to-regexp@^8.0.0": 8.4.2
