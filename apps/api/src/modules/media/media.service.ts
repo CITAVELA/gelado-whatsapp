@@ -64,7 +64,7 @@ export class MediaService {
     const src = await this.get(mediaFileId);
     try {
       const input = await this.storage.download(src.storagePath);
-      const out = await convertToOggOpusMono(input, extFor(src.mimeType, src.fileName));
+      const out = await convertToOggOpusMono(input, src.mimeType);
       const base = (src.fileName ?? 'nota-de-voz').replace(/\.[a-z0-9]{1,5}$/i, '');
       return await this.storeBuffer(out, 'audio/ogg', `${base}.ogg`, 'UPLOAD', userId ?? src.createdById);
     } catch (e) {
