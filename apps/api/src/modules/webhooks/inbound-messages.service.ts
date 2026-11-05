@@ -186,6 +186,10 @@ export class InboundMessagesService implements OnModuleInit {
         if (Object.keys(data).length) contact = await tx.contact.update({ where: { id: contact.id }, data });
       }
 
+      // Se bloquea la fila de la conversación antes de leer su estado: si alguien la pospone o finaliza a la vez,
+      // o su cambio se ve ya aquí (y se reabre) o espera a que este mensaje quede guardado (S9 #20). Sin el bloqueo,
+      // se leía «abierta», se escribía el mensaje y quedaba pospuesta/finalizada con un no leído escondido.
+      await tx.$queryRaw`SELECT id FROM "Conversation" WHERE "contactId" = ${contact.id}::uuid FOR UPDATE`;
       let conv = await tx.conversation.findUnique({ where: { contactId: contact.id } });
       if (!conv) conv = await tx.conversation.create({ data: { contactId: contact.id } });
       const prevStatus = conv.status;

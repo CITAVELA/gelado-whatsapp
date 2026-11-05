@@ -11,6 +11,8 @@ const INBOUND_RETRY = { retryLimit: 5, retryDelay: 5, retryBackoff: true } as co
 /** Un evento sin procesar tras estos minutos lo recoge la tarea de cada minuto */
 const STUCK_AFTER_MS = 2 * 60 * 1000;
 const MAX_ATTEMPTS = 12;
+/** Intervalo mínimo entre dos filas/avisos de webhooks rechazados */
+const REJECTED_LOG_EVERY_MS = 60_000;
 
 /**
  * Persistencia cruda del webhook (WebhookEvent), deduplicación y cola `wa-inbound`; y el procesador de la cola,
@@ -27,12 +29,26 @@ export class WebhookIngestService implements OnModuleInit {
     this.jobs.register(QUEUES.CRON_MINUTE, () => this.requeueStuck().then(() => undefined));
   }
 
-  /** Auditoría mínima de una petición con firma inválida (no se guarda el cuerpo ni se encola). */
+  /**
+   * Petición con firma inválida: no se guarda ni se encola. Un contador en memoria y, como mucho, una fila de
+   * auditoría por minuto con el recuento (un atacante no puede llenar la tabla) y un aviso en el log por minuto.
+   */
   async recordRejected(ip: string | null, hadSignature: boolean) {
+    this.rejected.total++;
+    this.rejected.sinceLast++;
+    const now = Date.now();
+    if (now - this.rejected.lastLoggedAt < REJECTED_LOG_EVERY_MS) return;
+    const count = this.rejected.sinceLast;
+    this.rejected.lastLoggedAt = now;
+    this.rejected.sinceLast = 0;
+    this.log.warn(`Webhook rechazado por firma inválida: ${count} desde el último aviso (último desde ${ip ?? 'IP desconocida'}, ${hadSignature ? 'firma incorrecta' : 'sin firma'})`);
     await this.prisma.webhookEvent
-      .create({ data: { signatureValid: false, field: null, payload: { rejected: true, ip, hadSignature } } })
+      .create({ data: { signatureValid: false, field: null, payload: { rejected: true, count, ip, hadSignature } } })
       .catch((e) => this.log.warn(`No se pudo registrar el webhook rechazado: ${e}`));
   }
+
+  /** Contadores de rechazos desde el arranque (solo memoria). */
+  readonly rejected = { total: 0, sinceLast: 0, lastLoggedAt: 0 };
 
   /** Divide el POST en eventos (uno por mensaje, estado o cambio), los guarda y los encola. */
   async ingest(body: any): Promise<{ events: number; duplicates: number; ignored: number }> {
@@ -48,7 +64,7 @@ export class WebhookIngestService implements OnModuleInit {
           out.ignored++;
           continue;
         }
-        for (const ev of this.split(field, value, String(entry?.id ?? ''))) {
+        for (const ev of this.split(field, value, String(entry?.id ?? ''), entry?.time)) {
           const r = await this.store(field, ev.payload, ev.dedupeKey);
           if (r === 'duplicate') out.duplicates++;
           else out.events++;
@@ -58,15 +74,19 @@ export class WebhookIngestService implements OnModuleInit {
     return out;
   }
 
-  /** Un evento por mensaje / estado; el resto de campos, uno por cambio (dedupe por hash). */
-  private split(field: string, value: any, entryId: string): Array<{ payload: any; dedupeKey: string }> {
-    if (field !== 'messages') return [{ payload: value, dedupeKey: `chg:${field}:${sha256(JSON.stringify({ entryId, value }))}` }];
+  /**
+   * Un evento por mensaje / estado; el resto de campos, uno por cambio (dedupe por hash). La clave incluye el
+   * `entry.time` del cambio: así FLAGGED → UNFLAGGED → FLAGGED (mismo contenido, semanas después) no se descarta,
+   * y el reenvío del mismo POST por Meta (mismo `time`) sí.
+   */
+  private split(field: string, value: any, entryId: string, time?: unknown): Array<{ payload: any; dedupeKey: string }> {
+    if (field !== 'messages') return [{ payload: value, dedupeKey: `chg:${field}:${sha256(JSON.stringify({ entryId, time: time ?? null, value }))}` }];
     const base = { messaging_product: value.messaging_product, metadata: value.metadata, contacts: value.contacts ?? [] };
     const evs: Array<{ payload: any; dedupeKey: string }> = [];
     for (const m of value.messages ?? []) evs.push({ payload: { ...base, messages: [m] }, dedupeKey: `msg:${m.id}` });
     for (const s of value.statuses ?? []) evs.push({ payload: { ...base, statuses: [s] }, dedupeKey: `st:${s.id}:${s.status}${s.errors?.[0]?.code ? ':' + s.errors[0].code : ''}` });
     // Otros contenidos de `messages` (p. ej. errors de nivel superior): un evento por hash
-    if (!evs.length) evs.push({ payload: value, dedupeKey: `chg:messages:${sha256(JSON.stringify({ entryId, value }))}` });
+    if (!evs.length) evs.push({ payload: value, dedupeKey: `chg:messages:${sha256(JSON.stringify({ entryId, time: time ?? null, value }))}` });
     return evs;
   }
 
