@@ -1,5 +1,5 @@
 import type { Template } from '@prisma/client';
-import { hasOptOutButton, templateVariableKeys, type TemplateComponent, type TemplateDto, type TemplateStatus, type TemplateCategory } from '@gelado/shared';
+import { hasOptOutButton, templateVariableKeys, type TemplateComponent, type TemplateDraftDto, type TemplateDto, type TemplateStatus, type TemplateCategory } from '@gelado/shared';
 
 /** Estado de Meta → estado local. Los desconocidos se tratan como pendientes. */
 export function mapMetaStatus(s: string | undefined | null): TemplateStatus {
@@ -70,6 +70,7 @@ export function toTemplateDto(t: Template): TemplateDto {
     variables: templateVariableKeys(components),
     headerFormat: headerFormatOf(components),
     usableInCampaigns: status === 'APPROVED' && (category !== 'MARKETING' || t.hasOptOutButton),
+    draft: status === 'LOCAL_DRAFT' ? ((t.draftData as unknown as TemplateDraftDto | null) ?? null) : null,
     lastSyncedAt: t.lastSyncedAt?.toISOString() ?? null,
     updatedAt: t.updatedAt.toISOString(),
   };
