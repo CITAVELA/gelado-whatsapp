@@ -2,12 +2,13 @@
  * Post-MVP · «Guardar borrador» en el editor de plantillas (LOCAL_DRAFT): guardar sin llamar a Meta, reabrir, editar,
  * enviar a revisión con la misma validación que crear, solo administradora y borradores invisibles fuera del editor.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, loginAs, ADMIN_EMAIL, AGENT_EMAIL, type TestApp } from './utils/app';
 import { MetaSimulator } from './meta-simulator/simulator';
 import { seedConversation } from './meta-simulator/harness';
 import { StorageService } from '../src/modules/storage/storage.service';
 import { TemplatesService } from '../src/modules/templates/templates.service';
+import { WhatsAppGateway } from '../src/modules/whatsapp/whatsapp.gateway';
 
 let t: TestApp;
 let sim: MetaSimulator;
@@ -22,6 +23,7 @@ afterAll(async () => {
   await t.close();
   await sim.stop();
 });
+afterEach(() => vi.restoreAllMocks());
 beforeEach(async () => {
   await t.reset();
   sim.reset();
@@ -290,5 +292,161 @@ describe('solo administradora y visibilidad', () => {
     expect((await a.get('/api/templates')).body.map((x: any) => x.name).sort()).toEqual(['borrador_uno', 'de_meta']);
     // y el recálculo del botón de baja al arrancar tampoco lo rompe
     expect(await t.app.get(TemplatesService).recomputeOptOutFlags()).toBe(0);
+  });
+});
+
+/** Frena `createTemplate` (la llamada a Meta) hasta que se abra la compuerta, para solapar otras peticiones con el envío. */
+function gateMeta() {
+  const gw = t.app.get(WhatsAppGateway);
+  const orig = gw.createTemplate.bind(gw);
+  let open!: () => void;
+  const gate = new Promise<void>((r) => (open = r));
+  let entered!: () => void;
+  const reached = new Promise<void>((r) => (entered = r));
+  const spy = vi.spyOn(gw, 'createTemplate').mockImplementation(async (...args) => {
+    entered();
+    await gate;
+    return orig(...args);
+  });
+  return { open, reached, spy };
+}
+
+const metaTemplate = (over: Record<string, unknown> = {}) => ({
+  id: '777',
+  name: 'borrador_uno',
+  language: 'es',
+  category: 'MARKETING',
+  status: 'PENDING',
+  components: [{ type: 'BODY', text: 'Lo que realmente se envió a Meta' }],
+  ...over,
+});
+const webhookValue = (over: Record<string, unknown> = {}) => ({ event: 'APPROVED', message_template_id: 777, message_template_name: 'borrador_uno', message_template_language: 'es', reason: 'NONE', ...over });
+
+describe('el envío reserva el borrador (R-3)', () => {
+  it('un segundo envío simultáneo, guardar o borrar durante el envío dan 409 y el primero termina bien', async () => {
+    const c = await a.post('/api/templates/draft', full());
+    const id = c.body.id;
+    const g = gateMeta();
+    const first = Promise.resolve(a.post(`/api/templates/${id}/submit`, full()));
+    await g.reached;
+    const second = await a.post(`/api/templates/${id}/submit`, full());
+    expect(second.status).toBe(409);
+    expect(second.body.message).toMatch(/ya se está enviando/);
+    const save = await a.put(`/api/templates/${id}/draft`, full({ body: 'cambio a mitad del envío' }));
+    expect(save.status).toBe(409);
+    const del = await a.del(`/api/templates/${id}`);
+    expect(del.status).toBe(409);
+    expect(del.body.message).toMatch(/ya se está enviando/);
+    expect(await t.prisma.template.count({ where: { id } })).toBe(1);
+    g.open();
+    const r = await first;
+    expect(r.status, JSON.stringify(r.body)).toBe(201);
+    expect(r.body).toMatchObject({ id, status: 'PENDING' });
+    expect(g.spy).toHaveBeenCalledTimes(1);
+    expect(sim.templates.size).toBe(1);
+    const row = await t.prisma.template.findUniqueOrThrow({ where: { id } });
+    expect(row).toMatchObject({ status: 'PENDING', submittingAt: null });
+    expect(row.draftData).toBeNull();
+    expect(row.components).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'BODY', text: 'Hola {{1}}, tenemos algo para ti.' })])); // lo enviado, no una versión editada a mitad
+  });
+
+  it('si Meta falla se libera la reserva y se puede reintentar o borrar', async () => {
+    const c = await a.post('/api/templates/draft', full());
+    sim.failRules.push({ code: 100, count: 1, httpStatus: 400, path: 'message_templates' });
+    expect((await a.post(`/api/templates/${c.body.id}/submit`, full())).status).toBe(502);
+    expect((await t.prisma.template.findUniqueOrThrow({ where: { id: c.body.id } })).submittingAt).toBeNull();
+    expect((await a.put(`/api/templates/${c.body.id}/draft`, full({ body: 'ya puedo editar' }))).status).toBe(200);
+    expect((await a.del(`/api/templates/${c.body.id}`)).status).toBe(200);
+  });
+
+  it('una reserva caducada (envío muerto) no bloquea: se puede borrar y volver a enviar', async () => {
+    const c = await a.post('/api/templates/draft', full());
+    await t.prisma.template.update({ where: { id: c.body.id }, data: { submittingAt: new Date(Date.now() - 10 * 60_000) } });
+    expect((await a.post(`/api/templates/${c.body.id}/submit`, full())).status).toBe(201);
+    const d = await a.post('/api/templates/draft', full({ name: 'otro_borrador' }));
+    await t.prisma.template.update({ where: { id: d.body.id }, data: { submittingAt: new Date(Date.now() - 10 * 60_000) } });
+    expect((await a.del(`/api/templates/${d.body.id}`)).status).toBe(200);
+  });
+
+  it('borrar no toca una plantilla que ya no es borrador: la borra también en Meta', async () => {
+    const c = await a.post('/api/templates/draft', full());
+    expect((await a.post(`/api/templates/${c.body.id}/submit`, full())).status).toBe(201);
+    expect(sim.templates.size).toBe(1);
+    expect((await a.del(`/api/templates/${c.body.id}`)).status).toBe(200);
+    expect(sim.templates.size).toBe(0);
+    expect((await t.prisma.template.findUniqueOrThrow({ where: { id: c.body.id } })).status).toBe('DELETED');
+  });
+
+  it('si una sincronización adopta el borrador mientras se envía, el envío termina bien sobre esa misma fila', async () => {
+    const c = await a.post('/api/templates/draft', full());
+    const id = c.body.id;
+    const g = gateMeta();
+    const first = Promise.resolve(a.post(`/api/templates/${id}/submit`, full()));
+    await g.reached;
+    sim.templates.set('777', metaTemplate()); // Meta ya la tiene (p. ej. el envío llegó pero la respuesta tarda)
+    const sync = await a.post('/api/templates/sync');
+    expect(sync.body).toMatchObject({ adoptedDrafts: 1 });
+    g.open();
+    const r = await first;
+    expect(r.status, JSON.stringify(r.body)).toBe(201);
+    expect(await t.prisma.template.count()).toBe(1);
+    const row = await t.prisma.template.findUniqueOrThrow({ where: { id } });
+    expect(row).toMatchObject({ metaTemplateId: '777', submittingAt: null });
+    expect(row.status).not.toBe('LOCAL_DRAFT');
+  });
+});
+
+describe('los webhooks nunca ponen el contenido del borrador en una plantilla (R-2)', () => {
+  it('A · el envío agotó el tiempo pero Meta la creó: el APPROVED deja los componentes reales de Meta, no los del borrador', async () => {
+    const c = await a.post('/api/templates/draft', full());
+    expect(c.body.variables).toEqual(['body.1']);
+    sim.templates.set('777', metaTemplate({ components: [{ type: 'BODY', text: 'Texto enviado, sin variables' }, { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'No recibir más' }] }] }));
+    sim.failRules.push({ code: 100, count: 1, httpStatus: 400, path: 'message_templates' }); // la respuesta se perdió: 502
+    expect((await a.post(`/api/templates/${c.body.id}/submit`, full())).status).toBe(502);
+    expect((await t.prisma.template.findUniqueOrThrow({ where: { id: c.body.id } })).status).toBe('LOCAL_DRAFT');
+    sim.templates.get('777').status = 'APPROVED';
+    await t.app.get(TemplatesService).handleStatusUpdate(webhookValue());
+    const row = await t.prisma.template.findUniqueOrThrow({ where: { id: c.body.id } });
+    expect(row).toMatchObject({ status: 'APPROVED', metaTemplateId: '777', hasOptOutButton: true, submittingAt: null });
+    expect(row.draftData).toBeNull();
+    expect((row.components as any[]).find((x) => x.type === 'BODY').text).toBe('Texto enviado, sin variables');
+    const dto = (await a.get(`/api/templates/${c.body.id}`)).body;
+    expect(dto).toMatchObject({ variables: [], status: 'APPROVED', draft: null });
+  });
+
+  it('B · en Meta existe una de marketing con ese nombre sin «No recibir más»: no queda usable en campañas', async () => {
+    const c = await a.post('/api/templates/draft', full()); // el borrador sí lleva el botón de baja
+    expect(c.body.hasOptOutButton).toBe(true);
+    sim.templates.set('777', metaTemplate({ status: 'APPROVED' })); // sin botón de baja
+    await t.app.get(TemplatesService).handleStatusUpdate(webhookValue());
+    const dto = (await a.get(`/api/templates/${c.body.id}`)).body;
+    expect(dto).toMatchObject({ status: 'APPROVED', hasOptOutButton: false, usableInCampaigns: false });
+    expect(await t.prisma.template.count()).toBe(1);
+  });
+
+  it('C · un webhook que solo coincide con un borrador y no está en Meta se ignora y el borrador no cambia', async () => {
+    const c = await a.post('/api/templates/draft', full());
+    await t.app.get(TemplatesService).handleStatusUpdate(webhookValue());
+    await t.app.get(TemplatesService).handleQualityUpdate({ message_template_name: 'borrador_uno', message_template_language: 'es', new_quality_score: 'GREEN' });
+    const row = await t.prisma.template.findUniqueOrThrow({ where: { id: c.body.id } });
+    expect(row).toMatchObject({ status: 'LOCAL_DRAFT', metaTemplateId: null, qualityScore: null });
+    expect(row.draftData).not.toBeNull();
+  });
+});
+
+describe('la sincronización avisa cuando adopta un borrador (R-4)', () => {
+  it('un borrador con el nombre de una plantilla de Meta pasa a ser esa plantilla, con constancia en el resultado y en la auditoría', async () => {
+    const c = await a.post('/api/templates/draft', full());
+    sim.templates.set('777', metaTemplate({ status: 'APPROVED' }));
+    const r = await a.post('/api/templates/sync');
+    expect(r.body).toMatchObject({ total: 1, created: 0, updated: 1, adoptedDrafts: 1 });
+    const row = await t.prisma.template.findUniqueOrThrow({ where: { id: c.body.id } });
+    expect(row).toMatchObject({ status: 'APPROVED', metaTemplateId: '777' });
+    expect(row.draftData).toBeNull();
+    expect((row.components as any[])[0].text).toBe('Lo que realmente se envió a Meta');
+    const log = await t.prisma.auditLog.findFirstOrThrow({ where: { action: 'adopt_template_draft' } });
+    expect(log).toMatchObject({ entityId: c.body.id, data: expect.objectContaining({ name: 'borrador_uno', language: 'es', metaTemplateId: '777' }) });
+    // una segunda sincronización ya no adopta nada
+    expect((await a.post('/api/templates/sync')).body.adoptedDrafts).toBe(0);
   });
 });

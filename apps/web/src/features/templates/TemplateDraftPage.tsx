@@ -11,7 +11,7 @@ export function TemplateDraftPage() {
   const nav = useNavigate();
   // siempre fresco: lo que se guardó hace un momento tiene que verse al reabrir
   const { data, isLoading, error } = useQuery({
-    queryKey: ['templates', 'draft', id],
+    queryKey: ['template-draft', id], // fuera de ['templates']: guardar o enviar no la refresca mientras está abierta
     queryFn: () => api.get<TemplateDto>(`/api/templates/${id}`),
     staleTime: 0,
     gcTime: 0,

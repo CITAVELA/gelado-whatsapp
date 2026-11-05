@@ -26,7 +26,13 @@ export interface SyncResult {
   created: number;
   updated: number;
   deleted: number;
+  /** borradores locales que tenían el mismo nombre que una plantilla de Meta y han pasado a ser esa plantilla */
+  adoptedDrafts: number;
 }
+
+/** Un envío a Meta que lleva más de esto se da por muerto y el borrador se puede volver a enviar o borrar. */
+const SUBMIT_LOCK_MS = 2 * 60_000;
+const SENDING_MESSAGE = 'Este borrador ya se está enviando a Meta. Espera un momento y revisa el listado.';
 
 export interface TemplateDraft {
   sourceTemplateId: string;
@@ -132,7 +138,7 @@ export class TemplatesService implements OnModuleInit {
     } catch (e) {
       throw this.metaError(e, 'No se pudieron leer las plantillas de Meta');
     }
-    const res: SyncResult = { total: remote.length, created: 0, updated: 0, deleted: 0 };
+    const res: SyncResult = { total: remote.length, created: 0, updated: 0, deleted: 0, adoptedDrafts: 0 };
     const now = new Date();
     const seen = new Set<string>();
     for (const w of remote) {
@@ -153,6 +159,7 @@ export class TemplatesService implements OnModuleInit {
         hasOptOutButton: hasOptOutButton(components),
         lastSyncedAt: now,
         draftData: Prisma.DbNull, // si había un borrador con ese nombre, pasa a ser la plantilla de Meta
+        submittingAt: null,
       };
       if (!existing) {
         const row = await this.prisma.template.create({ data });
@@ -162,6 +169,18 @@ export class TemplatesService implements OnModuleInit {
         seen.add(existing.id);
         const row = await this.prisma.template.update({ where: { id: existing.id }, data });
         res.updated++;
+        if (existing.status === 'LOCAL_DRAFT') {
+          // Un borrador con el mismo nombre que una plantilla de Meta pasa a ser esa plantilla: su contenido local se descarta (queda constancia)
+          res.adoptedDrafts++;
+          this.log.warn(`El borrador «${existing.name}» (${existing.language}) ya existe en Meta: pasa a ser la plantilla de Meta`);
+          await this.audit.log({
+            userId: null,
+            action: 'adopt_template_draft',
+            entityType: 'Template',
+            entityId: existing.id,
+            data: { name: existing.name, language: existing.language, metaTemplateId: row.metaTemplateId, status: row.status },
+          });
+        }
         await this.notifyChange(row, existing.status);
       }
     }
@@ -310,33 +329,56 @@ export class TemplatesService implements OnModuleInit {
     await this.assertNameFree(dto.name, dto.language, id);
     let count: number;
     try {
-      ({ count } = await this.prisma.template.updateMany({ where: { id, status: 'LOCAL_DRAFT' }, data: this.draftColumns(dto) }));
+      ({ count } = await this.prisma.template.updateMany({ where: { id, status: 'LOCAL_DRAFT', ...this.notSending() }, data: this.draftColumns(dto) }));
     } catch (e) {
       if ((e as { code?: string }).code === 'P2002') throw this.nameTaken('LOCAL_DRAFT');
       throw e;
     }
-    if (!count) await this.draftRow(id); // otra persona lo envió o borró entre medias → 409/404
+    if (!count) {
+      await this.draftRow(id); // otra persona lo envió o borró entre medias → 409/404
+      throw new ConflictException({ statusCode: 409, message: SENDING_MESSAGE });
+    }
     const row = await this.getRow(id);
     await this.audit.log({ userId, action: 'save_template_draft', entityType: 'Template', entityId: id, data: { name: row.name, language: row.language, created: false } });
     this.realtime.emit('template.updated', { templateId: id, status: row.status });
     return toTemplateDto(row);
   }
 
+  /** Condición Prisma: el borrador no tiene un envío a Meta en curso (o ese envío caducó). */
+  private notSending(): Prisma.TemplateWhereInput {
+    return { OR: [{ submittingAt: null }, { submittingAt: { lt: new Date(Date.now() - SUBMIT_LOCK_MS) } }] };
+  }
+
   /**
    * Envía a revisión un borrador con exactamente la misma validación y el mismo envío que `create`
-   * (Resumable Upload de la cabecera incluido). Si Meta falla, el borrador no cambia.
+   * (Resumable Upload de la cabecera incluido). Antes de llamar a Meta se reserva la fila (`submittingAt`):
+   * un segundo envío, guardar o borrar mientras tanto da 409. Si Meta falla se libera y sigue siendo borrador.
    */
   async submitDraft(id: string, dto: TemplateEditorDto, userId: string): Promise<TemplateDto> {
     await this.draftRow(id);
     this.assertValid(dto);
     await this.assertNameFree(dto.name, dto.language, id);
-    const { created, components } = await this.sendToMeta(dto);
+    const claimedAt = new Date();
+    const claim = await this.prisma.template.updateMany({ where: { id, status: 'LOCAL_DRAFT', ...this.notSending() }, data: { submittingAt: claimedAt } });
+    if (!claim.count) {
+      await this.draftRow(id); // ya no es borrador (o no existe) → 409/404 con su mensaje
+      throw new ConflictException({ statusCode: 409, message: SENDING_MESSAGE });
+    }
+    let sent: Awaited<ReturnType<TemplatesService['sendToMeta']>>;
+    try {
+      sent = await this.sendToMeta(dto);
+    } catch (e) {
+      await this.prisma.template.updateMany({ where: { id, status: 'LOCAL_DRAFT', submittingAt: claimedAt }, data: { submittingAt: null } });
+      throw e;
+    }
+    const { created, components } = sent;
+    const metaTemplateId = created.id ? String(created.id) : null;
     let row: Template;
     try {
       const u = await this.prisma.template.updateMany({
         where: { id, status: 'LOCAL_DRAFT' },
         data: {
-          metaTemplateId: created.id ? String(created.id) : null,
+          metaTemplateId,
           name: dto.name,
           displayName: dto.displayName,
           language: dto.language,
@@ -345,24 +387,30 @@ export class TemplatesService implements OnModuleInit {
           components: components as unknown as Prisma.InputJsonValue,
           hasOptOutButton: hasOptOutButton(components),
           draftData: Prisma.DbNull,
+          submittingAt: null,
           rejectedReason: null,
           lastSyncedAt: new Date(),
         },
       });
-      if (!u.count) await this.draftRow(id);
+      // count 0: una sincronización adoptó la fila mientras se enviaba (ya existe en Meta); el resultado es el mismo
       row = await this.getRow(id);
+      if (!u.count) this.log.warn(`El borrador ${dto.name} ya había sido adoptado por una sincronización cuando terminó su envío`);
     } catch (e) {
-      if ((e as { code?: string }).code === 'P2002') throw this.nameTaken('PENDING');
-      throw e;
+      if ((e as { code?: string }).code !== 'P2002' || !metaTemplateId) throw e;
+      // una sincronización ya creó otra fila para esta plantilla de Meta (nombre cambiado en el envío): el borrador sobra
+      const synced = await this.prisma.template.findUnique({ where: { metaTemplateId } });
+      if (!synced) throw this.nameTaken('PENDING');
+      await this.prisma.template.deleteMany({ where: { id, status: 'LOCAL_DRAFT' } });
+      row = synced;
     }
     await this.audit.log({
       userId,
       action: 'submit_template_draft',
       entityType: 'Template',
-      entityId: id,
+      entityId: row.id,
       data: { name: row.name, category: row.category, language: row.language, optOutButton: row.hasOptOutButton },
     });
-    this.realtime.emit('template.updated', { templateId: id, status: row.status });
+    this.realtime.emit('template.updated', { templateId: row.id, status: row.status });
     return toTemplateDto(row);
   }
 
@@ -456,11 +504,17 @@ export class TemplatesService implements OnModuleInit {
       throw new ConflictException({ statusCode: 409, message: 'Hay campañas programadas, en curso o en pausa que usan esta plantilla. Cancélalas antes de borrarla.' });
     }
     if (t.status === 'LOCAL_DRAFT') {
-      // Un borrador nunca existió en Meta: se borra del todo y su nombre queda libre
-      await this.prisma.template.delete({ where: { id } });
-      await this.audit.log({ userId, action: 'delete_template', entityType: 'Template', entityId: id, data: { name: t.name, previousStatus: t.status } });
-      this.realtime.emit('template.updated', { templateId: id, status: 'DELETED' });
-      return { ok: true };
+      // Un borrador nunca existió en Meta: se borra del todo y su nombre queda libre. Solo si sigue siendo borrador y no se está enviando.
+      const del = await this.prisma.template.deleteMany({ where: { id, status: 'LOCAL_DRAFT', ...this.notSending() } });
+      if (del.count) {
+        await this.audit.log({ userId, action: 'delete_template', entityType: 'Template', entityId: id, data: { name: t.name, previousStatus: t.status } });
+        this.realtime.emit('template.updated', { templateId: id, status: 'DELETED' });
+        return { ok: true };
+      }
+      const now = await this.prisma.template.findUnique({ where: { id } });
+      if (!now) return { ok: true };
+      if (now.status === 'LOCAL_DRAFT') throw new ConflictException({ statusCode: 409, message: SENDING_MESSAGE });
+      return this.remove(id, userId); // dejó de ser borrador (se envió o la adoptó Meta): se borra también en Meta
     }
     try {
       await this.gateway.deleteTemplate(t.name, t.metaTemplateId ?? undefined);
@@ -489,14 +543,19 @@ export class TemplatesService implements OnModuleInit {
       return null;
     };
     let t = await find();
-    if (!t) {
-      // plantilla desconocida: resincroniza con Meta y vuelve a buscar
+    if (!t || t.status === 'LOCAL_DRAFT') {
+      // Plantilla desconocida, o un borrador local con ese nombre: resincroniza con Meta, que copia los componentes reales y
+      // vacía el borrador. Un borrador nunca se actualiza por webhook con su propio contenido (no es lo que tiene Meta).
       try {
         await this.sync();
       } catch (e) {
         this.log.warn(`No se pudo resincronizar tras webhook de plantilla ${name ?? metaId}: ${(e as Error).message}`);
       }
       t = await find();
+      if (t?.status === 'LOCAL_DRAFT') {
+        this.log.warn(`Webhook de plantilla ${name ?? metaId} que solo coincide con un borrador local y no está en Meta: se ignora`);
+        return null;
+      }
       if (!t) this.log.warn(`Webhook de plantilla desconocida (${name ?? metaId}) y no está en Meta`);
     }
     return t;
