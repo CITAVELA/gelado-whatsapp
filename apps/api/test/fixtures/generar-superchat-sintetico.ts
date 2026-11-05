@@ -13,8 +13,7 @@
  * 3 NO PUBLICIDAD, ~110 fijos en notación científica, DNI/NIE/CIF/«-», ~20 nombres con emojis.
  */
 import { writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { normalizePhone } from '@gelado/shared';
 
 export const HEADERS = [
@@ -214,8 +213,9 @@ export function buildListRows(all: Row[]): Row[] {
   return [...pickRows, ...nuevos];
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const dir = dirname(fileURLToPath(import.meta.url));
+// Solo al ejecutarlo con tsx (no al importarlo desde las pruebas)
+if (typeof require !== 'undefined' && typeof module !== 'undefined' && require.main === module) {
+  const dir = __dirname;
   const rows = buildRows();
   writeFileSync(join(dir, 'superchat-export-sintetico.csv'), toCsv(rows));
   const list = buildListRows(rows);

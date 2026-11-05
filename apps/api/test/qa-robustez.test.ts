@@ -75,7 +75,7 @@ describe('Identificadores y parámetros mal formados → 4xx, nunca 500', () => 
   });
 
   // FALLO F-5: un filtro con id de etiqueta que no es UUID llega a Prisma y da 500
-  it.fails('GET /api/contacts?includeLabelIds=no-uuid → 4xx', async () => {
+  it('GET /api/contacts?includeLabelIds=no-uuid → 4xx', async () => {
     expect((await a.get('/api/contacts?includeLabelIds=no-uuid')).status).toBeLessThan(500);
   });
   // CORREGIDO F-6: fecha de filtro no válida en el registro de actividad → 500
