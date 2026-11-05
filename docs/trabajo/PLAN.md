@@ -48,6 +48,7 @@ Cambios fuera de lo propio (p. ej. `schema.prisma`, `endpoints.ts`): mínimos, e
 - [x] Paso 4b · S12 · Importador de Superchat (añadido 05/11/2026): teléfono opcional (P16), normalización «+9 dígitos» → +34, avisos, deduplicación teléfono → correo → código, mapeo de cabeceras de Superchat, NO_PHONE en campañas, fixtures sintéticos (el CSV real nunca entra en el repo)
 - [x] Paso 4c · re-revisión de S9 (N1–N10) y correcciones de QA (F-1…F-21) integradas
 - [x] Paso 5 · verificación final (875 api · 95 web · 4 shared · 29 e2e · build y arranque tipo Render en local). Informe: docs/trabajo/INFORME_FINAL.md
+- [x] Post-MVP (06/11/2026, rama `claude/post-mvp`): A · navegadores y móvil (e2e en 5 proyectos, notas de voz webm/ogg/mp4, notificaciones y sonido en Safari) y B · borrador de plantillas; revisión independiente R-1…R-11 corregida. Informe: docs/trabajo/INFORME_POST_MVP.md
 
 ## Medición de consumo (orquestador)
 
