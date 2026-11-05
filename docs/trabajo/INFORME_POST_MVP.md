@@ -46,7 +46,9 @@ Además, en la verificación final (orquestador):
 | Suite | Resultado |
 | --- | --- |
 | Typecheck (shared, api, web) | correcto |
-| Shared · API · Web | ver informe de la parada final |
+| Shared | 4 / 4 |
+| API (Vitest + Supertest, simulador y PostgreSQL local) | 938 / 938 en 39 ficheros (antes 875) |
+| Web (Vitest + Testing Library) | 145 / 145 en 20 ficheros (antes 95) |
 | Build de producción | correcto |
 | e2e chromium | 34 pasan · 1 saltada |
 | e2e firefox | 33 pasan · 2 saltadas |
@@ -62,6 +64,10 @@ Saltadas, con motivo:
 
 ## 4. Pendiente o no comprobado
 
+- **Prueba intermitente del MVP:** «5 mensajes de un número nuevo llegando a la vez» (`qa-reglas`) falló 1 vez en 3 pasadas completas de la API, con la máquina cargada. No volvió a fallar en 8 repeticiones aisladas ni en la pasada final. No se guardó el detalle del fallo.
+  - Contacto, conversación y mensaje se crean en una sola transacción, con reintento.
+  - En producción el mensaje va por una cola que reintenta a los 5 s.
+  - Conviene repetirla capturando el error para ver si lo que se pasa es la espera de 4 s de la prueba.
 - **Safari e iOS reales:** el WebKit de Playwright para Linux no trae `MediaRecorder`. En WebKit e iPhone la grabación se simula con una grabación real de Safari (mp4). Eso prueba la subida y la conversión, pero no el códec del Safari de verdad.
   - Mañana conviene grabar una nota real desde un iPhone y desde un Mac con Safari.
   - También conviene probar el micrófono real y el toque real en los submenús.
