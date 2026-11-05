@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { loginSchema, setPasswordSchema, SESSION_COOKIE, type LoginDto, type SetPasswordDto } from '@gelado/shared';
-import { AuthService, SESSION_TTL_MS } from './auth.service';
+import { AuthService, sessionCookieOptions } from './auth.service';
 import { CurrentUser, Public, type AuthUser } from '../../common/decorators';
 import { ZodPipe } from '../../common/zod.pipe';
 import { config } from '../../common/config';
@@ -19,13 +19,7 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body(new ZodPipe(loginSchema)) dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { token, user } = await this.auth.login(dto.email, dto.password, clientIp(req), req.get('user-agent') ?? null);
-    res.cookie(SESSION_COOKIE, token, {
-      httpOnly: true,
-      secure: config().NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: SESSION_TTL_MS,
-      path: '/',
-    });
+    res.cookie(SESSION_COOKIE, token, sessionCookieOptions());
     return user;
   }
 

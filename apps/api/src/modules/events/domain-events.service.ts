@@ -20,6 +20,8 @@ export interface DomainEventMap {
   /** Aviso o restricción de la cuenta (account_update). */
   'account.update': { event: string; raw: unknown };
   /** Error grave de envío que obliga a parar (368, 131031, 132015, 132001). */
+  /** Sesiones revocadas (cierre de sesión, contraseña nueva, usuario desactivado): el tiempo real corta sus sockets. */
+  'session.revoked': { userId?: string; sessionId?: string; reason: 'logout' | 'password' | 'deactivated' };
   'sending.blocked': { code: number; scope: 'all' | 'campaign'; campaignId?: string | null; templateId?: string | null; message: string };
 }
 

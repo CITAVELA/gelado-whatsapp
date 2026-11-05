@@ -2,6 +2,12 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 
+/** Solo rutas internas de la app («/bandeja…»); nunca «//host» ni «/\host» (redirección abierta). */
+export function safeFrom(from: unknown): string {
+  if (typeof from !== 'string' || !from.startsWith('/') || from.startsWith('//') || from.includes('\\') || /^\/[^/]*:/.test(from)) return '/bandeja';
+  return from;
+}
+
 export function LoginPage() {
   const { user, login } = useAuth();
   const loc = useLocation();
@@ -9,7 +15,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  if (user) return <Navigate to={(loc.state as any)?.from ?? '/bandeja'} replace />;
+  if (user) return <Navigate to={safeFrom((loc.state as any)?.from)} replace />;
 
   async function submit(e: FormEvent) {
     e.preventDefault();

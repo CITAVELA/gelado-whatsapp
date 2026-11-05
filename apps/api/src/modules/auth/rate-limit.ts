@@ -9,14 +9,24 @@ export class LoginRateLimiter {
 
   private recent(key: string, now: number) {
     const arr = (this.hits.get(key) ?? []).filter((t) => now - t < this.windowMs);
-    this.hits.set(key, arr);
+    if (arr.length) this.hits.set(key, arr);
+    else this.hits.delete(key);
+    if (this.hits.size > 5000) this.purge(now);
     return arr;
   }
   isBlocked(keys: string[], now = Date.now()) {
     return keys.some((k) => this.recent(k, now).length >= this.max(k));
   }
   fail(keys: string[], now = Date.now()) {
-    for (const k of keys) this.recent(k, now).push(now);
+    for (const k of keys) {
+      const arr = this.recent(k, now);
+      arr.push(now);
+      this.hits.set(k, arr);
+    }
+  }
+  /** Quita las claves sin intentos recientes (el mapa no crece sin límite). */
+  purge(now = Date.now()) {
+    for (const [k, arr] of this.hits) if (!arr.some((t) => now - t < this.windowMs)) this.hits.delete(k);
   }
   clear() {
     this.hits.clear();

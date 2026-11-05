@@ -7,15 +7,27 @@ import { randomToken, sha256 } from '../../common/tokens';
 import { config } from '../../common/config';
 import { AuditService } from '../audit/audit.service';
 import { LoginRateLimiter } from './rate-limit';
+import { DomainEvents } from '../events/domain-events.service';
 import type { AuthUser } from '../../common/decorators';
 
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const SLIDE_AFTER_MS = 60 * 60 * 1000; // renueva la caducidad como mucho una vez por hora
 
+export function sessionCookieOptions() {
+  return { httpOnly: true, secure: config().NODE_ENV === 'production', sameSite: 'lax' as const, maxAge: SESSION_TTL_MS, path: '/' };
+}
+
 @Injectable()
 export class AuthService {
   readonly limiter = new LoginRateLimiter();
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly events: DomainEvents) {}
+
+  /** Hash señuelo: el login tarda lo mismo exista o no el correo (no revela usuarios). */
+  private dummyHash: Promise<string> | null = null;
+  private getDummyHash() {
+    this.dummyHash ??= argon2.hash(randomToken(16), { type: argon2.argon2id });
+    return this.dummyHash;
+  }
 
   static toMe(u: Pick<User, 'id' | 'email' | 'name' | 'role'>): MeDto {
     return { id: u.id, email: u.email, name: u.name, role: u.role };
@@ -41,7 +53,9 @@ export class AuthService {
     const keys = [`ip:${ip ?? '?'}`, `u:${email}`];
     if (this.limiter.isBlocked(keys)) throw new HttpException({ statusCode: 429, message: 'Demasiados intentos. Espera 15 minutos y vuelve a probar.' }, 429);
     const user = await this.prisma.user.findUnique({ where: { email } });
-    const ok = !!user && user.active && !!user.passwordHash && (await argon2.verify(user.passwordHash, password).catch(() => false));
+    const hash = user?.active && user.passwordHash ? user.passwordHash : await this.getDummyHash();
+    const verified = await argon2.verify(hash, password).catch(() => false);
+    const ok = !!user && user.active && !!user.passwordHash && verified;
     if (!ok) {
       this.limiter.fail(keys);
       await this.audit.log({ userId: user?.id, action: 'login_failed', data: { email }, ip });
@@ -59,17 +73,25 @@ export class AuthService {
 
   /** Valida el token de la cookie; desliza la caducidad. */
   async validateSession(token: string | undefined): Promise<AuthUser | null> {
+    return (await this.validateSessionEx(token))?.user ?? null;
+  }
+
+  /** Como validateSession, e indica si se ha deslizado la caducidad (para renovar la cookie). */
+  async validateSessionEx(token: string | undefined): Promise<{ user: AuthUser; slid: boolean } | null> {
     if (!token) return null;
     const s = await this.prisma.session.findUnique({ where: { tokenHash: sha256(token) }, include: { user: true } });
     if (!s || s.expiresAt.getTime() < Date.now() || !s.user.active) return null;
+    let slid = false;
     if (Date.now() - s.lastSeenAt.getTime() > SLIDE_AFTER_MS) {
       await this.prisma.session.update({ where: { id: s.id }, data: { lastSeenAt: new Date(), expiresAt: new Date(Date.now() + SESSION_TTL_MS) } });
+      slid = true;
     }
-    return { id: s.user.id, email: s.user.email, name: s.user.name, role: s.user.role, sessionId: s.id };
+    return { user: { id: s.user.id, email: s.user.email, name: s.user.name, role: s.user.role, sessionId: s.id }, slid };
   }
 
   async logout(sessionId: string, userId: string, ip: string | null) {
     await this.prisma.session.deleteMany({ where: { id: sessionId } });
+    await this.events.emit('session.revoked', { sessionId, reason: 'logout' });
     await this.audit.log({ userId, action: 'logout', ip });
   }
 
@@ -104,6 +126,7 @@ export class AuthService {
       this.prisma.user.update({ where: { id: t.userId }, data: { passwordHash } }),
       this.prisma.session.deleteMany({ where: { userId: t.userId } }),
     ]);
+    await this.events.emit('session.revoked', { userId: t.userId, reason: 'password' });
     await this.audit.log({ userId: t.userId, action: 'set_password', data: { purpose: t.purpose }, ip });
     return { email: t.user.email };
   }

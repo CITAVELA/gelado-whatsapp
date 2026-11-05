@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { CSRF_HEADER, CSRF_VALUE, SESSION_COOKIE, type Role } from '@gelado/shared';
 import { IS_PUBLIC, ROLES, SKIP_CSRF } from '../../common/decorators';
-import { AuthService } from './auth.service';
+import { AuthService, sessionCookieOptions } from './auth.service';
 
 /**
  * Guard global: sesión (cookie httpOnly) + rol + CSRF.
@@ -22,15 +22,20 @@ export class SessionGuard implements CanActivate {
     const skipCsrf = this.reflector.getAllAndOverride<boolean>(SKIP_CSRF, targets);
 
     const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
-    if (mutating && !skipCsrf && req.path.startsWith('/api/')) {
+    // Toda petición que cambia datos exige la cabecera (sin mirar prefijo ni mayúsculas: Express enruta sin
+    // distinguirlas). Solo el webhook firmado de Meta lleva @SkipCsrf.
+    if (mutating && !skipCsrf) {
       if (req.get(CSRF_HEADER) !== CSRF_VALUE) throw new ForbiddenException({ statusCode: 403, message: 'Falta la cabecera de seguridad (CSRF)' });
     }
 
     if (isPublic) return true;
     const token = (req as any).cookies?.[SESSION_COOKIE] as string | undefined;
-    const user = await this.auth.validateSession(token);
-    if (!user) throw new UnauthorizedException({ statusCode: 401, message: 'Sesión caducada. Vuelve a entrar.' });
+    const v = await this.auth.validateSessionEx(token);
+    if (!v) throw new UnauthorizedException({ statusCode: 401, message: 'Sesión caducada. Vuelve a entrar.' });
+    const user = v.user;
     req.user = user;
+    // Caducidad deslizante también en el navegador: se reemite la cookie cuando la BD desliza la sesión
+    if (v.slid && token) ctx.switchToHttp().getResponse().cookie(SESSION_COOKIE, token, sessionCookieOptions());
 
     const roles = this.reflector.getAllAndOverride<Role[] | undefined>(ROLES, targets);
     if (roles?.length && !roles.includes(user.role)) {

@@ -7,10 +7,11 @@ import { ZodPipe } from '../../common/zod.pipe';
 import { AuthService } from '../auth/auth.service';
 import { AuditService } from '../audit/audit.service';
 import { clientIp } from '../auth/auth.controller';
+import { DomainEvents } from '../events/domain-events.service';
 
 @Controller('api/users')
 export class UsersController {
-  constructor(private readonly prisma: PrismaService, private readonly auth: AuthService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly auth: AuthService, private readonly audit: AuditService, private readonly events: DomainEvents) {}
 
   @Get()
   async list() {
@@ -41,7 +42,10 @@ export class UsersController {
       throw new BadRequestException({ statusCode: 400, message: 'No puedes quitarte a ti misma el acceso ni el rol de administradora' });
     }
     const updated = await this.prisma.user.update({ where: { id }, data: dto });
-    if (dto.active === false) await this.prisma.session.deleteMany({ where: { userId: id } });
+    if (dto.active === false) {
+      await this.prisma.session.deleteMany({ where: { userId: id } });
+      await this.events.emit('session.revoked', { userId: id, reason: 'deactivated' });
+    }
     await this.audit.log({ userId: me.id, action: 'update_user', entityType: 'User', entityId: id, data: dto, ip: clientIp(req) });
     return AuthService.toUserDto(updated);
   }

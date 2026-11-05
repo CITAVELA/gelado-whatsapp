@@ -287,6 +287,7 @@ model Message {
   @@index([conversationId, createdAt])
   @@index([campaignId])
   @@index([direction, kind, sentAt])
+  @@index([sentOutsideWindow, createdAt]) // uso del límite de 24 h (campañas, calidad)
 }
 
 enum ConversationEventType {
@@ -487,6 +488,7 @@ model CampaignRecipient {
 
   @@unique([campaignId, contactId])
   @@index([campaignId, status])
+  @@index([contactId, sentAt]) // respuestas y bajas de campaña por contacto
 }
 
 // ───────────── Sistema ─────────────
@@ -503,6 +505,7 @@ model WebhookEvent {
   error          String?
 
   @@index([processedAt])
+  @@index([receivedAt]) // último webhook recibido (calidad, /api/status) y limpieza diaria
 }
 
 model QualitySnapshot {

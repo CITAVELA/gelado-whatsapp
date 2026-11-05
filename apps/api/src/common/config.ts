@@ -63,7 +63,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     const missing = required.filter((k) => !clean[k]);
     if (cfg.STORAGE_DRIVER === 'supabase' && (!clean.SUPABASE_URL || !clean.SUPABASE_SERVICE_ROLE_KEY)) missing.push('SUPABASE_URL');
     if (missing.length) throw new Error(`Faltan variables de entorno en producción: ${missing.join(', ')}`);
-    if (cfg.META_GRAPH_BASE_URL.includes('localhost')) throw new Error('META_GRAPH_BASE_URL apunta al simulador en producción');
+    const problems: string[] = [];
+    if (!cfg.META_GRAPH_BASE_URL.startsWith('https://')) problems.push('META_GRAPH_BASE_URL debe ser https:// (no el simulador)');
+    if (cfg.STORAGE_DRIVER !== 'supabase') problems.push('STORAGE_DRIVER debe ser supabase en producción');
+    const appHost = new URL(cfg.APP_URL).hostname;
+    if (['localhost', '127.0.0.1', '0.0.0.0'].includes(appHost) || !cfg.APP_URL.startsWith('https://')) problems.push('APP_URL debe ser la dirección https pública');
+    if (cfg.STATUS_TOKEN.length < 32) problems.push('STATUS_TOKEN debe tener al menos 32 caracteres');
+    if (cfg.SESSION_SECRET.length < 32 || cfg.SESSION_SECRET.startsWith('dev-')) problems.push('SESSION_SECRET debe ser aleatorio (≥ 32 caracteres)');
+    if (problems.length) throw new Error(`Configuración de producción no válida: ${problems.join('; ')}`);
   }
   return cfg;
 }
