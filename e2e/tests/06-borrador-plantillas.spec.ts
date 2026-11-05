@@ -3,7 +3,7 @@
  * lo reabre desde el listado, lo completa, lo guarda de nuevo (mismo registro) y lo envía a revisión.
  * Un agente no ve los borradores. Todo contra el simulador de Meta.
  */
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { ADMIN, CRISTINA, api, json, login, simPost } from '../helpers';
 
 test.describe.configure({ mode: 'serial' });
@@ -23,6 +23,17 @@ const TITLE = `Borrador otoño QA ${STAMP}`;
 let metaName = '';
 let draftId = '';
 
+/**
+ * Pulsa «Guardar borrador» y espera la respuesta del servidor a ESE guardado (POST la primera vez, PUT después):
+ * los avisos de guardados anteriores pueden seguir en pantalla (móvil), así que el aviso solo no demuestra nada.
+ */
+async function saveDraft(page: Page, method: 'POST' | 'PUT') {
+  const done = page.waitForResponse((r) => r.request().method() === method && /\/api\/templates\/(draft|[0-9a-f-]{36}\/draft)$/.test(new URL(r.url()).pathname));
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+  expect((await done).ok()).toBe(true);
+  await expect(page.getByText(/Borrador «.*» guardado/).last()).toBeVisible();
+}
+
 const findByName = async (ctx: APIRequestContext, name: string) => (await json<any[]>(await ctx.get('/api/templates'))).find((x) => x.name === name);
 
 test('guardar un borrador incompleto, reabrirlo, editarlo y enviarlo a revisión', async ({ page }) => {
@@ -36,8 +47,7 @@ test('guardar un borrador incompleto, reabrirlo, editarlo y enviarlo a revisión
   expect(metaName).toMatch(/^borrador_oto.*_qa_\d{6}$/);
   // contenido incompleto a propósito: variable sin ejemplo (enviar fallaría, guardar no)
   await page.getByLabel('Mensaje').fill('Hola {{1}}, ya tenemos las novedades de otoño');
-  await page.getByRole('button', { name: 'Guardar borrador' }).click();
-  await expect(page.getByText(/Borrador «.*» guardado/)).toBeVisible();
+  await saveDraft(page, 'POST');
 
   // en la BD es un LOCAL_DRAFT y no ha ido a Meta
   const saved = await findByName(admin, metaName);
@@ -66,8 +76,7 @@ test('guardar un borrador incompleto, reabrirlo, editarlo y enviarlo a revisión
   // completar, editar y guardar de nuevo: mismo registro
   await page.getByLabel('Ejemplo de la variable 1').fill('Ginés');
   await page.getByLabel('Pie de página (opcional)').fill('Exclusivas Gelado');
-  await page.getByRole('button', { name: 'Guardar borrador' }).click();
-  await expect(page.getByText(/Borrador «.*» guardado/)).toBeVisible();
+  await saveDraft(page, 'PUT');
   const again = (await json<any[]>(await admin.get('/api/templates'))).filter((x) => x.name === metaName);
   expect(again).toHaveLength(1);
   expect(again[0]).toMatchObject({ id: draftId, status: 'LOCAL_DRAFT' });
@@ -101,8 +110,7 @@ test('un borrador se puede borrar (solo local) y su nombre queda libre', async (
   await page.getByRole('button', { name: /Nueva plantilla/ }).click();
   const title = `Borrador a borrar QA ${STAMP}`;
   await page.getByLabel('Nombre de la plantilla').fill(title);
-  await page.getByRole('button', { name: 'Guardar borrador' }).click();
-  await expect(page.getByText(/Borrador «.*» guardado/)).toBeVisible();
+  await saveDraft(page, 'POST');
   await page.getByRole('button', { name: 'Volver al listado' }).click();
   const row = page.getByRole('row', { name: new RegExp(title) });
   await expect(row).toBeVisible();
