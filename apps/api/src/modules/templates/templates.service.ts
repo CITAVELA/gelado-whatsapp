@@ -1,9 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, BadGatewayException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, BadGatewayException, OnModuleInit } from '@nestjs/common';
 import { Prisma, type Template } from '@prisma/client';
 import {
   editorToComponents,
   extractVariables,
   hasOptOutButton,
+  isOptOutButtonText,
   validateTemplateEditor,
   type TemplateComponent,
   type TemplateEditorDto,
@@ -36,7 +37,7 @@ const HEADER_MIME: Record<string, RegExp> = { IMAGE: /^image\/(jpeg|png)$/, VIDE
 const HEADER_MIME_ES: Record<string, string> = { IMAGE: 'una imagen JPG o PNG', VIDEO: 'un vídeo MP4', DOCUMENT: 'un PDF' };
 
 @Injectable()
-export class TemplatesService {
+export class TemplatesService implements OnModuleInit {
   private readonly log = new Logger('Templates');
   private syncing: Promise<SyncResult> | null = null;
 
@@ -48,6 +49,32 @@ export class TemplatesService {
     private readonly events: DomainEvents,
     private readonly realtime: RealtimeService,
   ) {}
+
+  /**
+   * Recalcula `hasOptOutButton` de todas las plantillas guardadas con el detector actual (texto exacto, no
+   * subcadena): las que se marcaron por error con «Ver rebajas» & co. dejan de valer para campañas.
+   */
+  async onModuleInit() {
+    try {
+      await this.recomputeOptOutFlags();
+    } catch (e) {
+      this.log.warn(`No se pudo recalcular el botón de baja de las plantillas: ${(e as Error).message}`);
+    }
+  }
+
+  async recomputeOptOutFlags(): Promise<number> {
+    const rows = await this.prisma.template.findMany({ select: { id: true, components: true, hasOptOutButton: true } });
+    let fixed = 0;
+    for (const r of rows) {
+      const has = hasOptOutButton((r.components ?? []) as unknown as TemplateComponent[]);
+      if (has !== r.hasOptOutButton) {
+        await this.prisma.template.update({ where: { id: r.id }, data: { hasOptOutButton: has } });
+        fixed++;
+      }
+    }
+    if (fixed) this.log.log(`Botón de baja recalculado en ${fixed} plantilla(s)`);
+    return fixed;
+  }
 
   // ───────── consulta ─────────
 
@@ -266,7 +293,7 @@ export class TemplatesService {
     let hadOptOut = false;
     for (const b of btns) {
       if (b.type === 'QUICK_REPLY') {
-        if (/no recibir m[aá]s|baja|stop/i.test(b.text)) {
+        if (isOptOutButtonText(b.text)) {
           hadOptOut = true;
           continue; // se vuelve a añadir con la casilla
         }
