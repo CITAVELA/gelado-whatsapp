@@ -67,7 +67,7 @@ test('recorrido de agente (Cristina Lopez)', async ({ page }) => {
   await expect.poll(async () => (await simGet('/_sim/sent')).some((s: any) => s.body?.type === 'audio'), { timeout: 20_000 }).toBe(true);
   const audio = (await simGet('/_sim/sent')).find((s: any) => s.body?.type === 'audio');
   expect(audio.body.to).toBe(cliente.wa);
-  await expect(chat.locator('audio, .audio, [aria-label*="udio"]').first()).toBeVisible({ timeout: 10_000 });
+  await expect(chat.getByRole('button', { name: /Reproducir/ })).toBeVisible({ timeout: 10_000 });
   await shot(page, 'nota-de-voz-enviada');
 
   // 6 · asignar, etiquetar, posponer

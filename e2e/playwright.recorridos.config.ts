@@ -11,9 +11,13 @@ export default defineConfig({
   use: {
     ...base.use,
     viewport: { width: 1440, height: 900 },
-    screenshot: 'off',
+    screenshot: 'only-on-failure',
     trace: 'off',
     permissions: ['microphone'],
-    launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
   },
+  // micrófono falso del navegador para grabar la nota de voz sin hardware
+  projects: [{
+    name: 'chromium',
+    use: { browserName: 'chromium', launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } },
+  }],
 });

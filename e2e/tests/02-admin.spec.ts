@@ -177,10 +177,11 @@ test('(g) campaña: etiqueta, recuento con baja excluida, prueba, lanzar y ver e
   for (const s of campSends) expect(JSON.stringify(s.body.template.components)).toContain('OPT_OUT');
   // estados: Alba leído, Berta entregado, Carla fallido (tope de marketing 131049)
   const [alba, berta, carla] = people;
+  const precio = { billable: true, pricing_model: 'PMP', category: 'marketing' };
   const idOf = (wa: string) => campSends.find((s: any) => s.body.to === wa).id;
-  await simPost('/_sim/status', { wamid: idOf(alba!.wa), status: 'delivered', recipient: alba!.wa, pricing: { billable: true, pricing_model: 'PMP', category: 'marketing' } });
-  await simPost('/_sim/status', { wamid: idOf(alba!.wa), status: 'read', recipient: alba!.wa });
-  await simPost('/_sim/status', { wamid: idOf(berta!.wa), status: 'delivered', recipient: berta!.wa, pricing: { billable: true, pricing_model: 'PMP', category: 'marketing' } });
+  await simPost('/_sim/status', { wamid: idOf(alba!.wa), status: 'delivered', recipient: alba!.wa, pricing: precio });
+  await simPost('/_sim/status', { wamid: idOf(alba!.wa), status: 'read', recipient: alba!.wa, pricing: precio });
+  await simPost('/_sim/status', { wamid: idOf(berta!.wa), status: 'delivered', recipient: berta!.wa, pricing: precio });
   await simPost('/_sim/status', { wamid: idOf(carla!.wa), status: 'failed', recipient: carla!.wa, errorCode: 131049 });
   // Alba responde y Berta pulsa «No recibir más»
   await inboundTextFrom(alba!.wa, 'Me interesa el catálogo, gracias');
