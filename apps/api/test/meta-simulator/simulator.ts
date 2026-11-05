@@ -1,22 +1,48 @@
 /**
  * Simulador de la Graph API de Meta (docs/06 · Simulador). Sin coste, sin red externa.
  *
- * Graph API simulada (prefijo /:version):
- *   POST /:phoneId/messages            → { messages:[{id:wamid}] } (texto, media, plantilla, interactivo, leído)
+ * ── Graph API simulada (prefijo /:version) ──
+ *   POST /:phoneId/messages            → { messages:[{id:wamid}] } (texto, media, plantilla, interactivo); { status:'read' } se anota en `reads`
  *   POST /:phoneId/media               → { id }
- *   GET  /:mediaId                     → { url, mime_type, sha256, file_size }
- *   GET  /_media/:mediaId              → binario (la URL «caduca» si se fuerza)
+ *   GET  /:mediaId                     → { url, mime_type, sha256, file_size } (404 si el media se ha borrado)
+ *   GET  /_media/:mediaId              → binario (404 «URL caducada» si se ha forzado con expireMedia)
  *   GET/POST/DELETE /:wabaId/message_templates
  *   POST /:appId/uploads, POST /upload:<id> → Resumable Upload (handle)
  *   GET  /:phoneId                     → datos del número (calidad, límite)
- * Control (prefijo /_sim):
- *   POST /_sim/inbound   { from, type, ...campos }  → firma y envía un webhook de mensaje entrante
- *   POST /_sim/status    { wamid, status, errorCode?, pricing? } → webhook de estado
- *   POST /_sim/webhook   { field, value }           → webhook arbitrario (plantillas, calidad, cuenta)
- *   POST /_sim/fail-next { code, count?, httpStatus?, path? } → los próximos envíos fallan con ese código
- *   GET  /_sim/sent      → mensajes recibidos por el simulador
- *   POST /_sim/reset
- * S1 completa los casos límite (estado antes que la respuesta, duplicados, URL caducada, ráfaga 130429).
+ *   Nunca existe /register (regla 2): responde 400.
+ *
+ * ── Uso desde las pruebas (clase MetaSimulator) ──
+ *   const sim = await startMetaSimulator({ appSecret: 'test-app-secret' });   // puerto aleatorio
+ *   sim.opts.webhookUrl = `${appUrl}/webhooks/whatsapp`;                     // a dónde firma y envía los webhooks
+ *   Entrantes:  await sim.sendInbound({ from:'34600111222', type:'text', text:{ body:'Hola' } })   // devuelve el status HTTP de la app
+ *               sim.inboundPayload(...) construye el payload sin enviarlo; el campo `id` fija el wamid (duplicados)
+ *   Estados:    await sim.sendStatus({ wamid, status:'delivered'|'read'|'failed', errorCode?, pricing? })
+ *               pricing por defecto = { billable:true, pricing_model:'PMP', category:'service' }; `pricing:null` lo omite
+ *   Duplicado:  await sim.postWebhook(payload) dos veces, o sendInbound({ ..., repeat: 2 })
+ *   Firma:      postWebhook(payload, { signature: null | 'sha256=mala' }) para probar firma ausente o inválida
+ *   Estado antes que la respuesta del envío:
+ *               sim.sendDelayMs = 300; lanza el envío sin esperar; cuando aparezca en sim.sent envía sendStatus() con ese id
+ *   URL de media caducada: const id = sim.addInboundMedia(buf, mime); sim.expireMedia(id, 1) → las 1ª descargas dan 404 y
+ *               la siguiente petición de info genera una URL válida; sim.deleteMedia(id) → la info da 404 (borrado)
+ *   Ráfaga 130429: sim.failNext({ code: 130429, count: 5, httpStatus: 429 }) → los próximos 5 envíos fallan; path:'media'|'messages'
+ *   Webhooks de otros campos (forma real de Meta):
+ *               sim.sendTemplateStatus({ event:'APPROVED'|'REJECTED'|'PAUSED'|'DISABLED'…, templateId, name, language?, reason? })
+ *               sim.sendTemplateQuality({ templateId, name, previous, next })      // message_template_quality_update
+ *               sim.sendTemplateCategory({ templateId, name, previous, next })     // template_category_update
+ *               sim.sendPhoneQuality({ event:'DOWNGRADE'|'UPGRADE'|'FLAGGED'|'UNFLAGGED'|'ONBOARDING', currentLimit })  // phone_number_quality_update
+ *               sim.sendAccountUpdate({ event:'ACCOUNT_RESTRICTION'|'ACCOUNT_VIOLATION'|'DISABLED_UPDATE'|…, ...extra })  // account_update
+ *               sim.sendField(field, value) para cualquier otro
+ *   Inspección: sim.sent (envíos recibidos), sim.reads (wamid marcados como leídos), sim.media, sim.webhooksSent; sim.reset()
+ *
+ * ── Control por HTTP (prefijo /_sim, para el CLI de desarrollo) ──
+ *   POST /_sim/inbound   { from, type, ...campos, repeat? }     → firma y envía un webhook de mensaje entrante
+ *   POST /_sim/status    { wamid, status, errorCode?, pricing?, repeat? } → webhook de estado
+ *   POST /_sim/webhook   { field, value }                       → webhook arbitrario
+ *   POST /_sim/template-status | template-quality | template-category | phone-quality | account-update  → helpers de arriba
+ *   POST /_sim/fail-next { code, count?, httpStatus?, path? }   → los próximos envíos fallan con ese código
+ *   POST /_sim/config    { sendDelayMs }
+ *   POST /_sim/media     { mime, base64 } → { id } ;  POST /_sim/media-expire { id, downloads? } ;  POST /_sim/media-delete { id }
+ *   GET  /_sim/sent ; POST /_sim/reset
  */
 import http from 'node:http';
 import { createHmac, randomUUID, createHash } from 'node:crypto';
@@ -39,7 +65,9 @@ export class MetaSimulator {
   server: http.Server | null = null;
   port = 0;
   sent: SentRecord[] = [];
-  media = new Map<string, { data: Buffer; mime: string; expired?: boolean }>();
+  media = new Map<string, { data: Buffer; mime: string; expired?: boolean; failDownloads?: number; deleted?: boolean }>();
+  /** wamid marcados como leídos por la app */
+  reads: string[] = [];
   templates = new Map<string, any>();
   uploads = new Map<string, Buffer>();
   failRules: FailRule[] = [];
@@ -73,6 +101,7 @@ export class MetaSimulator {
 
   reset() {
     this.sent = [];
+    this.reads = [];
     this.media.clear();
     this.templates.clear();
     this.uploads.clear();
@@ -131,6 +160,100 @@ export class MetaSimulator {
     else if (s.status !== 'failed') st.pricing = { billable: true, pricing_model: 'PMP', category: 'service', type: 'regular' };
     if (s.errorCode) st.errors = [{ code: s.errorCode, title: s.errorTitle ?? `Error ${s.errorCode}`, message: s.errorTitle ?? '', error_data: { details: 'Simulado' } }];
     return this.envelope('messages', { messaging_product: 'whatsapp', metadata: this.metadata(), statuses: [st] });
+  }
+
+  // ───────── ayudantes para pruebas ─────────
+
+  /** Firma y envía un mensaje entrante. `repeat` reenvía el mismo payload N veces (webhook duplicado). Devuelve el último status HTTP. */
+  async sendInbound(m: { from: string; type: string; repeat?: number; [k: string]: any }) {
+    const { repeat, ...msg } = m;
+    const payload = this.inboundPayload(msg as any);
+    let status = 0;
+    for (let i = 0; i < (repeat ?? 1); i++) status = await this.postWebhook(payload);
+    return status;
+  }
+
+  async sendStatus(s: { wamid: string; status: string; recipient?: string; timestamp?: number; errorCode?: number; errorTitle?: string; pricing?: any; repeat?: number }) {
+    const payload = this.statusPayload(s.pricing === null ? { ...s, pricing: undefined } : s);
+    if (s.pricing === null) delete payload.entry[0].changes[0].value.statuses[0].pricing;
+    let status = 0;
+    for (let i = 0; i < (s.repeat ?? 1); i++) status = await this.postWebhook(payload);
+    return status;
+  }
+
+  /** Webhook de cualquier campo con la envoltura real de Meta. */
+  sendField(field: string, value: any) {
+    return this.postWebhook(this.envelope(field, value));
+  }
+
+  /** message_template_status_update */
+  templateStatusPayload(t: { event: string; templateId: string | number; name: string; language?: string; reason?: string; disableInfo?: any }) {
+    const value: any = {
+      event: t.event,
+      message_template_id: Number(t.templateId) || t.templateId,
+      message_template_name: t.name,
+      message_template_language: t.language ?? 'es',
+      reason: t.reason ?? 'NONE',
+    };
+    if (t.disableInfo) value.disable_info = t.disableInfo;
+    return this.envelope('message_template_status_update', value);
+  }
+  sendTemplateStatus(t: Parameters<MetaSimulator['templateStatusPayload']>[0]) {
+    return this.postWebhook(this.templateStatusPayload(t));
+  }
+
+  /** message_template_quality_update (previous/next: GREEN | YELLOW | RED | UNKNOWN) */
+  sendTemplateQuality(t: { templateId: string | number; name: string; language?: string; previous: string; next: string }) {
+    return this.sendField('message_template_quality_update', {
+      previous_quality_score: t.previous,
+      new_quality_score: t.next,
+      message_template_id: Number(t.templateId) || t.templateId,
+      message_template_name: t.name,
+      message_template_language: t.language ?? 'es',
+    });
+  }
+
+  /** template_category_update */
+  sendTemplateCategory(t: { templateId: string | number; name: string; language?: string; previous: string; next: string }) {
+    return this.sendField('template_category_update', {
+      message_template_id: Number(t.templateId) || t.templateId,
+      message_template_name: t.name,
+      message_template_language: t.language ?? 'es',
+      previous_category: t.previous,
+      new_category: t.next,
+    });
+  }
+
+  /** phone_number_quality_update */
+  sendPhoneQuality(q: { event: string; currentLimit?: string }) {
+    return this.sendField('phone_number_quality_update', {
+      display_phone_number: this.opts.displayPhoneNumber ?? '34617498222',
+      event: q.event,
+      current_limit: q.currentLimit ?? 'TIER_2K',
+    });
+  }
+
+  /** account_update (restricciones, avisos, baneos) */
+  sendAccountUpdate(a: { event: string; [k: string]: any }) {
+    const { event, ...extra } = a;
+    return this.sendField('account_update', { phone_number: this.opts.displayPhoneNumber ?? '34617498222', event, ...extra });
+  }
+
+  /** Los próximos `count` envíos (o llamadas que contengan `path`) fallan con ese código de Meta. */
+  failNext(r: { code: number; count?: number; httpStatus?: number; path?: string; message?: string }) {
+    this.failRules.push({ code: r.code, count: r.count ?? 1, httpStatus: r.httpStatus ?? (r.code === 130429 ? 429 : 400), path: r.path, message: r.message });
+  }
+
+  /** Las próximas `downloads` descargas del media dan 404 (URL caducada); después la info devuelve una URL válida. */
+  expireMedia(id: string, downloads = 1) {
+    const m = this.media.get(id);
+    if (m) m.failDownloads = downloads;
+  }
+
+  /** El media desaparece: la info y la descarga dan 404. */
+  deleteMedia(id: string) {
+    const m = this.media.get(id);
+    if (m) m.deleted = true;
   }
 
   // ───────── Graph API ─────────
@@ -194,7 +317,11 @@ export class MetaSimulator {
     const dl = /^\/_media\/([^/]+)$/.exec(p);
     if (dl && req.method === 'GET') {
       const m = this.media.get(dl[1]!);
-      if (!m || m.expired) return this.json(res, 404, { error: { message: 'URL caducada', code: 100 } });
+      if (m && (m.failDownloads ?? 0) > 0) {
+        m.failDownloads! -= 1; // la URL emitida antes «caducó»; la siguiente petición de info da una válida
+        return this.json(res, 404, { error: { message: 'URL caducada', code: 100 } });
+      }
+      if (!m || m.expired || m.deleted) return this.json(res, 404, { error: { message: 'URL caducada', code: 100 } });
       res.writeHead(200, { 'Content-Type': m.mime, 'Content-Length': m.data.length });
       return res.end(m.data);
     }
@@ -207,7 +334,10 @@ export class MetaSimulator {
     if (req.method === 'POST' && id === this.phoneNumberId && edge === 'messages') {
       const fail = this.takeFail('messages');
       if (fail) return this.graphError(res, fail);
-      if (body?.status === 'read') return this.json(res, 200, { success: true });
+      if (body?.status === 'read') {
+        this.reads.push(body.message_id);
+        return this.json(res, 200, { success: true });
+      }
       const wamid = this.newWamid();
       this.sent.push({ id: wamid, path: p, body, at: Date.now() });
       if (this.sendDelayMs) await new Promise((r) => setTimeout(r, this.sendDelayMs));
@@ -257,6 +387,7 @@ export class MetaSimulator {
 
     if (req.method === 'GET' && id && this.media.has(id)) {
       const m = this.media.get(id)!;
+      if (m.deleted) return this.json(res, 404, { error: { message: 'Media no encontrado', code: 100 } });
       return this.json(res, 200, {
         messaging_product: 'whatsapp', id, url: `${this.baseUrl}/_media/${id}`, mime_type: m.mime,
         sha256: createHash('sha256').update(m.data).digest('hex'), file_size: m.data.length,
@@ -269,13 +400,32 @@ export class MetaSimulator {
   private async control(p: string, body: any, res: http.ServerResponse) {
     switch (p) {
       case '/_sim/inbound':
-        return this.json(res, 200, { status: await this.postWebhook(this.inboundPayload(body)) });
+        return this.json(res, 200, { status: await this.sendInbound(body) });
       case '/_sim/status':
-        return this.json(res, 200, { status: await this.postWebhook(this.statusPayload(body)) });
+        return this.json(res, 200, { status: await this.sendStatus(body) });
       case '/_sim/webhook':
-        return this.json(res, 200, { status: await this.postWebhook(this.envelope(body.field, body.value)) });
+        return this.json(res, 200, { status: await this.sendField(body.field, body.value) });
+      case '/_sim/template-status':
+        return this.json(res, 200, { status: await this.sendTemplateStatus(body) });
+      case '/_sim/template-quality':
+        return this.json(res, 200, { status: await this.sendTemplateQuality(body) });
+      case '/_sim/template-category':
+        return this.json(res, 200, { status: await this.sendTemplateCategory(body) });
+      case '/_sim/phone-quality':
+        return this.json(res, 200, { status: await this.sendPhoneQuality(body) });
+      case '/_sim/account-update':
+        return this.json(res, 200, { status: await this.sendAccountUpdate(body) });
       case '/_sim/fail-next':
-        this.failRules.push({ code: body.code, count: body.count ?? 1, httpStatus: body.httpStatus ?? 400, path: body.path, message: body.message });
+        this.failNext(body);
+        return this.json(res, 200, { ok: true });
+      case '/_sim/config':
+        if (typeof body?.sendDelayMs === 'number') this.sendDelayMs = body.sendDelayMs;
+        return this.json(res, 200, { ok: true, sendDelayMs: this.sendDelayMs });
+      case '/_sim/media-expire':
+        this.expireMedia(body.id, body.downloads ?? 1);
+        return this.json(res, 200, { ok: true });
+      case '/_sim/media-delete':
+        this.deleteMedia(body.id);
         return this.json(res, 200, { ok: true });
       case '/_sim/sent':
         return this.json(res, 200, this.sent);
