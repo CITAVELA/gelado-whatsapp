@@ -377,6 +377,24 @@ describe('el envío reserva el borrador (R-3)', () => {
     expect((await t.prisma.template.findUniqueOrThrow({ where: { id: c.body.id } })).status).toBe('DELETED');
   });
 
+  it('borrar un borrador que otra pestaña acaba de enviar da 409 y no lo borra en Meta (irreversible)', async () => {
+    const c = await a.post('/api/templates/draft', full());
+    const id = c.body.id;
+    const prisma = (t.app.get(TemplatesService) as any).prisma;
+    // carrera: entre leer la fila (borrador) y el borrado condicionado, el envío de otra pestaña termina
+    const spy = vi.spyOn(prisma.template, 'deleteMany').mockImplementationOnce(async () => {
+      await prisma.template.update({ where: { id }, data: { status: 'PENDING', metaTemplateId: '999' } });
+      return { count: 0 };
+    });
+    sim.templates.set('999', metaTemplate({ id: '999' }));
+    const r = await a.del(`/api/templates/${id}`);
+    spy.mockRestore();
+    expect(r.status).toBe(409);
+    expect(r.body.message).toMatch(/ya se ha enviado a Meta/);
+    expect(sim.templates.has('999')).toBe(true);
+    expect((await t.prisma.template.findUniqueOrThrow({ where: { id } })).status).toBe('PENDING');
+  });
+
   it('si una sincronización adopta el borrador mientras se envía, el envío termina bien sobre esa misma fila', async () => {
     const c = await a.post('/api/templates/draft', full());
     const id = c.body.id;

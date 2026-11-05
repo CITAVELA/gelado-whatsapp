@@ -514,7 +514,9 @@ export class TemplatesService implements OnModuleInit {
       const now = await this.prisma.template.findUnique({ where: { id } });
       if (!now) return { ok: true };
       if (now.status === 'LOCAL_DRAFT') throw new ConflictException({ statusCode: 409, message: SENDING_MESSAGE });
-      return this.remove(id, userId); // dejó de ser borrador (se envió o la adoptó Meta): se borra también en Meta
+      // Dejó de ser borrador entre medias (se envió o la adoptó una sincronización): no se borra en Meta sin que la
+      // administradora lo vea (en Meta es irreversible y el nombre no se puede reutilizar); que lo decida desde el listado.
+      throw new ConflictException({ statusCode: 409, message: 'Este borrador ya se ha enviado a Meta. Revisa el listado: si quieres quitarla, bórrala desde allí.' });
     }
     try {
       await this.gateway.deleteTemplate(t.name, t.metaTemplateId ?? undefined);
