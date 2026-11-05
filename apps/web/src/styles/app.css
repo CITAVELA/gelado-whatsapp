@@ -23,7 +23,7 @@ textarea.area { resize: vertical; min-height: 80px; }
 .empty { padding: 40px 20px; text-align: center; color: var(--muted); }
 .spinner { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.toast-wrap { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+.toast-wrap { position: fixed; top: 16px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 100; pointer-events: none; } /* arriba a la derecha: no tapan el botón Enviar */
 .toast { background: var(--ink); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.2); max-width: 360px; }
 .toast.bad { background: var(--bad); }
 .banner.crit { background: var(--bad-soft); color: var(--bad); border-bottom: 1px solid #F2C2C4; }
@@ -207,7 +207,7 @@ tr.sel { background: #FBECEC; }
   .rail-btn .dot { right: 6px; }
   .page { padding: 16px; }
   .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
-  .toast-wrap { bottom: 70px; left: 12px; right: 12px; }
+  .toast-wrap { top: 10px; left: 12px; right: 12px; }
   .toast { max-width: none; }
 
   .inbox > .list, .inbox > .chat, .inbox .info-wrap { width: 100%; flex: 1 1 auto; }

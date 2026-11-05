@@ -9,6 +9,7 @@ import { TemplatePreview } from '../templates/TemplatePreview';
 import { inboxApi } from './api';
 import { errMsg, useApprovedTemplates, useRates } from './hooks';
 import { LibraryPicker } from './LibraryPicker';
+import { fmtLanguage } from '../../lib/format';
 import { displayLabel, fmtRate, isPhoneLike } from './utils';
 
 interface HeaderMedia { id: string; name: string; url: string | null }
@@ -117,7 +118,7 @@ export function TemplateModal({ conversation, onSend, onClose }: { conversation:
           {list.map((t) => (
             <button key={t.id} type="button" className={`mi tpl-item${sel?.id === t.id ? ' on' : ''}`} aria-pressed={sel?.id === t.id} onClick={() => choose(t)}>
               <span className="b">{t.displayName ?? t.name}</span>
-              <span className="hint">{LABELS_ES.templateCategory[t.category]} · {t.language === 'es' ? 'español' : t.language}</span>
+              <span className="hint">{LABELS_ES.templateCategory[t.category]} · {fmtLanguage(t.language)}</span>
             </button>
           ))}
           {!templates.isLoading && list.length === 0 && <div className="hint" style={{ padding: 8 }}>No hay plantillas aprobadas{q ? ' con ese nombre' : ''}.</div>}

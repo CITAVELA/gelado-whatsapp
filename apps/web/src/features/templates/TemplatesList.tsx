@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LABELS_ES, type TemplateDto } from '@gelado/shared';
 import { api } from '../../lib/api';
-import { fmtDateTime } from '../../lib/format';
+import { fmtDateTime, fmtLanguage } from '../../lib/format';
 import { useAuth } from '../../lib/auth';
 import { Icon } from '../../components/Icon';
 import { ConfirmModal, Empty, Modal, Spinner, useToast } from '../../components/ui';
@@ -106,7 +106,7 @@ export function TemplatesList() {
                     </div>
                   </td>
                   <td>{LABELS_ES.templateCategory[t.category]}</td>
-                  <td>{t.language}</td>
+                  <td>{fmtLanguage(t.language)}</td>
                   <td>
                     <div className="toolbar" style={{ gap: 4 }}>
                       <TemplateStatusChip status={t.status} />
@@ -142,7 +142,7 @@ export function TemplatesList() {
           <div className="toolbar" style={{ marginBottom: 10 }}>
             <TemplateStatusChip status={detail.status} />
             <NoOptOutPill t={detail} />
-            <span className="hint">{LABELS_ES.templateCategory[detail.category]} · {detail.language}</span>
+            <span className="hint">{LABELS_ES.templateCategory[detail.category]} · {fmtLanguage(detail.language)}</span>
           </div>
           {detail.status === 'REJECTED' && detail.rejectedReason && <p className="tpl-errors">Meta la ha rechazado: {detail.rejectedReason}</p>}
           <TemplatePreview components={detail.components} />

@@ -26,6 +26,10 @@
 .cmp-reason{font-size:13px}
 .cmp-reason .row{display:flex;justify-content:space-between;gap:10px}
 .cmp-table td{vertical-align:middle}
+/* F-12 · el motivo largo de un fallo se parte en varias líneas y el enlace de la última columna nunca se recorta */
+.cmp-table td:nth-child(3){white-space:normal;min-width:180px}
+.cmp-table td:nth-child(3) .pill{white-space:normal;height:auto;line-height:1.35;padding-top:2px;padding-bottom:2px}
+.cmp-table td:last-child{white-space:nowrap;width:1%}
 .cmp-pager{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:10px 14px;font-size:13px;color:var(--muted)}
 .cmp-actions{display:flex;gap:6px;justify-content:flex-end}
 .cmp-radio-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}

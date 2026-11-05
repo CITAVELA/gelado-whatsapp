@@ -11,7 +11,7 @@ import { ConversationMenuButton } from './ConversationMenus';
 import { TAB_STATUS, VIEW_TITLES, titleCase, toListParams, type InboxFilters, type Tab } from './filters';
 import { useConversationList, useLabels, useNow, useUsers } from './hooks';
 import { notificationPermission, requestNotificationPermission } from './notify';
-import { KIND_PREVIEW, displayLabel, fmtShortDateTime, previewIcon, remainingText, waInitials, windowExpiresSoon, windowRemainingMs } from './utils';
+import { KIND_PREVIEW, displayLabel, stripLeadingEmoji, fmtShortDateTime, previewIcon, remainingText, waInitials, windowExpiresSoon, windowRemainingMs } from './utils';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'open', label: 'Abiertos' },
@@ -39,7 +39,7 @@ export function ConversationCard({ c, active, now }: { c: ConversationListItemDt
           {c.searchSnippet ? (
             <div className="prev snippet"><Icon name="search" small /> {c.searchSnippet}</div>
           ) : (
-            <div className={`prev${unread ? ' unread' : ''}`}>{icon && <Icon name={icon} small />} {text}</div>
+            <div className={`prev${unread ? ' unread' : ''}`}>{icon && <Icon name={icon} small />} {icon ? stripLeadingEmoji(text) : text}</div>
           )}
           <div className="meta">
             <span className="menu-slot" aria-hidden="true" />

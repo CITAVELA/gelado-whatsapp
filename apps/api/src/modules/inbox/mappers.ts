@@ -3,7 +3,7 @@
  * Las usan inbox (S5), whatsapp/webhooks (S1) para emitir por WebSocket, y contacts (S2).
  */
 import { Prisma } from '@prisma/client';
-import { metaErrorInfo, WINDOW_MS, type ContactDto, type ConversationEventDto, type ConversationListItemDto, type LabelDto, type MessageDto, type UserMiniDto } from '@gelado/shared';
+import { metaErrorInfo, WINDOW_MS, zonedParts, type ContactDto, type ConversationEventDto, type ConversationListItemDto, type LabelDto, type MessageDto, type UserMiniDto } from '@gelado/shared';
 import { initials } from '../../common/tokens';
 
 export const contactInclude = {
@@ -145,10 +145,17 @@ export async function toMessageDto(
   };
 }
 
+/** «06/11, 08:00» en Europe/Madrid: el mismo formato corto que usa la interfaz. */
+function shortMadrid(d: Date): string {
+  const z = zonedParts(d);
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  return `${p2(z.day)}/${p2(z.month)}, ${p2(z.hour)}:${p2(z.minute)}`;
+}
+
 const EVENT_TEXT: Record<string, (actor: string, d: any) => string> = {
   ASSIGNED: (a, d) => (d?.assigneeName ? `${a} asignó a ${d.assigneeName}${d?.auto ? ' (al responder)' : ''}` : `${a} asignó la conversación`),
   UNASSIGNED: (a) => `${a} quitó la asignación`,
-  SNOOZED: (a, d) => `${a} pospuso hasta ${d?.untilText ?? (d?.until ? new Date(d.until).toLocaleString('es-ES', { timeZone: 'Europe/Madrid', dateStyle: 'short', timeStyle: 'short' }) : '')}`,
+  SNOOZED: (a, d) => `${a} pospuso hasta ${d?.until ? shortMadrid(new Date(d.until)) : d?.untilText ?? ''}`,
   WOKE_UP: (_a, d) => (d?.reason === 'inbound' ? 'Volvió a Abiertas: el cliente escribió' : 'Volvió a Abiertas: terminó el tiempo pospuesto'),
   DONE: (a) => `${a} finalizó la conversación`,
   REOPENED: (a, d) => (d?.reason === 'inbound' ? 'Reabierta: el cliente escribió' : `${a} reabrió la conversación`),

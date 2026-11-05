@@ -121,9 +121,9 @@ export function CampaignReport() {
 
         <div className="cmp-cards">
           <div className="panel stat"><div className="k">Enviados</div><div className="v">{fmtNumber(sent)}</div><div className="s">de {fmtNumber(c.totalRecipients)}</div></div>
-          <div className="panel stat"><div className="k">Entregados</div><div className="v">{fmtNumber(rep.funnel.delivered)}</div><div className="s">{pctOf(rep.funnel.delivered, sent)} %</div></div>
-          <div className="panel stat"><div className="k">Leídos</div><div className="v">{fmtNumber(rep.funnel.read)}</div><div className="s">{pctOf(rep.funnel.read, sent)} %</div></div>
-          <div className="panel stat"><div className="k">Respondidos</div><div className="v">{fmtNumber(rep.funnel.replied)}</div><div className="s">{pctOf(rep.funnel.replied, sent)} %</div></div>
+          <div className="panel stat"><div className="k">Entregados</div><div className="v">{fmtNumber(rep.funnel.delivered)}</div><div className="s">{pct1(rep.funnel.delivered, sent)}</div></div>
+          <div className="panel stat"><div className="k">Leídos</div><div className="v">{fmtNumber(rep.funnel.read)}</div><div className="s">{pct1(rep.funnel.read, sent)}</div></div>
+          <div className="panel stat"><div className="k">Respondidos</div><div className="v">{fmtNumber(rep.funnel.replied)}</div><div className="s">{pct1(rep.funnel.replied, sent)}</div></div>
           <div className="panel stat"><div className="k">Fallidos</div><div className="v">{fmtNumber(c.failedCount)}</div><div className="s">{pct1(c.failedCount, c.totalRecipients)}</div></div>
           <div className="panel stat"><div className="k">Bajas</div><div className="v">{fmtNumber(c.optOutCount)}</div><div className="s">{pct1(c.optOutCount, sent)}</div></div>
           <div className="panel stat">

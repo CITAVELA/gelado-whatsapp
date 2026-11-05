@@ -6,6 +6,7 @@ import { fmtDateTime } from '../../lib/format';
 import { Spinner, useToast } from '../../components/ui';
 import { Icon } from '../../components/Icon';
 import { PHONE_STATUS_ES, QUALITY_ES, QUALITY_PILL, TIER_ES } from '../quality/format';
+import { fmtNameStatus } from '../../lib/format';
 import { SectionHead, saveSetting, useAllSettings, useSaveState } from './shared';
 
 /** «0,0585» o «0.0585» → 0.0585; NaN si no es un número válido. */
@@ -63,7 +64,7 @@ export function WhatsAppSection() {
         {info.isLoading ? <Spinner /> : info.isError || !d ? <div className="empty">No se pudieron leer los datos de la cuenta.</div> : (
           <dl className="set-kv">
             <dt>Número</dt><dd><b>{d.displayPhoneNumber}</b>{d.verifiedName ? ` · ${d.verifiedName}` : ''}</dd>
-            <dt>Estado del número</dt><dd>{PHONE_STATUS_ES[(d.phoneStatus ?? 'UNKNOWN').toUpperCase()] ?? d.phoneStatus ?? '—'}{d.nameStatus ? ` · nombre ${d.nameStatus.toLowerCase()}` : ''}</dd>
+            <dt>Estado del número</dt><dd>{PHONE_STATUS_ES[(d.phoneStatus ?? 'UNKNOWN').toUpperCase()] ?? d.phoneStatus ?? '—'}{d.nameStatus ? ` · nombre ${fmtNameStatus(d.nameStatus)}` : ''}</dd>
             <dt>Calidad</dt><dd><span className={`pill ${QUALITY_PILL[d.qualityRating]}`}>{QUALITY_ES[d.qualityRating]}</span></dd>
             <dt>Límite de mensajes</dt><dd>{d.messagingLimit ? `${TIER_ES[d.messagingLimit] ?? d.messagingLimit} usuarios nuevos / 24 h` : '—'}</dd>
             <dt>ID de la cuenta (WABA)</dt><dd className="mono">{d.wabaId}</dd>

@@ -1,13 +1,11 @@
 /**
- * Defectos de interfaz encontrados en la revisión de QA (docs/trabajo/QA.md). Van marcados con `test.fail`:
- * la suite sigue en verde mientras el fallo exista y, cuando alguien lo corrija, Playwright avisará de que
- * `test.fail` ya no hace falta (la prueba «pasa» y se marca como error inesperado).
+ * Regresiones de los defectos de interfaz que encontró la revisión de QA (docs/trabajo/QA.md, F-10 a F-14).
+ * Ya están corregidos: estas pruebas evitan que vuelvan.
  */
 import { expect, test } from '@playwright/test';
 import { ADMIN, CRISTINA, api, ensureApprovedTemplate, inboundText, json, login, phone, simGet, simPost } from '../helpers';
 
 test('F-10 · tras enviar varios mensajes seguidos, ninguno se queda en «Enviando» (reloj) cuando el servidor ya lo envió', async ({ page }) => {
-  test.fail(true, 'F-10: la respuesta HTTP (PENDING) pisa el estado SENT que llegó antes por socket');
   await login(page, CRISTINA);
   const p = phone();
   const name = `Carrera ${p.wa.slice(-8)}`;
@@ -25,7 +23,6 @@ test('F-10 · tras enviar varios mensajes seguidos, ninguno se queda en «Envian
 });
 
 test('F-11 · la tabla «Equipo» de Ajustes no recorta la columna de acciones a 1440 px', async ({ page }) => {
-  test.fail(true, 'F-11: «Desactivar» queda cortado por el borde del panel');
   await login(page, ADMIN, '/ajustes');
   const last = page.getByRole('row', { name: /Cristina Lopez/ }).getByRole('button').or(page.getByRole('row', { name: /Cristina Lopez/ }).getByRole('link')).last();
   const panel = page.locator('.panel, table').first();
@@ -34,7 +31,6 @@ test('F-11 · la tabla «Equipo» de Ajustes no recorta la columna de acciones a
 });
 
 test('F-12 · el informe de campaña no recorta «Abrir conversación» en la lista de destinatarios', async ({ page }) => {
-  test.fail(true, 'F-12: el enlace de la última columna queda cortado («Abr…»)');
   test.setTimeout(120_000);
   const admin = await api(ADMIN);
   const tpl = await ensureApprovedTemplate(admin, { name: `oferta_qa_${Date.now()}`, displayName: 'Oferta QA', category: 'MARKETING', body: 'Hola {{1}}, tenemos una oferta para ti en Exclusivas Gelado.' });
@@ -59,7 +55,6 @@ test('F-12 · el informe de campaña no recorta «Abrir conversación» en la li
 });
 
 test('F-13 · Ajustes → WhatsApp no deja palabras en inglés («nombre approved»)', async ({ page }) => {
-  test.fail(true, 'F-13: el estado del nombre verificado llega de Meta en inglés y se muestra tal cual');
   await login(page, ADMIN, '/ajustes');
   await page.getByRole('link', { name: /WhatsApp y tarifas/ }).or(page.getByRole('button', { name: /WhatsApp y tarifas/ })).first().click();
   await expect(page.getByText('Estado del número')).toBeVisible();
@@ -68,7 +63,6 @@ test('F-13 · Ajustes → WhatsApp no deja palabras en inglés («nombre approve
 });
 
 test('F-14 · el listado de plantillas muestra el idioma en español («Español», no «es»)', async ({ page }) => {
-  test.fail(true, 'F-14: la columna Idioma muestra el código «es»');
   const admin = await api(ADMIN);
   await ensureApprovedTemplate(admin, { name: 'aviso_pedido', displayName: 'Aviso de pedido', category: 'UTILITY' });
   await login(page, ADMIN, '/plantillas');

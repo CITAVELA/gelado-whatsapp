@@ -95,14 +95,14 @@ export function TeamSection() {
                     </td>
                     <td>{!u.active ? <span className="pill p-grey">Desactivada</span> : u.pendingInvite ? <span className="pill p-warn">Invitación pendiente</span> : <span className="pill p-ok">Activa</span>}</td>
                     <td className="hint">{u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : '—'}</td>
-                    <td>
+                    <td className="set-actions">
                       {!self && (
-                        <>
+                        <div className="set-actions-list">
                           {u.active && u.pendingInvite && <a href="#" onClick={(e) => { e.preventDefault(); void makeLink(u, 'invite-link'); }}>Regenerar enlace de invitación</a>}
                           {u.active && !u.pendingInvite && <a href="#" onClick={(e) => { e.preventDefault(); void makeLink(u, 'reset-link'); }}>Enlace de nueva contraseña</a>}
-                          {u.active && <> · <a href="#" style={{ color: '#B4232A' }} onClick={(e) => { e.preventDefault(); setConfirm(u); }}>Desactivar</a></>}
+                          {u.active && <a href="#" style={{ color: '#B4232A' }} onClick={(e) => { e.preventDefault(); setConfirm(u); }}>Desactivar</a>}
                           {!u.active && <a href="#" onClick={(e) => { e.preventDefault(); patch.mutate({ id: u.id, body: { active: true } }); }}>Reactivar</a>}
-                        </>
+                        </div>
                       )}
                     </td>
                   </tr>
