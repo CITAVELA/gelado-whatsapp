@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Móvil · conversación</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; background: #FAFAFB; font-family: Inter, system-ui, sans-serif; color: #15171A; overflow: hidden">
+  <header style="height: 64px; background: #fff; border-bottom: 1px solid #E3E6EA; display: flex; align-items: center; gap: 8px; padding: 0 8px">
+    <a class="tbtn" href="Main.dc.html" aria-label="Volver a la bandeja"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <div class="wa">PM</div>
+    <div style="flex: 1; min-width: 0">
+      <div style="font-weight: 700; font-size: 14.5px">Peluquería Marisol</div>
+      <div style="font-size: 11.5px" class="window-ok">Ventana abierta · 22 h</div>
+    </div>
+    <button class="tbtn" aria-label="Marcar como finalizada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg></button>
+    <button class="tbtn" aria-label="Más acciones"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+  </header>
+  <div style="flex: 1; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden">
+    <div class="day">Hoy</div>
+    <div class="msg in" style="max-width: 82%">
+      <div class="voice" style="min-width: 0">
+        <button class="play" aria-label="Reproducir nota de voz"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><path d="m6 3 14 9-14 9V3z"/></svg></button>
+        <div class="wave" aria-hidden="true"><i style="height: 6px"></i><i style="height: 12px"></i><i style="height: 18px"></i><i style="height: 9px"></i><i style="height: 15px"></i><i style="height: 20px"></i><i style="height: 11px"></i><i style="height: 7px"></i><i style="height: 16px"></i><i style="height: 13px"></i></div>
+        <span class="hint mono">0:24</span>
+      </div>
+      <div class="foot">08:44</div>
+    </div>
+    <div class="msg in" style="max-width: 82%">
+      <div class="photo" style="width: 220px; height: 130px">Foto: tinte 7.43</div>
+      <div style="margin-top: 6px">Necesito este y la carta de color de Dousse</div>
+      <div class="foot">08:45</div>
+    </div>
+    <div class="msg out" style="max-width: 86%">
+      <div class="att" style="min-width: 0"><div class="pdf">PDF</div><div style="min-width: 0"><div class="fn">DOUSSE Carta de Color.pdf</div><div class="fs">2,4 MB</div></div></div>
+      <div style="margin-top: 6px">Te paso la carta actualizada.</div>
+      <div class="foot">09:12 <span class="ticks">✓✓</span></div>
+    </div>
+    <div class="msg note" style="max-width: 86%"><div class="by">Nota interna · María</div>Pedido pasado a almacén.<div class="foot">09:15</div></div>
+    <div class="msg out" style="max-width: 82%">Perfecto, lo preparamos hoy mismo.<div class="foot">11:58 <span class="ticks">✓✓</span></div></div>
+  </div>
+  <div style="background: #fff; border-top: 1px solid #E3E6EA; padding: 8px; display: flex; align-items: center; gap: 4px">
+    <a class="tbtn" href="Bandeja-biblioteca.dc.html" aria-label="Adjuntar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></a>
+    <a class="tbtn" href="Bandeja-plantilla.dc.html" aria-label="Plantilla"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></a>
+    <div style="flex: 1; border: 1px solid #E3E6EA; border-radius: 20px; height: 40px; display: flex; align-items: center; padding: 0 14px; color: #8A919A; font-size: 13.5px">Mensaje</div>
+    <button class="play" style="width: 44px; height: 44px; background: #C2333A" aria-label="Mantén pulsado para grabar nota de voz"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg></button>
+  </div>
+  <nav style="height: 60px; background: #121417; display: flex; justify-content: space-around; align-items: center" aria-label="Menú principal">
+    <a class="rail-btn on" href="Main.dc.html" aria-label="Bandeja"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn" href="Contactos.dc.html" aria-label="Contactos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></a>
+    <a class="rail-btn" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <a class="rail-btn" href="Ajustes-horario.dc.html" aria-label="Más"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M3 6h18M3 18h18"/></svg></a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

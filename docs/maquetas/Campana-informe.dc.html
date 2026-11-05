@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Campañas · informe</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn on" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <div class="rail-sp"></div>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <div class="main">
+    <div style="flex: 1; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; padding: 20px 32px">
+      <div style="display: flex; flex-direction: column; gap: 14px; min-width: 0">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <a class="btn ghost" href="Campanas.dc.html">‹ Volver al resumen</a>
+          <div style="margin-left: auto; display: flex; gap: 8px"><button class="btn">Duplicar</button><button class="btn"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Exportar CSV</button></div>
+        </div>
+        <div class="panel" style="padding: 16px 20px; display: flex; gap: 30px; flex-wrap: wrap; align-items: center">
+          <div><div style="font-size: 20px; font-weight: 700">Tintes KUKIT + Toallitas y Oxi</div><div class="hint">Creada el 09/10/2026 por María Iborra · Plantilla «Campaña Imagen Copie»</div></div>
+          <div style="margin-left: auto; display: flex; gap: 18px; font-size: 13px; flex-wrap: wrap">
+            <span><span class="hint">Estado</span><br><span class="pill p-ok">Enviada</span></span>
+            <span><span class="hint">Fecha de envío</span><br><b>20/10/2026, 10:00</b></span>
+            <span><span class="hint">Etiquetas</span><br><span class="chip c-pel">Peluquería</span></span>
+          </div>
+        </div>
+        <div class="grid4" style="grid-template-columns: repeat(6, minmax(0, 1fr))">
+          <div class="panel stat"><div class="k">Enviados</div><div class="v">1.489</div></div>
+          <div class="panel stat"><div class="k">Entregados</div><div class="v">1.238</div><div class="s">83 %</div></div>
+          <div class="panel stat"><div class="k">Leídos</div><div class="v">780</div><div class="s">52 %</div></div>
+          <div class="panel stat"><div class="k">Respondidos</div><div class="v">96</div><div class="s">6 %</div></div>
+          <div class="panel stat"><div class="k">Bajas</div><div class="v">7</div><div class="s">0,5 %</div></div>
+          <div class="panel stat"><div class="k">Coste</div><div class="v">72,42 €</div><div class="s">1.238 × 0,0585 €</div></div>
+        </div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px">
+          <div class="panel" style="padding: 16px">
+            <div style="font-weight: 700; margin-bottom: 10px">Embudo de la campaña</div>
+            <div class="funnel">
+              <div class="col"><b class="mono">1.489</b><div class="fill" style="height: 100%"></div><span class="lab">Enviados</span></div>
+              <div class="col"><b class="mono">1.238</b><div class="fill" style="height: 83%"></div><span class="lab">Entregados</span></div>
+              <div class="col"><b class="mono">780</b><div class="fill strong" style="height: 52%"></div><span class="lab">Leídos</span></div>
+              <div class="col"><b class="mono">96</b><div class="fill strong" style="height: 6%"></div><span class="lab">Respondidos</span></div>
+            </div>
+          </div>
+          <div class="panel" style="padding: 16px; display: flex; flex-direction: column; gap: 10px">
+            <div style="font-weight: 700">No entregados (251)</div>
+            <div style="font-size: 13px"><div style="display: flex; justify-content: space-between"><span>No tienen WhatsApp o número no válido</span><b class="mono">238</b></div><div class="bar" style="margin-top: 4px"><i style="width: 95%"></i></div></div>
+            <div style="font-size: 13px"><div style="display: flex; justify-content: space-between"><span>Meta no lo entregó (demasiada publicidad a ese usuario)</span><b class="mono">13</b></div><div class="bar" style="margin-top: 4px"><i style="width: 5%"></i></div></div>
+            <div class="hint">Los teléfonos no válidos quedan marcados en Contactos y no se vuelven a incluir.</div>
+          </div>
+        </div>
+        <div class="panel" style="overflow: hidden">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #E3E6EA; flex-wrap: wrap">
+            <div class="tabs" style="margin: 0" role="tablist"><button class="tab on" style="padding: 6px 12px">Todos</button><button class="tab" style="padding: 6px 12px">Entregado</button><button class="tab" style="padding: 6px 12px">Leído</button><button class="tab" style="padding: 6px 12px">Respondido</button><button class="tab" style="padding: 6px 12px">Fallido</button></div>
+            <div class="search" style="margin-left: auto; min-width: 220px"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Buscar…</div>
+          </div>
+          <table>
+            <tbody>
+              <tr><td style="font-weight: 600">Peluquería Marisol</td><td class="mono">+34 612 345 678</td><td><span class="pill p-blue">Leído</span></td><td class="hint">20/10, 10:41</td><td><a href="Main.dc.html">Abrir chat</a></td></tr>
+              <tr><td style="font-weight: 600">Salón Nuria</td><td class="mono">+34 644 333 444</td><td><span class="pill p-ok">Respondido</span></td><td class="hint">20/10, 11:02</td><td><a href="Main.dc.html">Abrir chat</a></td></tr>
+              <tr><td style="font-weight: 600">Javier Torres</td><td class="mono">+34 688 777 888</td><td><span class="pill p-bad">Fallido · no tiene WhatsApp</span></td><td class="hint">20/10, 10:03</td><td><a href="Contactos.dc.html">Ver contacto</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel" style="padding: 14px; align-self: start">
+        <span class="label">Mensaje enviado</span>
+        <div class="wa-prev">
+          <div class="photo" style="width: 100%; height: 130px">Imagen de la promoción</div>
+          <div class="wa-bub">Tenemos algo para ti.
+PROMOCIÓN ESPECIAL: con la compra de 24 tubos de tinte, llévate de regalo 4 oxidantes de 20 vol. y 2 toallitas quitamanchas.
+
+Gelado.</div>
+          <div class="wa-btn">No recibir más</div>
+        </div>
+        <div class="hint" style="margin-top: 10px">Cifras de ejemplo.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

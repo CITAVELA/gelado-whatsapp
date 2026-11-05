@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Plantillas · editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn" href="Contactos.dc.html" aria-label="Contactos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="rail-btn" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <a class="rail-btn on" href="Plantilla-editor.dc.html" aria-label="Plantillas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></a>
+    <a class="rail-btn" href="Calidad.dc.html" aria-label="Calidad y costes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></a>
+    <div class="rail-sp"></div>
+    <a class="rail-btn" href="Ajustes-horario.dc.html" aria-label="Ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <aside class="views" style="width: 290px" aria-label="Plantillas de WhatsApp">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin: 0 6px 10px"><h2 style="margin: 0">Plantillas de WhatsApp</h2><button class="icon-btn solid" style="width: 30px; height: 30px" aria-label="Nueva plantilla"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <div class="sect">Campañas</div>
+    <div class="view on" style="flex-direction: column; align-items: flex-start; gap: 2px"><span>Ragnar Z-TECH (nueva)</span><span class="pill p-grey" style="font-size: 11px">Borrador</span></div>
+    <div class="view" style="flex-direction: column; align-items: flex-start; gap: 2px"><span>Campaña Imagen con baja</span><span class="pill p-warn" style="font-size: 11px">En revisión de Meta</span></div>
+    <div class="view" style="flex-direction: column; align-items: flex-start; gap: 2px"><span>Campaña Imagen Copie</span><span style="display: flex; gap: 4px"><span class="pill p-ok" style="font-size: 11px">Aprobada</span><span class="pill p-bad" style="font-size: 11px">Sin botón de baja</span></span></div>
+    <div class="view" style="flex-direction: column; align-items: flex-start; gap: 2px"><span>Campaña PDF y ENLACE</span><span style="display: flex; gap: 4px"><span class="pill p-ok" style="font-size: 11px">Aprobada</span><span class="pill p-bad" style="font-size: 11px">Sin botón de baja</span></span></div>
+    <div class="sect">Fuera de horario</div>
+    <div class="view" style="flex-direction: column; align-items: flex-start; gap: 2px"><span>Cierre de Ventana 24h</span><span class="pill p-ok" style="font-size: 11px">Aprobada</span></div>
+    <div class="view" style="flex-direction: column; align-items: flex-start; gap: 2px"><span>VACACIONES</span><span class="pill p-ok" style="font-size: 11px">Aprobada</span></div>
+    <div class="sect">Conversación</div>
+    <div class="view" style="flex-direction: column; align-items: flex-start; gap: 2px"><span>Inicio de Conversación</span><span class="pill p-ok" style="font-size: 11px">Aprobada</span></div>
+    <div class="view" style="flex-direction: column; align-items: flex-start; gap: 2px"><span>Mandar PDF</span><span class="pill p-ok" style="font-size: 11px">Aprobada</span></div>
+  </aside>
+
+  <div class="main">
+    <div style="flex: 1; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; padding: 20px 28px">
+      <div class="panel" style="overflow: hidden">
+        <div class="section" style="display: flex; align-items: center; gap: 10px">
+          <h2 style="margin: 0">Ragnar Z-TECH (nueva)</h2><span class="pill p-grey">Borrador</span>
+        </div>
+        <div class="section">
+          <div class="grid2">
+            <div><span class="label">Nombre de la plantilla</span><div class="field">Ragnar Z-TECH</div><div class="hint" style="margin-top: 4px">Nombre en Meta: ragnar_z_tech</div></div>
+            <div class="grid2" style="gap: 12px"><div><span class="label">Categoría</span><div class="field">Marketing ▾</div></div><div><span class="label">Idioma</span><div class="field">Español ▾</div></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <span class="label">Cabecera</span>
+          <div class="toolbar"><span class="btn" style="height: 30px">Ninguna</span><span class="btn" style="height: 30px">Texto</span><span class="btn primary" style="height: 30px">Imagen</span><span class="btn" style="height: 30px">Vídeo</span><span class="btn" style="height: 30px">Documento</span><span class="hint">Imagen de ejemplo: ragnar-ztech.jpg</span></div>
+        </div>
+        <div class="section">
+          <div style="display: flex; align-items: center; justify-content: space-between"><span class="label">Mensaje</span><span class="hint"><b>N</b> · <i>C</i> · <s>T</s> · <a href="#">+ Añadir variable</a></span></div>
+          <div class="area" style="min-height: 96px">Hola <span class="pill p-blue" style="font-size: 12px">Variable 1 · nombre</span>, tenemos algo para ti.
+Nueva afeitadora Z-TECH de RAGNAR con precio especial para barberías esta semana.</div>
+          <div class="hint" style="margin-top: 4px; text-align: right">115 / 1024 caracteres · Ejemplo de la variable 1: «Juan»</div>
+        </div>
+        <div class="section" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px">
+          <div><span class="label">Pie de página (opcional)</span><div class="field">Un saludo, Gelado.</div><div class="hint" style="margin-top: 4px">18 / 60</div></div>
+          <div>
+            <span class="label">Botones</span>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <div class="field" style="height: 34px">Respuesta rápida · «Me interesa» <span class="hint">✎</span></div>
+              <div class="field" style="height: 34px; background: #FBECEC; border-color: #F2C2C4">Respuesta rápida · «No recibir más» <span class="hint">obligatorio</span></div>
+              <span class="hint"><a href="#">+ Añadir botón</a> (respuesta rápida, enlace o llamada)</span>
+            </div>
+          </div>
+        </div>
+        <div class="section" style="display: flex; justify-content: flex-end; gap: 8px">
+          <button class="btn">Guardar borrador</button>
+          <button class="btn primary">Enviar a revisión de Meta</button>
+        </div>
+      </div>
+      <div class="panel" style="padding: 14px; align-self: start">
+        <span class="label">Vista previa</span>
+        <div class="wa-prev">
+          <div class="photo" style="width: 100%; height: 130px">Imagen de cabecera</div>
+          <div class="wa-bub">Hola Juan, tenemos algo para ti.
+Nueva afeitadora Z-TECH de RAGNAR con precio especial para barberías esta semana.
+
+Un saludo, Gelado.</div>
+          <div class="wa-btn">Me interesa</div>
+          <div class="wa-btn">No recibir más</div>
+        </div>
+        <div class="hint" style="margin-top: 10px">Meta revisa la plantilla, normalmente en minutos. Os avisaremos aquí cuando esté aprobada o si la rechaza, con el motivo.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

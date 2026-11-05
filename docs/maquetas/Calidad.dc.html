@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Calidad y costes</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn" href="Contactos.dc.html" aria-label="Contactos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="rail-btn" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <a class="rail-btn" href="Plantilla-editor.dc.html" aria-label="Plantillas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></a>
+    <a class="rail-btn on" href="Calidad.dc.html" aria-label="Calidad y costes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></a>
+    <div class="rail-sp"></div>
+    <a class="rail-btn" href="Ajustes-horario.dc.html" aria-label="Ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <div class="main">
+    <div class="banner warn" role="alert"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>Ejemplo de aviso: Meta ha pausado la plantilla «Buenos días» por baja calidad. Las campañas que la usan se han detenido.<a href="Plantilla-editor.dc.html" style="margin-left: auto">Ver plantilla</a></div>
+    <div class="page" style="max-width: 1180px; width: 100%; margin: 0 auto">
+      <div class="page-head"><div><h1>Calidad y costes</h1><div class="sub">Estado del número en Meta y gasto estimado de WhatsApp.</div></div></div>
+      <div class="grid4">
+        <div class="panel stat"><div class="k">Calidad del número</div><div class="v" style="display: flex; align-items: center; gap: 8px"><span style="width: 14px; height: 14px; border-radius: 50%; background: #1E7A3D; display: inline-block"></span>Alta</div><div class="s">+34 617 49 82 22 · Conectado</div></div>
+        <div class="panel stat"><div class="k">Límite de Meta (usuarios nuevos / 24 h)</div><div class="v">2.000</div><div class="bar ok" style="margin-top: 6px"><i style="width: 15%"></i></div><div class="s" style="margin-top: 4px">Usados en las últimas 24 h: 298</div></div>
+        <div class="panel stat"><div class="k">Respuestas gratis este mes</div><div class="v">41 <span class="hint" style="font-size: 14px">/ 1.000</span></div><div class="bar ok" style="margin-top: 6px"><i style="width: 4%"></i></div><div class="s" style="margin-top: 4px">Desde la 1.001 cuestan 0,0166 €</div></div>
+        <div class="panel stat"><div class="k">Gasto estimado de noviembre</div><div class="v">17,43 €</div><div class="s">Octubre: 81,55 €</div></div>
+      </div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px">
+        <div class="panel" style="padding: 16px">
+          <div style="font-weight: 700; margin-bottom: 12px">Gasto por tipo de mensaje · noviembre</div>
+          <table>
+            <thead><tr><th>Tipo</th><th>Mensajes</th><th>Tarifa</th><th>Importe</th></tr></thead>
+            <tbody>
+              <tr><td>Marketing (campañas y plantillas)</td><td class="mono">298</td><td class="mono">0,0585 €</td><td class="mono" style="font-weight: 700">17,43 €</td></tr>
+              <tr><td>Utilidad</td><td class="mono">0</td><td class="mono">0,0166 €</td><td class="mono">0,00 €</td></tr>
+              <tr><td>Respuestas (servicio)</td><td class="mono">41</td><td class="hint">gratis hasta 1.000</td><td class="mono">0,00 €</td></tr>
+            </tbody>
+          </table>
+          <div class="hint" style="margin-top: 8px">Estimación con las tarifas de Meta para España, sin IVA. La factura real la emite Meta.</div>
+        </div>
+        <div class="panel" style="padding: 16px">
+          <div style="font-weight: 700; margin-bottom: 12px">Historial de calidad</div>
+          <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px">
+            <div style="display: flex; justify-content: space-between"><span>05/11/2026</span><span class="pill p-ok">Alta</span></div>
+            <div style="display: flex; justify-content: space-between"><span>20/10/2026 · tras campaña Tintes KUKIT</span><span class="pill p-ok">Alta</span></div>
+            <div style="display: flex; justify-content: space-between"><span>18/09/2026 · tras campaña Sunlake</span><span class="pill p-ok">Alta</span></div>
+          </div>
+          <div class="hint" style="margin-top: 12px">Si la calidad baja, aparece un aviso arriba en todas las pantallas. Si llega a baja (roja) o Meta marca el número, se paran las campañas en curso.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

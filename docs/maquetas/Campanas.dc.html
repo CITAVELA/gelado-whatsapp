@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Campañas</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn" href="Contactos.dc.html" aria-label="Contactos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="rail-btn on" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <a class="rail-btn" href="Plantilla-editor.dc.html" aria-label="Plantillas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></a>
+    <a class="rail-btn" href="Calidad.dc.html" aria-label="Calidad y costes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></a>
+    <div class="rail-sp"></div>
+    <a class="rail-btn" href="Ajustes-horario.dc.html" aria-label="Ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <div class="main">
+    <div class="page" style="max-width: 1180px; width: 100%; margin: 0 auto">
+      <div class="page-head">
+        <div><h1>Todas las campañas</h1><div class="sub">Todas las campañas de WhatsApp planificadas y enviadas de un vistazo.</div></div>
+        <a class="btn primary" href="Campana-nueva.dc.html" style="margin-left: auto"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva campaña</a>
+      </div>
+      <div class="grid4">
+        <div class="panel stat"><div class="k">Enviadas este mes</div><div class="v">3</div><div class="s">3.239 destinatarios</div></div>
+        <div class="panel stat"><div class="k">Entregados</div><div class="v">84 %</div><div class="s">media del mes</div></div>
+        <div class="panel stat"><div class="k">Leídos</div><div class="v">53 %</div><div class="s">media del mes</div></div>
+        <div class="panel stat"><div class="k">Gasto estimado del mes</div><div class="v">81,55 €</div><div class="s">1.394 mensajes de marketing</div></div>
+      </div>
+      <div class="toolbar">
+        <div style="font-weight: 700; font-size: 15px">Últimas campañas</div>
+        <div class="search" style="margin-left: auto"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Buscar…</div>
+      </div>
+      <div class="panel tbl-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Estado</th><th>Destinatarios</th><th>Entregados</th><th>Leídos</th><th>Creado por</th><th>Fecha de envío</th><th><span class="hint">Acciones</span></th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight: 600">Afeitadora Z-TECH RAGNAR</td><td><span class="pill p-warn">Enviando · 42 %</span></td><td class="mono">298</td><td class="mono">118</td><td class="mono">61</td><td><div style="display: flex; align-items: center; gap: 6px"><span class="avatar sm av-mi">MI</span>María Iborra</div></td><td class="mono">05/11/2026, 12:30</td><td><button class="tbtn" aria-label="Más acciones">•••</button></td></tr>
+            <tr><td style="font-weight: 600">CHROMACID Tinte Dousse Ácido</td><td><span class="pill p-blue">Programada</span></td><td class="mono">1.357</td><td class="hint">—</td><td class="hint">—</td><td><div style="display: flex; align-items: center; gap: 6px"><span class="avatar sm av-mi">MI</span>María Iborra</div></td><td class="mono">10/11/2026, 10:00</td><td><button class="tbtn" aria-label="Más acciones">•••</button></td></tr>
+            <tr><td style="font-weight: 600">Novedades Navidad (borrador de Cristina)</td><td><span class="pill p-grey">Borrador</span></td><td class="mono">1.522</td><td class="hint">—</td><td class="hint">—</td><td><div style="display: flex; align-items: center; gap: 6px"><span class="avatar sm av-cl">CL</span>Cristina Lopez</div></td><td class="hint">—</td><td><button class="tbtn" aria-label="Más acciones">•••</button></td></tr>
+            <tr><td><a href="Campana-informe.dc.html" style="font-weight: 600; color: #15171A">Tintes KUKIT + Toallitas y Oxi</a></td><td><span class="pill p-ok">Enviada</span></td><td class="mono">1.489</td><td class="mono">1.238 · 83 %</td><td class="mono">780 · 52 %</td><td><div style="display: flex; align-items: center; gap: 6px"><span class="avatar sm av-mi">MI</span>María Iborra</div></td><td class="mono">20/10/2026, 10:00</td><td><button class="tbtn" aria-label="Más acciones">•••</button></td></tr>
+            <tr><td style="font-weight: 600">FACIAL Tassel Hyaluronic y Kukit Orange</td><td><span class="pill p-ok">Enviada</span></td><td class="mono">241</td><td class="mono">207 · 86 %</td><td class="mono">131 · 54 %</td><td><div style="display: flex; align-items: center; gap: 6px"><span class="avatar sm av-mi">MI</span>María Iborra</div></td><td class="mono">13/10/2026, 10:00</td><td><button class="tbtn" aria-label="Más acciones">•••</button></td></tr>
+            <tr><td style="font-weight: 600">CAMPAÑA SUNLAKE Antiyellow / Allinone</td><td><span class="pill p-ok">Enviada</span></td><td class="mono">1.509</td><td class="mono">1.262 · 84 %</td><td class="mono">806 · 53 %</td><td><div style="display: flex; align-items: center; gap: 6px"><span class="avatar sm av-mi">MI</span>María Iborra</div></td><td class="mono">18/09/2026, 10:49</td><td><button class="tbtn" aria-label="Más acciones">•••</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="hint">Las cifras de campañas anteriores al cambio de plataforma son de ejemplo: el historial de Superchat no se importa.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

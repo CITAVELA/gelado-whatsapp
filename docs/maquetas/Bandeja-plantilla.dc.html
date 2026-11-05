@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Bandeja · enviar plantilla</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A; position: relative">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn on" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn" href="Contactos.dc.html" aria-label="Contactos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="rail-btn" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <div class="rail-sp"></div>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <section class="list" aria-label="Conversaciones">
+    <div class="list-head"><h1>Pospuestas</h1></div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="false">Abiertos</button>
+      <button class="tab on" role="tab" aria-selected="true">Pospuestas</button>
+      <button class="tab" role="tab" aria-selected="false">Finalizadas</button>
+    </div>
+    <div class="list-tools"><span>Próximamente vence ▾</span><span></span></div>
+    <div class="cards">
+      <div class="card on">
+        <div class="wa">SL</div>
+        <div style="flex: 1; min-width: 0">
+          <div class="who">Sonia Vidal <span class="time">08/11</span></div>
+          <div class="prev">Tenemos algo para ti. PROMOCIÓN…</div>
+          <div class="meta"><span class="chip c-est">Estética</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="wa">DL</div>
+        <div style="flex: 1; min-width: 0">
+          <div class="who">Driss L. <span class="time">08/11</span></div>
+          <div class="prev">Tenemos algo para ti. PROMOCIÓN…</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="chat" aria-label="Conversación con Sonia Vidal">
+    <header class="chat-head">
+      <div class="wa">SV</div>
+      <div><div class="name">Sonia Vidal <span class="chip c-est">Estética</span></div><div class="sub">+34 655 000 111 · <span class="window-closed">Ventana cerrada: solo plantillas</span></div></div>
+    </header>
+    <div class="thread">
+      <div class="event">Cristina Lopez ha pospuesto el chat hasta el 08/11/2026 a las 12:30</div>
+      <div class="day">20/10/2026</div>
+      <div class="msg out">Tenemos algo para ti. PROMOCIÓN ESPECIAL…<div class="foot">10:05 <span class="ticks">✓✓</span></div></div>
+    </div>
+    <div class="composer" style="display: flex; align-items: center; gap: 12px">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: #B4232A"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <div style="flex: 1"><div style="font-weight: 600">Han pasado más de 24 h desde el último mensaje del cliente</div><div class="hint">WhatsApp solo deja escribir primero con una plantilla aprobada.</div></div>
+      <button class="send">Enviar plantilla</button>
+    </div>
+  </main>
+
+  <div class="overlay">
+    <div class="modal" role="dialog" aria-label="Enviar plantilla de WhatsApp" style="width: 1080px; height: 640px">
+      <div style="display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid #E3E6EA">
+        <div style="font-weight: 700; font-size: 16px; flex: 1">Enviar plantilla de WhatsApp a Sonia Vidal</div>
+        <a class="tbtn" href="Main.dc.html" aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></a>
+      </div>
+      <div style="flex: 1; display: grid; grid-template-columns: 280px minmax(0, 1fr) 320px; min-height: 0">
+        <div style="border-right: 1px solid #E3E6EA; padding: 14px; display: flex; flex-direction: column; gap: 6px">
+          <div class="search" style="min-width: 0"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Buscar plantilla…</div>
+          <div class="sect" style="margin-left: 4px">Aprobadas</div>
+          <div class="mi on" style="flex-direction: column; align-items: flex-start; gap: 2px"><span style="font-weight: 600">Inicio de Conversación</span><span class="hint">Marketing · español</span></div>
+          <div class="mi" style="flex-direction: column; align-items: flex-start; gap: 2px"><span style="font-weight: 600">Buenos días</span><span class="hint">Marketing · español</span></div>
+          <div class="mi" style="flex-direction: column; align-items: flex-start; gap: 2px"><span style="font-weight: 600">Buenas Tardes</span><span class="hint">Marketing · español</span></div>
+          <div class="mi" style="flex-direction: column; align-items: flex-start; gap: 2px"><span style="font-weight: 600">Mandar PDF</span><span class="hint">Marketing · español</span></div>
+          <div class="mi" style="flex-direction: column; align-items: flex-start; gap: 2px"><span style="font-weight: 600">Aviso de pedido enviado</span><span class="hint">Utilidad · español</span></div>
+        </div>
+        <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 16px">
+          <div>
+            <span class="label">Variable 1 · nombre</span>
+            <div class="field">Sonia <span class="hint">del campo Nombre del contacto</span></div>
+          </div>
+          <div>
+            <span class="label">Variable 2 · motivo</span>
+            <div class="field" style="color: #8A919A">Escribe el texto…</div>
+          </div>
+          <div style="background: #E8EFFD; color: #1A3F91; border-radius: 10px; padding: 12px 14px; font-size: 13px">Coste estimado de este envío: <b>0,0585 €</b> (plantilla de marketing). Cuando el cliente conteste, podréis escribir libremente durante 24 h.</div>
+        </div>
+        <div style="padding: 18px; border-left: 1px solid #E3E6EA; background: #FAFAFB">
+          <span class="label">Vista previa</span>
+          <div class="wa-prev">
+            <div class="wa-bub">Hola Sonia, te escribimos de Exclusivas Gelado. ¿Podemos ayudarte con tu próximo pedido?
+
+Un saludo, Gelado.</div>
+            <div class="wa-btn">Sí, quiero hacer un pedido</div>
+            <div class="wa-btn">No recibir más</div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid #E3E6EA">
+        <a class="btn" href="Main.dc.html">Cancelar</a>
+        <button class="btn primary">Enviar plantilla</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

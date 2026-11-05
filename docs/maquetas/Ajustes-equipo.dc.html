@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Ajustes · equipo</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn" href="Contactos.dc.html" aria-label="Contactos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="rail-btn" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <div class="rail-sp"></div>
+    <a class="rail-btn on" href="Ajustes-horario.dc.html" aria-label="Ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <aside class="views" aria-label="Ajustes">
+    <h2>Configuración</h2>
+    <a class="view" href="Ajustes-horario.dc.html">Perfil</a>
+    <a class="view" href="Ajustes-horario.dc.html">Horario y respuestas automáticas</a>
+    <a class="view on" href="Ajustes-equipo.dc.html">Gestionar el equipo</a>
+    <a class="view" href="Plantilla-editor.dc.html">Plantillas</a>
+    <a class="view" href="Bandeja-biblioteca.dc.html">Archivos</a>
+    <a class="view" href="Ajustes-horario.dc.html">Etiquetas</a>
+    <a class="view" href="Ajustes-horario.dc.html">WhatsApp y tarifas</a>
+    <a class="view" href="Ajustes-horario.dc.html">Registro de actividad</a>
+  </aside>
+
+  <div class="main">
+    <div class="page" style="max-width: 1040px; width: 100%">
+      <div class="page-head"><div><h1>Gestionar el equipo</h1><div class="sub">Sin correos: los enlaces de invitación y de nueva contraseña se copian y se pasan a cada persona.</div></div><button class="btn primary" style="margin-left: auto"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>Invitar a un miembro del equipo</button></div>
+      <div class="panel tbl-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Correo de acceso</th><th>Rol</th><th>Estado</th><th><span class="hint">Acciones</span></th></tr></thead>
+          <tbody>
+            <tr><td><div style="display: flex; align-items: center; gap: 10px"><span class="avatar av-mi">MI</span><b>María Iborra (tú)</b></div></td><td class="hint">g•••@gmail.com</td><td><span class="pill p-blue">Administradora</span></td><td><span class="pill p-ok">Activa</span></td><td></td></tr>
+            <tr><td><div style="display: flex; align-items: center; gap: 10px"><span class="avatar av-cl">CL</span><b>Cristina Lopez</b></div></td><td class="hint">a•••@gelado.eu</td><td><span class="pill p-grey">Agente</span></td><td><span class="pill p-ok">Activa</span></td><td><a href="#">Enlace de nueva contraseña</a> · <a href="#" style="color: #B4232A">Desactivar</a></td></tr>
+            <tr><td><div style="display: flex; align-items: center; gap: 10px"><span class="avatar av-lg">LG</span><b>Lolo Gelado</b></div></td><td class="hint">g•••@gmail.com</td><td><span class="pill p-grey">Agente</span></td><td><span class="pill p-warn">Invitación pendiente</span></td><td><a href="#">Copiar enlace de invitación</a> · <a href="#" style="color: #B4232A">Anular</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel" style="padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; max-width: 720px">
+        <div style="font-weight: 700">Enlace de invitación para Lolo Gelado</div>
+        <div style="display: flex; gap: 8px"><div class="field mono" style="flex: 1; font-size: 12.5px">https://gelado-whatsapp.onrender.com/invitacion/7Kq2…</div><button class="btn primary">Copiar</button></div>
+        <div class="hint">Válido 24 horas y una sola vez. Al abrirlo, Lolo crea su contraseña.</div>
+      </div>
+      <div class="panel" style="padding: 16px 18px; max-width: 720px">
+        <div style="font-weight: 700; margin-bottom: 8px">Qué puede hacer cada rol</div>
+        <div class="grid2" style="font-size: 13px">
+          <div><span class="pill p-blue">Administradora</span><div class="hint" style="margin-top: 6px">Todo: bandeja, contactos, exportar, plantillas, campañas, ajustes y equipo.</div></div>
+          <div><span class="pill p-grey">Agente</span><div class="hint" style="margin-top: 6px">Bandeja y contactos. Puede preparar borradores de campaña, pero no lanzarlas ni crear plantillas.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

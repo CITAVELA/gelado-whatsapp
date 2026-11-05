@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Contactos</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn on" href="Contactos.dc.html" aria-label="Contactos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="rail-btn" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <a class="rail-btn" href="Plantilla-editor.dc.html" aria-label="Plantillas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></a>
+    <a class="rail-btn" href="Calidad.dc.html" aria-label="Calidad y costes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></a>
+    <div class="rail-sp"></div>
+    <a class="rail-btn" href="Ajustes-horario.dc.html" aria-label="Ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <aside class="views" aria-label="Vistas de contactos">
+    <h2>Vistas</h2>
+    <a class="view on" href="Contactos.dc.html">Todos los contactos<span class="n">6.560</span></a>
+    <a class="view" href="Contactos.dc.html">Dados de baja de publicidad<span class="n">212</span></a>
+    <a class="view" href="Contactos.dc.html">Teléfono no válido<span class="n">251</span></a>
+    <div class="sect">Tipo de cliente</div>
+    <a class="view" href="Contactos.dc.html"><span class="sw" style="background: #2457C5"></span>Peluquería<span class="n">1.522</span></a>
+    <a class="view" href="Contactos.dc.html"><span class="sw" style="background: #C2333A"></span>Barbería<span class="n">353</span></a>
+    <a class="view" href="Contactos.dc.html"><span class="sw" style="background: #1E7A3D"></span>Estética<span class="n">292</span></a>
+    <a class="view" href="Contactos.dc.html"><span class="sw" style="background: #B08A00"></span>Instituto<span class="n">48</span></a>
+    <a class="view" href="Contactos.dc.html"><span class="sw" style="background: #6B737C"></span>Jubilado<span class="n">17</span></a>
+    <a class="view" href="Ajustes-horario.dc.html" style="color: #5B626B">+ Gestionar etiquetas</a>
+  </aside>
+
+  <div class="main">
+    <div class="page">
+      <div class="page-head">
+        <h1>Todos los contactos</h1><span class="count">6.560</span>
+        <div style="margin-left: auto; display: flex; gap: 8px">
+          <button class="btn"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Exportar todo</button>
+          <a class="btn" href="Importar.dc.html"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Importar</a>
+          <button class="btn primary"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nuevo contacto</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="search"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Buscar por nombre, teléfono, código o CIF…</div>
+        <button class="btn"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54z"/></svg>Añadir filtro</button>
+        <button class="btn">Columnas</button>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 10px" class="hint">Tamaño de página: 100 ▾ <span class="btn" style="height: 30px">‹</span><span class="mono">1 / 66</span><span class="btn" style="height: 30px">›</span></div>
+      </div>
+      <div class="hint" style="display: flex; gap: 10px; align-items: center; background: #FBECEC; color: #8F262C; border-radius: 8px; padding: 8px 12px">2 seleccionados · <a href="#">Añadir etiqueta</a> · <a href="#">Quitar etiqueta</a> · <a href="#">Dar de baja de publicidad</a></div>
+      <div class="panel tbl-wrap">
+        <table>
+          <thead><tr><th><span class="box"></span></th><th>Nombre</th><th>Código</th><th>CIF / DNI</th><th>Teléfono</th><th>Teléfono fijo</th><th>Etiquetas</th><th>Publicidad</th><th>Última actividad</th></tr></thead>
+          <tbody>
+            <tr><td><span class="box on"></span></td><td style="font-weight: 600">Peluquería Marisol</td><td class="mono">3990</td><td class="mono">B00000000</td><td class="mono">+34 612 345 678</td><td class="mono">968 000 000</td><td><span class="chip c-pel">Peluquería</span></td><td><span class="pill p-ok">Recibe</span></td><td class="hint">Hoy</td></tr>
+            <tr><td><span class="box on"></span></td><td style="font-weight: 600">Barbería El Puerto</td><td class="mono">4102</td><td class="mono">B11111111</td><td class="mono">+34 622 111 222</td><td></td><td><span class="chip c-bar">Barbería</span></td><td><span class="pill p-ok">Recibe</span></td><td class="hint">Hoy</td></tr>
+            <tr><td><span class="box"></span></td><td style="font-weight: 600">2002 Frascos SL</td><td class="mono">70057</td><td class="mono">B22222222</td><td class="mono">+34 633 222 333</td><td class="mono">938 000 000</td><td><span class="chip c-est">Estética</span></td><td><span class="pill p-ok">Recibe</span></td><td class="hint">20/10/2026</td></tr>
+            <tr><td><span class="box"></span></td><td style="font-weight: 600">Salón Nuria</td><td class="mono">2210</td><td class="mono">00000000T</td><td class="mono">+34 644 333 444</td><td></td><td><span class="chip c-pel">Peluquería</span><span class="chip c-jub">Jubilado</span></td><td><span class="pill p-bad">Dado de baja</span></td><td class="hint">Ayer</td></tr>
+            <tr><td><span class="box"></span></td><td><span class="hint">Sin nombre</span> · perfil «Rosi»</td><td></td><td></td><td class="mono">+34 655 444 555</td><td></td><td></td><td><span class="pill p-ok">Recibe</span></td><td class="hint">18/09/2026</td></tr>
+            <tr><td><span class="box"></span></td><td style="font-weight: 600">Estética Aura</td><td class="mono">3301</td><td class="mono">B33333333</td><td class="mono">+34 666 555 666</td><td></td><td><span class="chip c-est">Estética</span></td><td><span class="pill p-ok">Recibe</span></td><td class="hint">Ayer</td></tr>
+            <tr><td><span class="box"></span></td><td style="font-weight: 600">Instituto Bellas Artes</td><td class="mono">5120</td><td class="mono">Q0000000A</td><td class="mono">+34 677 666 777</td><td class="mono">968 111 111</td><td><span class="chip c-ins">Instituto</span></td><td><span class="pill p-ok">Recibe</span></td><td class="hint">13/10/2026</td></tr>
+            <tr><td><span class="box"></span></td><td style="font-weight: 600">Javier Torres</td><td class="mono">1874</td><td></td><td class="mono">+34 688 777 888</td><td></td><td><span class="chip c-bar">Barbería</span></td><td><span class="pill p-grey">Teléfono no válido</span></td><td class="hint">lunes</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

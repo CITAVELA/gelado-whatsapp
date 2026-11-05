@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Bandeja · adjuntar archivo</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A; position: relative">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn on" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <div class="rail-sp"></div>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <section class="list" aria-label="Conversaciones">
+    <div class="list-head"><h1>Asignado a mí</h1></div>
+    <div class="cards">
+      <div class="card on"><div class="wa">BP</div><div style="flex: 1; min-width: 0"><div class="who">Barbería El Puerto <span class="time">12:02</span></div><div class="prev">¿Me mandas el catálogo de Ragnar?</div></div></div>
+    </div>
+  </section>
+
+  <main class="chat" aria-label="Conversación con Barbería El Puerto">
+    <header class="chat-head"><div class="wa">BP</div><div><div class="name">Barbería El Puerto <span class="chip c-bar">Barbería</span></div><div class="sub"><span class="window-ok">Ventana abierta: quedan 23 h</span></div></div></header>
+    <div class="thread"><div class="msg in">¿Me mandas el catálogo de Ragnar y la factura del último pedido?<div class="foot">12:02</div></div></div>
+    <div class="composer"><div class="cbox">Escribe un mensaje…</div></div>
+  </main>
+
+  <div class="overlay">
+    <div class="modal" role="dialog" aria-label="Adjuntar archivos" style="width: 920px; height: 620px">
+      <div style="display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid #E3E6EA">
+        <div style="flex: 1"><div style="font-weight: 700; font-size: 16px">Adjuntar archivos</div><div class="hint">Elige de la biblioteca o sube desde tu ordenador. Puedes enviar varios a la vez.</div></div>
+        <a class="tbtn" href="Main.dc.html" aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></a>
+      </div>
+      <div style="flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 300px; min-height: 0">
+        <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid #E3E6EA">
+          <div class="toolbar">
+            <div class="search" style="flex: 1; min-width: 0"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Buscar en la biblioteca…</div>
+          </div>
+          <div class="hint">Biblioteca › <b style="color: #15171A">Catálogos</b></div>
+          <div class="panel" style="overflow: hidden">
+            <table>
+              <tbody>
+                <tr><td style="width: 30px"><span class="box"></span></td><td><div style="display: flex; align-items: center; gap: 10px"><div class="pdf" style="width: 26px; height: 30px; font-size: 8px">PDF</div>ALLE LAC Catálogo</div></td><td class="hint">3,1 MB</td></tr>
+                <tr><td><span class="box"></span></td><td><div style="display: flex; align-items: center; gap: 10px"><div class="pdf" style="width: 26px; height: 30px; font-size: 8px">PDF</div>CRAZY COLOR Catálogo</div></td><td class="hint">5,8 MB</td></tr>
+                <tr><td><span class="box"></span></td><td><div style="display: flex; align-items: center; gap: 10px"><div class="pdf" style="width: 26px; height: 30px; font-size: 8px">PDF</div>DARNIER Catálogo</div></td><td class="hint">2,2 MB</td></tr>
+                <tr><td><span class="box"></span></td><td><div style="display: flex; align-items: center; gap: 10px"><div class="pdf" style="width: 26px; height: 30px; font-size: 8px">PDF</div>DOUSSE Carta de Color</div></td><td class="hint">2,4 MB</td></tr>
+                <tr style="background: #FBECEC"><td><span class="box on"></span></td><td><div style="display: flex; align-items: center; gap: 10px"><div class="pdf" style="width: 26px; height: 30px; font-size: 8px">PDF</div><b>Eléctrico RAGNAR Catálogo</b></div></td><td class="hint">4,0 MB</td></tr>
+                <tr><td><span class="box"></span></td><td><div style="display: flex; align-items: center; gap: 10px"><div class="pdf" style="width: 26px; height: 30px; font-size: 8px">PDF</div>ELEGANCE Extensiones Color</div></td><td class="hint">1,7 MB</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 12px">
+          <span class="label" style="margin: 0">Desde tu ordenador</span>
+          <div style="border: 2px dashed #C9CED4; border-radius: 12px; padding: 22px; text-align: center; color: #5B626B; display: flex; flex-direction: column; align-items: center; gap: 8px">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            <div style="font-size: 13px">Arrastra aquí fotos, PDF, audios o vídeos, o <a href="#">elige archivos</a></div>
+          </div>
+          <span class="label" style="margin: 6px 0 0">Seleccionados (2)</span>
+          <div class="att" style="min-width: 0; background: #fff"><div class="pdf">PDF</div><div style="min-width: 0"><div class="fn">Eléctrico RAGNAR Catálogo.pdf</div><div class="fs">De la biblioteca</div></div></div>
+          <div class="att" style="min-width: 0; background: #fff"><div class="pdf">PDF</div><div style="min-width: 0"><div class="fn">Factura A-2026-1187.pdf</div><div class="fs">Subido desde el ordenador</div></div></div>
+          <div>
+            <span class="label">Texto que acompaña (opcional)</span>
+            <div class="area" style="color: #8A919A">Aquí tienes el catálogo y la factura</div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid #E3E6EA">
+        <a class="btn" href="Main.dc.html">Cancelar</a>
+        <button class="btn primary">Enviar 2 archivos</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

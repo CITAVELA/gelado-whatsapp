@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Inicio de sesión</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div style="width: 100%; height: 900px; display: flex; align-items: center; justify-content: center; background: #121417; font-family: Inter, system-ui, sans-serif; color: #15171A; position: relative">
+  <div style="width: 400px; max-width: 92%; background: #fff; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div class="logo" style="margin: 0; width: 48px; height: 48px; font-size: 10px" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+      <div><div style="font-weight: 800; font-size: 18px">Exclusivas Gelado</div><div class="hint">WhatsApp del equipo</div></div>
+    </div>
+    <div>
+      <label class="label" for="correo">Correo</label>
+      <input id="correo" type="email" style="width: 100%; height: 42px; border: 1px solid #E3E6EA; border-radius: 8px; padding: 0 12px" placeholder="tu@correo.es">
+    </div>
+    <div>
+      <label class="label" for="clave">Contraseña</label>
+      <input id="clave" type="password" style="width: 100%; height: 42px; border: 1px solid #E3E6EA; border-radius: 8px; padding: 0 12px">
+    </div>
+    <button class="btn primary" style="height: 44px; justify-content: center">Entrar</button>
+    <div class="hint" style="text-align: center">¿Olvidaste tu contraseña? Pídele un enlace nuevo a la administradora.</div>
+  </div>
+  <div class="hint" style="position: absolute; bottom: 16px; color: #8A919A">Maqueta</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

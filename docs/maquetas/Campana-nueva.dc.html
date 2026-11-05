@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Campañas · nueva campaña</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn on" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <div class="rail-sp"></div>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <div class="main">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 14px 32px; background: #fff; border-bottom: 1px solid #E3E6EA">
+      <a class="btn ghost" href="Campanas.dc.html" style="padding: 0 6px" aria-label="Volver a campañas">‹</a>
+      <div style="font-size: 20px; font-weight: 700">Nueva campaña</div><span class="pill p-grey">Borrador</span>
+      <button class="btn" style="margin-left: auto">Guardar borrador</button>
+    </div>
+    <div style="flex: 1; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; padding: 20px 32px">
+      <div class="panel" style="overflow: hidden">
+        <div class="section">
+          <h2>1 · Detalles de la campaña</h2>
+          <span class="label">Nombre de la campaña <span class="hint">(solo para uso interno)</span></span>
+          <div class="field" style="max-width: 480px">Afeitadora Z-TECH RAGNAR · Barberías</div>
+        </div>
+        <div class="section">
+          <h2>2 · Contenido</h2>
+          <div class="grid2">
+            <div><span class="label">Plantilla de WhatsApp</span><div class="field">Campaña Imagen · Marketing ▾</div><div class="hint" style="margin-top: 4px">Solo aparecen plantillas con botón «No recibir más». <a href="Plantilla-editor.dc.html">Crear nueva plantilla</a></div></div>
+            <div><span class="label">Imagen de cabecera</span><div class="field"><span>ragnar-ztech.jpg</span><span class="hint">Cambiar</span></div></div>
+            <div><span class="label">Variable 1 · nombre del cliente</span><div class="field">Campo «Nombre» <span class="hint">si está vacío: «cliente»</span></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <h2>3 · Destinatarios</h2>
+          <div class="grid2">
+            <div><span class="label">Enviar a contactos con la etiqueta</span><div class="field" style="justify-content: flex-start; gap: 6px"><span class="chip c-bar">Barbería ×</span><span class="hint">+ añadir</span></div></div>
+            <div><span class="label">Excluir contactos con la etiqueta</span><div class="field" style="justify-content: flex-start; gap: 6px"><span class="chip c-jub">Jubilado ×</span><span class="hint">+ añadir</span></div></div>
+          </div>
+          <div style="margin-top: 14px; background: #FAFAFB; border: 1px solid #E3E6EA; border-radius: 10px; padding: 12px 14px; display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px">
+            <span><b class="mono">353</b> seleccionados</span>
+            <span class="hint"><b class="mono" style="color: #15171A">9</b> excluidos por Jubilado</span>
+            <span class="hint"><b class="mono" style="color: #15171A">31</b> dados de baja (no reciben nunca)</span>
+            <span class="hint"><b class="mono" style="color: #15171A">15</b> teléfono no válido</span>
+            <span style="margin-left: auto; font-weight: 700">298 recibirán el mensaje</span>
+          </div>
+        </div>
+        <div class="section">
+          <h2>4 · Opciones de envío</h2>
+          <div class="grid2">
+            <div class="radio"><span class="dotr"></span><div><div style="font-weight: 600">Enviar inmediatamente</div><div class="hint">Empieza al pulsar Enviar.</div></div></div>
+            <div class="radio on"><span class="dotr"></span><div><div style="font-weight: 600">Seleccionar la hora</div><div class="hint">Programar para más tarde.</div><div class="field" style="margin-top: 8px; height: 32px">10/11/2026 · 10:00 ▾</div></div></div>
+          </div>
+          <div style="display: flex; gap: 22px; align-items: center; margin-top: 12px; font-size: 13px; flex-wrap: wrap">
+            <span>Ritmo de envío <span class="field" style="display: inline-flex; height: 30px; margin-left: 6px">20 por minuto ▾</span></span>
+            <span class="hint">Duración estimada: 15 min · Dentro del límite diario de Meta (298 de 2.000)</span>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 14px">
+        <div class="panel" style="padding: 14px">
+          <span class="label">Vista previa</span>
+          <div class="wa-prev">
+            <div class="photo" style="width: 100%; height: 120px">Imagen de cabecera</div>
+            <div class="wa-bub">Hola Juan, tenemos algo para ti.
+Nueva afeitadora Z-TECH de RAGNAR con precio especial para barberías esta semana.
+
+Un saludo, Gelado.</div>
+            <div class="wa-btn">Me interesa</div>
+            <div class="wa-btn">No recibir más</div>
+          </div>
+        </div>
+        <div class="panel" style="padding: 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+          <div style="font-weight: 700">Resumen</div>
+          <div style="display: flex; justify-content: space-between"><span class="hint">Destinatarios</span><b class="mono">298</b></div>
+          <div style="display: flex; justify-content: space-between"><span class="hint">Coste estimado (0,0585 € / mensaje)</span><b class="mono">17,43 €</b></div>
+          <div style="display: flex; justify-content: space-between"><span class="hint">Envío</span><b>10/11/2026, 10:00</b></div>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap">
+          <button class="btn">Enviar mensaje de prueba</button>
+          <button class="btn primary">Programar campaña</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Contactos · importar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn on" href="Contactos.dc.html" aria-label="Contactos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="rail-btn" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <div class="rail-sp"></div>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <div class="main">
+    <div class="page" style="max-width: 1180px; width: 100%; margin: 0 auto">
+      <div class="page-head">
+        <a class="btn ghost" href="Contactos.dc.html" style="padding: 0 6px" aria-label="Volver a contactos">‹</a>
+        <h1>Importar contactos</h1>
+        <div class="steps" style="margin-left: auto">
+          <div class="s done"><span class="n">✓</span>Subir archivo</div><span>—</span>
+          <div class="s on"><span class="n">2</span>Columnas</div><span>—</span>
+          <div class="s"><span class="n">3</span>Reglas</div><span>—</span>
+          <div class="s"><span class="n">4</span>Revisar</div><span>—</span>
+          <div class="s"><span class="n">5</span>Importar</div>
+        </div>
+      </div>
+      <div class="hint">Archivo: <b style="color: #15171A">superchat_contactos_05-11-2026.csv</b> · 6.560 filas · 11 columnas</div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px">
+        <div class="panel tbl-wrap">
+          <table>
+            <thead><tr><th>Columna del archivo</th><th>Se guarda en</th><th>Ejemplo</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight: 600">Nombre</td><td><div class="field" style="height: 32px">Nombre ▾</div></td><td class="hint">Marisol</td></tr>
+              <tr><td style="font-weight: 600">Apellido</td><td><div class="field" style="height: 32px">Apellidos ▾</div></td><td class="hint">García Pérez</td></tr>
+              <tr><td style="font-weight: 600">Teléfono</td><td><div class="field" style="height: 32px">Teléfono móvil (WhatsApp) ▾</div></td><td class="hint mono">612 34 56 78 → +34 612 345 678</td></tr>
+              <tr><td style="font-weight: 600">Teléfono Fijo</td><td><div class="field" style="height: 32px">Teléfono fijo ▾</div></td><td class="hint mono">968000000</td></tr>
+              <tr><td style="font-weight: 600">Dirección de correo electrónico</td><td><div class="field" style="height: 32px">Correo ▾</div></td><td class="hint">marisol@ejemplo.es</td></tr>
+              <tr><td style="font-weight: 600">Código</td><td><div class="field" style="height: 32px">Código de cliente ▾</div></td><td class="hint mono">3990</td></tr>
+              <tr><td style="font-weight: 600">DNI</td><td><div class="field" style="height: 32px">CIF / DNI ▾</div></td><td class="hint mono">B00000000</td></tr>
+              <tr><td style="font-weight: 600">Listas de contactos</td><td><div class="field" style="height: 32px">Etiquetas de tipo de cliente ▾</div></td><td class="hint">PELUQUERÍA</td></tr>
+              <tr><td style="font-weight: 600">Etiqueta</td><td><div class="field" style="height: 32px">Etiquetas de tipo de cliente ▾</div></td><td class="hint">NO PUBLICIDAD → baja</td></tr>
+              <tr><td style="font-weight: 600">Género</td><td><div class="field" style="height: 32px; color: #8A919A">No importar ▾</div></td><td class="hint">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px">
+          <div class="panel" style="padding: 16px">
+            <div style="font-weight: 700; margin-bottom: 10px">Vista previa del resultado</div>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px">
+              <div style="display: flex; justify-content: space-between"><span>Contactos que se crearán</span><b class="mono">6.297</b></div>
+              <div style="display: flex; justify-content: space-between"><span>Duplicados (mismo teléfono) que se unirán</span><b class="mono">12</b></div>
+              <div style="display: flex; justify-content: space-between"><span>Teléfono no válido (se importan marcados)</span><b class="mono">251</b></div>
+              <div style="display: flex; justify-content: space-between"><span>Dados de baja de publicidad (NO PUBLICIDAD)</span><b class="mono">212</b></div>
+              <div style="display: flex; justify-content: space-between"><span>Filas vacías que se ignoran</span><b class="mono">0</b></div>
+            </div>
+          </div>
+          <div class="panel" style="padding: 16px; display: flex; flex-direction: column; gap: 10px">
+            <div style="font-weight: 700">Reglas</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px">País por defecto de los teléfonos <span class="field" style="height: 30px">España (+34) ▾</span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px">Si el contacto ya existe <span class="field" style="height: 30px">Actualizar ▾</span></div>
+            <div style="display: flex; gap: 10px; align-items: center; font-size: 13px"><span class="box on"></span>La etiqueta NO PUBLICIDAD significa baja</div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px">
+            <a class="btn" href="Contactos.dc.html">Cancelar</a>
+            <button class="btn primary">Siguiente: revisar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Bandeja · conversación</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./gelado-app.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2457C5}a:hover{color:#1A3F91}
+</style>
+</helmet>
+<div class="app" style="font-family: Inter, system-ui, sans-serif; color: #15171A">
+
+  <nav class="rail" aria-label="Menú principal">
+    <div class="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+    <a class="rail-btn on" href="Main.dc.html" aria-label="Bandeja de entrada"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span class="dot">17</span></a>
+    <a class="rail-btn" href="Contactos.dc.html" aria-label="Contactos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></a>
+    <a class="rail-btn" href="Campanas.dc.html" aria-label="Campañas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></a>
+    <a class="rail-btn" href="Plantilla-editor.dc.html" aria-label="Plantillas"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></a>
+    <a class="rail-btn" href="Calidad.dc.html" aria-label="Calidad y costes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></a>
+    <div class="rail-sp"></div>
+    <a class="rail-btn" href="Ajustes-horario.dc.html" aria-label="Ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <div class="avatar av-mi" title="María Iborra">MI</div>
+  </nav>
+
+  <aside class="views" aria-label="Vistas de la bandeja">
+    <h2>Bandeja de entrada</h2>
+    <a class="view on" href="Main.dc.html"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Todas las conversaciones<span class="n">17</span></a>
+    <a class="view" href="Main.dc.html"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Asignado a mí<span class="n">3</span></a>
+    <a class="view" href="Main.dc.html"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M18 8l5 5M23 8l-5 5"/></svg>No asignado<span class="n">1</span></a>
+    <a class="view" href="Main.dc.html"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/></svg>Sin leer<span class="n">5</span></a>
+    <a class="view" href="Main.dc.html"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>Marcado<span class="n">1</span></a>
+    <div class="sect">Tipo de cliente</div>
+    <a class="view" href="Main.dc.html"><span class="sw" style="background: #2457C5"></span>Peluquería<span class="n">9</span></a>
+    <a class="view" href="Main.dc.html"><span class="sw" style="background: #C2333A"></span>Barbería<span class="n">5</span></a>
+    <a class="view" href="Main.dc.html"><span class="sw" style="background: #1E7A3D"></span>Estética<span class="n">2</span></a>
+    <a class="view" href="Main.dc.html"><span class="sw" style="background: #B08A00"></span>Instituto<span class="n">1</span></a>
+    <a class="view" href="Main.dc.html"><span class="sw" style="background: #6B737C"></span>Jubilado<span class="n">0</span></a>
+    <div class="sect">Temas</div>
+    <a class="view" href="Main.dc.html"><span class="sw" style="background: #1F5E33"></span>Pedido<span class="n">4</span></a>
+    <a class="view" href="Main.dc.html"><span class="sw" style="background: #C46A00"></span>Factura<span class="n">2</span></a>
+    <a class="view" href="Main.dc.html"><span class="sw" style="background: #3B33A6"></span>Transporte<span class="n">1</span></a>
+  </aside>
+
+  <section class="list" aria-label="Conversaciones">
+    <div class="list-head">
+      <h1>Todas las conversaciones</h1>
+      <button class="icon-btn" aria-label="Buscar"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
+      <button class="icon-btn solid" aria-label="Nueva conversación"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab on" role="tab" aria-selected="true">Abiertos</button>
+      <button class="tab" role="tab" aria-selected="false">Pospuestas</button>
+      <button class="tab" role="tab" aria-selected="false">Finalizadas</button>
+    </div>
+    <div class="list-tools"><span>Más reciente ▾</span><button class="tbtn" aria-label="Filtrar"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54z"/></svg></button></div>
+    <div class="cards">
+      <div class="card on">
+        <div class="wa">PM</div>
+        <div style="flex: 1; min-width: 0">
+          <div class="who">Peluquería Marisol <span class="time">11:58</span></div>
+          <div class="prev">Perfecto, lo preparamos hoy mismo</div>
+          <div class="meta"><span class="chip c-pel">Peluquería</span><span class="chip c-ped">Pedido</span><span style="margin-left: auto" class="avatar sm av-mi">MI</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="wa">BP</div>
+        <div style="flex: 1; min-width: 0">
+          <div class="who">Barbería El Puerto <span class="time">Ayer</span></div>
+          <div class="prev unread">¿Tenéis cuchillas de repuesto para la detailer?</div>
+          <div class="meta"><span class="chip c-bar">Barbería</span><span class="badge">2</span><span class="avatar sm av-lg">LG</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="wa">EA</div>
+        <div style="flex: 1; min-width: 0">
+          <div class="who">Estética Aura <span class="time">Ayer</span></div>
+          <div class="prev unread">Buenas tardes, me han gustado los productos de…</div>
+          <div class="meta"><span class="chip c-est">Estética</span><span class="warnclock"><svg class="ic" style="width: 12px; height: 12px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Quedan 1 h</span><span class="badge">1</span><span class="avatar sm av-cl">CL</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="wa">SN</div>
+        <div style="flex: 1; min-width: 0">
+          <div class="who">Salón Nuria <span class="time">Ayer</span></div>
+          <div class="prev unread">¿La tenéis en stock?</div>
+          <div class="meta"><span class="chip c-pel">Peluquería</span><span class="badge">4</span><span class="avatar sm av-lg">LG</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="wa">JT</div>
+        <div style="flex: 1; min-width: 0">
+          <div class="who">Javier Torres <span class="time">lunes</span></div>
+          <div class="prev">Necesito la factura de octubre</div>
+          <div class="meta"><span class="chip c-fac">Factura</span><span style="margin-left: auto; color: #9A6200; font-size: 13px" aria-label="Marcado">★</span><span class="avatar sm av-cl">CL</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="wa">+34</div>
+        <div style="flex: 1; min-width: 0">
+          <div class="who">+34 600 112 233 <span class="time">lunes</span></div>
+          <div class="prev">Hola, ¿hacéis envíos a Murcia?</div>
+          <div class="meta"><span class="hint">Sin asignar</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="chat" aria-label="Conversación con Peluquería Marisol">
+    <header class="chat-head">
+      <div class="wa">PM</div>
+      <div>
+        <div class="name">Peluquería Marisol <span class="chip c-pel">Peluquería</span></div>
+        <div class="sub">+34 612 345 678 · <span class="window-ok">Ventana abierta: quedan 22 h</span></div>
+      </div>
+      <div class="head-actions">
+        <button class="hbtn" aria-label="Asignar"><span class="avatar sm av-mi">MI</span>María</button>
+        <button class="hbtn" aria-label="Etiquetar"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/></svg></button>
+        <button class="hbtn" aria-label="Posponer"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></button>
+        <button class="hbtn" aria-label="Marcar como finalizada"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Finalizar</button>
+        <button class="hbtn" aria-label="Más acciones"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+      </div>
+    </header>
+
+    <div class="thread">
+      <div class="day">16/10/2026</div>
+      <div class="msg out" style="max-width: 420px">
+        <div class="by">Campaña · Tintes KUKIT + Toallitas</div>
+        <div class="photo" style="width: 100%; height: 110px">Imagen de la promoción</div>
+        <div style="margin-top: 8px">Tenemos algo para ti. PROMOCIÓN ESPECIAL: con la compra de 24 tubos de tinte, llévate de regalo 4 oxidantes de 20 vol. y 2 toallitas quitamanchas.</div>
+        <div class="foot">10:05 <span class="ticks">✓✓</span></div>
+      </div>
+      <div class="event">Cristina Lopez ha marcado el chat como finalizado · 16/10, 09:23</div>
+      <div class="day">Hoy</div>
+      <div class="msg out" style="max-width: 420px">
+        <div class="by">Respuesta automática · fuera de horario</div>
+        <div>Gracias por escribir a Exclusivas Gelado. Ahora mismo estamos fuera de horario; te responderemos lo antes posible. Mientras, dinos en qué podemos ayudarte:</div>
+        <div class="foot">08:41 <span class="ticks">✓✓</span></div>
+      </div>
+      <div class="qr" style="margin-top: -4px">
+        <div class="b">Hacer un pedido</div>
+        <div class="b">Necesito factura</div>
+        <div class="b">Duda o consulta</div>
+      </div>
+      <div class="msg in">
+        <div class="quote">Respuesta automática · fuera de horario</div>
+        Hacer un pedido
+        <div class="foot">08:43</div>
+      </div>
+      <div class="msg in">
+        <div class="voice">
+          <button class="play" aria-label="Reproducir nota de voz"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true" style="fill: currentColor; stroke: none"><path d="m6 3 14 9-14 9V3z"/></svg></button>
+          <div class="wave" aria-hidden="true"><i style="height: 6px"></i><i style="height: 12px"></i><i style="height: 18px"></i><i style="height: 9px"></i><i style="height: 15px"></i><i style="height: 20px"></i><i style="height: 11px"></i><i style="height: 7px"></i><i style="height: 16px"></i><i style="height: 13px"></i><i style="height: 19px"></i><i style="height: 8px"></i><i style="height: 14px"></i><i style="height: 10px"></i><i style="height: 17px"></i><i style="height: 6px"></i><i style="height: 12px"></i><i style="height: 9px"></i></div>
+          <span class="hint mono">0:24</span>
+        </div>
+        <div class="foot">08:44</div>
+      </div>
+      <div class="msg in">
+        <div class="photo">Foto: tinte 7.43 agotado</div>
+        <div style="margin-top: 6px">Necesito este y la carta de color de Dousse</div>
+        <div class="foot">08:45</div>
+      </div>
+      <div class="msg out">
+        <div class="by">María</div>
+        <div class="att"><div class="pdf">PDF</div><div><div class="fn">DOUSSE Carta de Color.pdf</div><div class="fs">2,4 MB · de la biblioteca</div></div></div>
+        <div style="margin-top: 6px">Te paso la carta actualizada. Del 7.43 tenemos 12 unidades.</div>
+        <div class="foot">09:12 <span class="ticks">✓✓</span></div>
+      </div>
+      <div class="msg note">
+        <div class="by">Nota interna · María</div>
+        Pedido pasado a almacén. Lolo lo prepara para la ruta de mañana.
+        <div class="foot">09:15</div>
+      </div>
+      <div class="msg out">
+        <div class="by">María</div>
+        Perfecto, lo preparamos hoy mismo y sale mañana en la ruta.
+        <div class="foot">11:58 <span class="ticks">✓✓</span></div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="ctabs"><button class="ctab on">Responder</button><button class="ctab">Nota interna</button></div>
+      <div class="cbox">Escribe un mensaje… (Enter para enviar, Mayús + Enter para salto de línea)</div>
+      <div class="ctools">
+        <button class="tbtn" aria-label="Emoji"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg></button>
+        <a class="tbtn" href="Bandeja-biblioteca.dc.html" aria-label="Adjuntar archivo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></a>
+        <button class="tbtn" aria-label="Grabar nota de voz"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg></button>
+        <a class="tbtn" href="Bandeja-plantilla.dc.html" aria-label="Enviar plantilla de WhatsApp"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></a>
+        <button class="send">Enviar <svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="info" aria-label="Ficha del contacto">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h3>Ficha</h3>
+      <button class="tbtn" aria-label="Cerrar ficha"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div class="wa" style="width: 44px; height: 44px; font-size: 14px">PM</div>
+      <div><div style="font-weight: 700">Peluquería Marisol</div><div class="hint">Perfil de WhatsApp: «Marisol Peluqueras»</div></div>
+    </div>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap"><span class="chip c-pel">Peluquería</span><button class="btn ghost" style="height: 22px; padding: 0 6px; font-size: 12px">+ Etiqueta</button></div>
+    <div class="kv">
+      <span class="k">Nombre</span><span class="v">Marisol</span>
+      <span class="k">Apellidos</span><span class="v">García Pérez</span>
+      <span class="k">Teléfono</span><span class="v mono">+34 612 345 678</span>
+      <span class="k">Teléfono fijo</span><span class="v mono">968 000 000</span>
+      <span class="k">Correo</span><span class="v">marisol@ejemplo.es</span>
+      <span class="k">Código</span><span class="v mono">3990</span>
+      <span class="k">CIF / DNI</span><span class="v mono">B00000000</span>
+      <span class="k">Empresa</span><span class="v">Peluquería Marisol SL</span>
+    </div>
+    <div>
+      <h3 style="margin-bottom: 8px">Publicidad</h3>
+      <span class="pill p-ok">Recibe campañas</span>
+      <div class="hint" style="margin-top: 6px">Importado de Superchat · 05/11/2026</div>
+      <button class="btn danger" style="margin-top: 10px; height: 32px">Dar de baja de publicidad</button>
+    </div>
+    <div>
+      <h3 style="margin-bottom: 8px">Últimas campañas</h3>
+      <div style="font-size: 13px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between"><span>Tintes KUKIT + Toallitas</span><span class="pill p-blue">Leída</span></div>
+        <div style="display: flex; justify-content: space-between"><span>Sunlake Antiyellow</span><span class="pill p-grey">Entregada</span></div>
+      </div>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
