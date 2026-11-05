@@ -22,7 +22,7 @@ export type ConversationRow = Prisma.ConversationGetPayload<{ include: typeof co
 export const messageInclude = {
   media: true,
   sentBy: { select: { id: true, name: true } },
-  template: { select: { name: true } },
+  template: { select: { name: true, components: true } },
   campaign: { select: { name: true } },
 } satisfies Prisma.MessageInclude;
 export type MessageRow = Prisma.MessageGetPayload<{ include: typeof messageInclude }>;
@@ -104,7 +104,14 @@ export async function toMessageDto(
   resolveUrl: MediaUrlResolver,
   ctx: { quoted?: MessageRow | null; reactions?: Array<{ emoji: string; direction: any; at: Date }> } = {},
 ): Promise<MessageDto> {
-  const payload = (m.payload ?? null) as any;
+  let payload = (m.payload ?? null) as any;
+  // La UI lee los botones de payload.buttons (plantillas: texto de los botones; automáticos: los guardados)
+  if (m.kind === 'TEMPLATE' && m.template?.components) {
+    const btns = ((m.template.components as any[]).find((c) => c?.type === 'BUTTONS')?.buttons ?? []) as Array<{ text?: string }>;
+    if (btns.length) payload = { ...(payload ?? {}), buttons: btns.map((b) => ({ text: b.text ?? '' })) };
+  } else if (m.kind === 'AUTO_REPLY' && Array.isArray(payload?.buttons)) {
+    payload = { ...payload, buttons: payload.buttons.map((b: any) => ({ text: b?.title ?? b?.text ?? '' })) };
+  }
   const info = m.errorCode != null ? metaErrorInfo(m.errorCode) : null;
   return {
     id: m.id,

@@ -28,7 +28,9 @@ export class MessageNotifier {
 
   async conversation(conversationId: string) {
     const c = await this.prisma.conversation.findUnique({ where: { id: conversationId }, include: conversationInclude });
-    if (c) this.realtime.emit('conversation.updated', { conversation: toConversationListItem(c) });
+    if (!c) return;
+    const camp = c.lastCampaignId ? await this.prisma.campaign.findUnique({ where: { id: c.lastCampaignId }, select: { name: true } }) : null;
+    this.realtime.emit('conversation.updated', { conversation: toConversationListItem(c, { lastCampaignName: camp?.name ?? null }) });
   }
 
   async event(eventId: string) {
