@@ -12,7 +12,7 @@ export const AUDIT_ACTIONS_ES: Record<string, string> = {
   login: 'Inicio de sesión', logout: 'Cierre de sesión', login_failed: 'Intento de acceso fallido', set_password: 'Contraseña creada',
   invite_user: 'Invitación de usuario', update_user: 'Cambio de usuario', reset_link: 'Enlace de nueva contraseña', invite_link: 'Enlace de invitación',
   export_contacts: 'Exportación de contactos', delete_contact: 'Contacto borrado', hard_delete_contact: 'Contacto suprimido', import_contacts: 'Importación de contactos', consent_change: 'Cambio de consentimiento',
-  create_template: 'Plantilla creada', save_template_draft: 'Borrador de plantilla guardado', submit_template_draft: 'Borrador de plantilla enviado a revisión', delete_template: 'Plantilla borrada', sync_templates: 'Plantillas sincronizadas',
+  create_template: 'Plantilla creada', save_template_draft: 'Borrador de plantilla guardado', submit_template_draft: 'Borrador de plantilla enviado a revisión', adopt_template_draft: 'Borrador sustituido por la plantilla de Meta del mismo nombre', delete_template: 'Plantilla borrada', sync_templates: 'Plantillas sincronizadas',
   launch_campaign: 'Campaña lanzada', schedule_campaign: 'Campaña programada', pause_campaign: 'Campaña pausada', resume_campaign: 'Campaña reanudada', cancel_campaign: 'Campaña cancelada', test_campaign: 'Prueba de campaña', export_campaign: 'Exportación de campaña', delete_campaign: 'Campaña borrada',
   update_setting: 'Ajuste modificado', library_upload: 'Archivo subido a la biblioteca', library_delete: 'Archivo borrado de la biblioteca', label_change: 'Etiqueta modificada',
 };

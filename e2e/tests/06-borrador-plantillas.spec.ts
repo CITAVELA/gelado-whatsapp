@@ -106,8 +106,11 @@ test('un borrador se puede borrar (solo local) y su nombre queda libre', async (
   await page.getByRole('button', { name: 'Volver al listado' }).click();
   const row = page.getByRole('row', { name: new RegExp(title) });
   await expect(row).toBeVisible();
+  const created = await findByName(admin, title.toLowerCase().replace(/ /g, '_'));
+  expect(created).toMatchObject({ status: 'LOCAL_DRAFT' });
   await row.getByRole('button', { name: /^Borrar/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Borrar', exact: true }).click();
   await expect(row).toHaveCount(0);
-  expect(await findByName(admin, title.toLowerCase().replace(/ /g, '_'))).toBeUndefined();
+  // se comprueba por id, no por nombre: el registro tiene que haber desaparecido de verdad (404), no solo del listado
+  expect((await admin.get(`/api/templates/${created.id}`)).status()).toBe(404);
 });

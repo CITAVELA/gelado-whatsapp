@@ -203,9 +203,10 @@ export function TemplateEditor({ initial, draftId: initialDraftId }: TemplateEdi
     try {
       // un borrador guardado se envía con su mismo registro; si Meta falla sigue siendo borrador
       const t = draftId ? await api.post<TemplateDto>(`/api/templates/${draftId}/submit`, parsed.data) : await api.post<TemplateDto>('/api/templates', parsed.data);
-      await invalidateTemplates();
       toast(`«${t.displayName ?? t.name}» enviada a revisión de Meta`);
+      // primero navega: si se refrescara antes la consulta del borrador abierto, pintaría un instante «ya no es un borrador»
       nav('/plantillas');
+      void invalidateTemplates();
     } catch (e) {
       setErrors(messagesOf(e));
     } finally {

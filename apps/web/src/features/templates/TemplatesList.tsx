@@ -11,7 +11,9 @@ import { NoOptOutPill, QualityPill, TemplateStatusChip, templateTitle } from './
 import { invalidateTemplates, useTemplates } from './queries';
 import type { DraftState } from './TemplateEditor';
 
-const STATUSES = ['LOCAL_DRAFT', 'APPROVED', 'PENDING', 'REJECTED', 'PAUSED', 'DISABLED', 'IN_APPEAL'] as const;
+const STATUSES = ['APPROVED', 'PENDING', 'REJECTED', 'PAUSED', 'DISABLED', 'IN_APPEAL'] as const;
+/** Los borradores locales solo existen para la administradora: a un agente no se le ofrece el filtro. */
+const ADMIN_STATUSES = ['LOCAL_DRAFT', ...STATUSES] as const;
 
 export function TemplatesList() {
   const { isAdmin } = useAuth();
@@ -28,8 +30,8 @@ export function TemplatesList() {
   async function sync() {
     setSyncing(true);
     try {
-      const r = await api.post<{ total: number; created: number; deleted: number }>('/api/templates/sync');
-      toast(`Sincronizado con Meta: ${r.total} plantillas${r.created ? `, ${r.created} nuevas` : ''}${r.deleted ? `, ${r.deleted} retiradas` : ''}`);
+      const r = await api.post<{ total: number; created: number; deleted: number; adoptedDrafts?: number }>('/api/templates/sync');
+      toast(`Sincronizado con Meta: ${r.total} plantillas${r.created ? `, ${r.created} nuevas` : ''}${r.deleted ? `, ${r.deleted} retiradas` : ''}${r.adoptedDrafts ? `, ${r.adoptedDrafts} borrador(es) sustituido(s) por la plantilla de Meta del mismo nombre` : ''}`);
       await invalidateTemplates();
     } catch (e) {
       toast((e as Error).message, true);
@@ -73,7 +75,7 @@ export function TemplatesList() {
         </div>
         <select className="tpl-input" style={{ width: 170 }} aria-label="Filtrar por estado" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Todos los estados</option>
-          {STATUSES.map((s) => (
+          {(isAdmin ? ADMIN_STATUSES : STATUSES).map((s) => (
             <option key={s} value={s}>{LABELS_ES.templateStatus[s]}</option>
           ))}
         </select>
