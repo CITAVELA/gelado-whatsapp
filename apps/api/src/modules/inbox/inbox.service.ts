@@ -119,11 +119,11 @@ export class InboxService {
     if (!ids.length) return new Map();
     const rows = await this.prisma.$queryRaw<Array<{ cid: string; snip: string }>>`
       SELECT DISTINCT ON (m."conversationId") m."conversationId" AS cid,
-             ts_headline('spanish', m.body, websearch_to_tsquery('spanish', ${search}), 'StartSel=, StopSel=, MaxWords=18, MinWords=6') AS snip
+             ts_headline('spanish', m.body, websearch_to_tsquery('spanish', ${search}), 'MaxWords=18, MinWords=6') AS snip
       FROM "Message" m
       WHERE m."conversationId" = ANY(${ids}::uuid[]) AND to_tsvector('spanish', coalesce(m.body,'')) @@ websearch_to_tsquery('spanish', ${search})
       ORDER BY m."conversationId", m."createdAt" DESC`;
-    return new Map(rows.map((r) => [r.cid, r.snip]));
+    return new Map(rows.map((r) => [r.cid, r.snip.replace(/<\/?b>/g, '')]));
   }
 
   private async campaignNames(convs: Array<{ lastCampaignId: string | null }>): Promise<Map<string, string>> {
