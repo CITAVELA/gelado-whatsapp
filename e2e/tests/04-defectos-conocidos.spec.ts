@@ -64,9 +64,9 @@ test('F-13 · Ajustes → WhatsApp no deja palabras en inglés («nombre approve
 
 test('F-14 · el listado de plantillas muestra el idioma en español («Español», no «es»)', async ({ page }) => {
   const admin = await api(ADMIN);
-  await ensureApprovedTemplate(admin, { name: 'aviso_pedido', displayName: 'Aviso de pedido', category: 'UTILITY' });
+  await ensureApprovedTemplate(admin, { name: `aviso_idioma_${Date.now()}`, displayName: 'Aviso de idioma QA', category: 'UTILITY' });
   await login(page, ADMIN, '/plantillas');
-  const row = page.getByRole('row', { name: /Aviso de pedido/ });
+  const row = page.getByRole('row', { name: /Aviso de idioma QA/ });
   await expect(row).toContainText(/Español/);
   await admin.dispose();
 });

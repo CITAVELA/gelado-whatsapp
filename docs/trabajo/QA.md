@@ -158,7 +158,7 @@ Contra el build de producción y el simulador (que firma los webhooks hacia la a
 | 03-publico-y-movil | (i) `/privacidad` | 200 sin sesión, HTML del servidor, `#supresion`, legible con JavaScript desactivado y enlazada desde el login |
 | 03-publico-y-movil | (j) móvil 390×844 | Lista → conversación → responder → atrás, sin desbordes horizontales; contactos, campañas, plantillas y calidad caben |
 | 03-publico-y-movil | acceso | Credenciales malas en español; ruta protegida → login; sesión caducada → login; enlace de nueva contraseña de un solo uso (contraseñas distintas, entrar, no reutilizable); título con contador y cierre de sesión |
-| 04-defectos-conocidos | F-10 a F-14 | `test.fail` con los defectos de interfaz |
+| 04-defectos-conocidos | F-10 a F-14 | regresiones de los defectos de interfaz (corregidos en F4d) |
 
 ## 5. Recorridos manuales con capturas
 
@@ -173,6 +173,8 @@ Guiados con Playwright (`e2e/recorridos/`), 1440×900, datos sintéticos. Las ca
 01 contactos vacío · 02 a 06 asistente de importación (subir, columnas, reglas, vista previa con problemas, informe) · 07 contactos importados (etiquetas, «Dado de baja») · 08 ficha del contacto de baja (origen NO PUBLICIDAD, derecho de supresión) · 09 listado de plantillas · 10 y 11 editor con vista previa y botón de baja obligatorio · 12 «En revisión» · 13 «Aprobada» · 14 campañas vacío · 15 asistente con recuento (4 seleccionados, 1 baja, 3 recibirán, coste 0,18 €) · 16 y 17 envío de prueba · 18 confirmación de lanzamiento · 19 informe al lanzar · 20 informe con embudo y motivos · 21 destinatarios · 22 pestaña Fallidos · 23 listado con resultado · 24 Calidad y costes · 25 a 29 Ajustes (equipo, horario, WhatsApp, privacidad, registro).
 
 ## 6. Fallos encontrados (por prioridad)
+
+**Corregidos en F4d:** F-1, F-8, F-9, F-10, F-11, F-12, F-13, F-14, F-15 y F-16 (con sus pruebas ya en normal) más los cosméticos de iconos repetidos, avisos (ahora arriba a la derecha, máximo tres), fecha de «pospuso hasta» y porcentajes del informe. Siguen abiertos F-2 a F-7, F-17 y F-18 (los corrigen otros).
 
 Ningún fallo crítico. Los de gravedad media afectan a la experiencia de uso o al cumplimiento y se pueden corregir sin tocar el modelo de datos.
 
