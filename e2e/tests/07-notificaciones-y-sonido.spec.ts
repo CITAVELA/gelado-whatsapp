@@ -38,7 +38,7 @@ test('el permiso de notificaciones solo se pide con un clic; sin API (iOS) hay u
     await expect(page.getByRole('button', { name: 'Activar notificaciones del navegador' })).toHaveCount(0);
   } else {
     await expect(page.getByRole('button', { name: 'Activar notificaciones del navegador' })).toHaveCount(0);
-    await expect(page.getByRole('note')).toContainText(/pantalla de inicio/);
+    await expect(page.getByRole('note')).toContainText(/Safari no permite notificaciones/);
     await expect(page.getByRole('note')).toContainText(/sonido de aviso/);
   }
 });
