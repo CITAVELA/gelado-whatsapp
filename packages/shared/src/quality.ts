@@ -50,3 +50,47 @@ export interface StatusDto {
   failedJobs24h: number;
   runningCampaigns: number;
 }
+
+/** Límite diario de destinatarios únicos fuera de la ventana de 24 h según el escalón de Meta. */
+export const TIER_LIMITS: Record<string, number> = {
+  TIER_50: 50,
+  TIER_250: 250,
+  TIER_1K: 1000,
+  TIER_2K: 2000,
+  TIER_10K: 10000,
+  TIER_100K: 100000,
+  TIER_UNLIMITED: 1000000,
+};
+
+/** Límite diario para un escalón; null si el escalón no se conoce. */
+export function dailyLimitForTier(tier: string | null | undefined): number | null {
+  if (!tier) return null;
+  return TIER_LIMITS[tier.toUpperCase()] ?? null;
+}
+
+/** GET /api/settings/whatsapp (solo administradora; nunca incluye secretos). */
+export interface WhatsAppSettingsDto {
+  displayPhoneNumber: string;
+  verifiedName: string | null;
+  qualityRating: QualityRating;
+  phoneStatus: string | null;
+  messagingLimit: string | null;
+  nameStatus: string | null;
+  wabaId: string;
+  phoneNumberId: string;
+  businessId: string;
+  graphApiVersion: string;
+  lastWebhookAt: string | null;
+  pendingWebhookEvents: number;
+  failedWebhookEvents: number;
+  webhookUrl: string;
+}
+
+/** Campos entre corchetes que aún hay que rellenar en la política de privacidad, p. ej. «[CIF]». */
+export function privacyPlaceholders(markdown: string): string[] {
+  const found = new Set<string>();
+  const re = /\[([^\]\n]{2,60})\](?!\()/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(markdown))) found.add(`[${m[1]}]`);
+  return [...found];
+}
