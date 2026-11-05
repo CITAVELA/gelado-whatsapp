@@ -29,6 +29,7 @@ import { AudienceService } from './audience.service';
 import { CampaignRunnerService, resolveParams } from './campaign-runner.service';
 import { CampaignClock } from './campaigns.clock';
 import { campaignInclude, recipientInclude, toCampaignDto, toRecipientDto } from './campaigns.mapper';
+import { ContactFactory } from '../contacts/contact-factory.service';
 
 type Tab = 'all' | 'delivered' | 'read' | 'replied' | 'failed' | 'skipped';
 
@@ -62,6 +63,7 @@ export class CampaignsService {
     private readonly media: MediaService,
     private readonly audit: AuditService,
     private readonly clock: CampaignClock,
+    private readonly contactFactory: ContactFactory,
   ) {}
 
   // ───────────────────────── Borradores ─────────────────────────
@@ -243,14 +245,14 @@ export class CampaignsService {
     const n = normalizePhone(phone);
     if (!n.ok) throw new BadRequestException({ statusCode: 400, message: `Teléfono no válido: ${n.reason}` });
     let contact = await this.prisma.contact.findUnique({ where: { phoneE164: n.e164 } });
-    if (!contact) contact = await this.prisma.contact.create({ data: { phoneE164: n.e164, waId: n.waId } });
+    if (!contact) contact = await this.contactFactory.create({ phoneE164: n.e164, waId: n.waId, }, { userId });
     else if (contact.deletedAt) throw new ConflictException({ statusCode: 409, message: 'Ese número pertenece a un contacto borrado' });
     const keys = templateVariableKeys(t.components as unknown as TemplateComponent[]);
     const { params, missing } = resolveParams(keys, (c.variableMapping ?? {}) as Record<string, VariableSource>, contact);
     if (missing.length) throw new BadRequestException({ statusCode: 400, message: `Ese contacto no tiene datos para ${missing.join(', ')} y no hay texto de respaldo` });
     const conv = await this.messaging.ensureConversationForContact(contact.id);
     const msg = await this.messaging.sendTemplate(conv.id, c.templateId, params, { headerMediaFileId: c.headerMediaId, userId });
-    await this.audit.log({ userId, action: 'test_campaign', entityType: 'Campaign', entityId: id, data: { phone: n.e164 }, ip });
+    await this.audit.log({ userId, action: 'test_campaign', entityType: 'Campaign', entityId: id, data: { phoneLast4: n.e164.slice(-4) }, ip });
     return { ok: true, messageId: msg.id, conversationId: conv.id, status: msg.status };
   }
 

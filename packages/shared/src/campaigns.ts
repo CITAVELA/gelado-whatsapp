@@ -35,6 +35,8 @@ export interface AudienceCountDto {
   excludedRevoked: number;
   excludedInvalid: number;
   excludedDuplicate: number;
+  /** Contactos sin teléfono («Sin WhatsApp»): nunca reciben campañas de WhatsApp */
+  excludedNoPhone: number;
   willReceive: number;
   dailyLimit: number;
   usedLast24h: number;
@@ -79,7 +81,7 @@ export interface CampaignRecipientDto {
   contactId: string;
   conversationId: string | null;
   displayName: string;
-  phoneE164: string;
+  phoneE164: string | null;
   status: RecipientStatus;
   skipReason: string | null;
   plannedFor: string | null;
@@ -123,6 +125,7 @@ export interface CampaignLaunchResultDto {
 export const SKIP_REASON_ES: Record<string, string> = {
   REVOKED: 'Dado de baja: no recibe publicidad',
   PHONE_INVALID: 'Teléfono no válido',
+  NO_PHONE: 'Sin WhatsApp',
   DUPLICATE: 'Teléfono duplicado',
   DELETED: 'Contacto borrado',
   EXCLUDED_LABEL: 'Excluido por etiqueta',

@@ -68,6 +68,7 @@ export function useOpenConversation() {
   const toast = useToast();
   return async (c: Pick<ContactDto, 'conversationId' | 'phoneE164'>) => {
     if (c.conversationId) return navigate(`/bandeja/c/${c.conversationId}`);
+    if (!c.phoneE164) return toast('Sin WhatsApp: este contacto no tiene teléfono', true);
     try {
       const conv = await api.post<{ id: string }>('/api/conversations', { phone: c.phoneE164 });
       navigate(`/bandeja/c/${conv.id}`);

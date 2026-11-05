@@ -3,6 +3,7 @@ import type { ConsentSource, ConsentStatus } from '@gelado/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { DomainEvents } from '../events/domain-events.service';
 import { MessageNotifier } from '../whatsapp/message-notifier.service';
+import { SuppressionService } from './suppression.service';
 
 /**
  * Única puerta para cambiar el consentimiento (regla 5 de 05):
@@ -15,7 +16,12 @@ import { MessageNotifier } from '../whatsapp/message-notifier.service';
 export class ConsentService {
   private readonly log = new Logger('Consent');
 
-  constructor(private readonly prisma: PrismaService, private readonly events: DomainEvents, private readonly notifier: MessageNotifier) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: DomainEvents,
+    private readonly notifier: MessageNotifier,
+    private readonly suppression: SuppressionService,
+  ) {}
 
   async setConsent(
     contactId: string,
@@ -33,6 +39,9 @@ export class ConsentService {
     let eventId = null as string | null;
     await this.prisma.$transaction(async (tx) => {
       await tx.contact.update({ where: { id: contactId }, data: { consentStatus: status, consentAt: now } });
+      // Una persona reactiva a propósito a alguien que estaba de baja: si su número estaba en la lista de supresión, se quita
+      // (si no, el siguiente alta o mensaje lo volvería a dar de baja contra la decisión de la administradora)
+      if (contact.consentStatus === 'REVOKED' && status !== 'REVOKED' && opts.userId && contact.phoneE164) await this.suppression.remove(contact.phoneE164, tx);
       await tx.consentEvent.create({
         data: { contactId, status, source, note: opts.note ?? null, userId: opts.userId ?? null, messageId: opts.messageId ?? null },
       });

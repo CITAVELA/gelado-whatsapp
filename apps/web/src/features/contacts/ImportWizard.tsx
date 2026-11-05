@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { ImportField, ImportJobDto, ImportOptionsDto, ImportPreviewDto, ImportRowIssue, ImportUploadResultDto } from '@gelado/shared';
+import { IMPORT_ISSUE_CODE_ES, type ImportField, type ImportJobDto, type ImportOptionsDto, type ImportPreviewDto, type ImportRowIssue, type ImportUploadResultDto } from '@gelado/shared';
 import { Icon } from '../../components/Icon';
 import { Spinner, useToast } from '../../components/ui';
 import { api } from '../../lib/api';
 import { fmtNumber } from '../../lib/format';
 import { errMsg, useLabels, useRefreshContact } from './hooks';
 import { MappingStep } from './MappingStep';
+import { NoWhatsappPill } from './NoWhatsappPill';
 
 const STEPS = ['Subir archivo', 'Columnas', 'Reglas', 'Revisar', 'Importar'];
 const COUNTRIES: Array<[string, string]> = [['ES', 'España (+34)'], ['PT', 'Portugal (+351)'], ['FR', 'Francia (+33)'], ['IT', 'Italia (+39)'], ['DE', 'Alemania (+49)'], ['GB', 'Reino Unido (+44)'], ['AD', 'Andorra (+376)'], ['MA', 'Marruecos (+212)']];
@@ -107,7 +108,7 @@ export function ImportWizard() {
   const finished = job.data?.status === 'DONE';
   useEffect(() => { if (finished) { refresh(); toast('Importación terminada'); } }, [finished]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasPhone = Object.values(mapping).includes('phone');
+  const hasPhone = ['phone', 'email', 'customerCode'].some((f) => Object.values(mapping).includes(f as never));
 
   return (
     <main className="main">
@@ -149,7 +150,7 @@ export function ImportWizard() {
                 <select id="r-country" className="field" style={{ width: 200, height: 32 }} value={rules.defaultCountry} onChange={(e) => setRules({ ...rules, defaultCountry: e.target.value })}>
                   {COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
                 </select></div>
-              <div className="row"><label className="grow" htmlFor="r-dup">Si el contacto ya existe (mismo teléfono)</label>
+              <div className="row"><label className="grow" htmlFor="r-dup">Si el contacto ya existe (mismo teléfono, o correo o código si no tiene teléfono)</label>
                 <select id="r-dup" className="field" style={{ width: 200, height: 32 }} value={rules.onDuplicate} onChange={(e) => setRules({ ...rules, onDuplicate: e.target.value as Rules['onDuplicate'] })}>
                   <option value="update">Actualizar (sin borrar datos con vacíos)</option>
                   <option value="skip">Omitir</option>
@@ -186,7 +187,7 @@ export function ImportWizard() {
                   <thead><tr><th>Fila</th><th>Teléfono</th><th>Nombre</th><th>Etiquetas</th><th>Qué pasará</th></tr></thead>
                   <tbody>
                     {preview.sample.map((s) => (
-                      <tr key={s.row}><td className="mono">{s.row}</td><td className="mono">{s.phoneE164}</td><td>{s.name || '—'}</td><td className="hint">{s.labels.join(', ')}</td>
+                      <tr key={s.row}><td className="mono">{s.row}</td><td className="mono">{s.phoneE164 ?? <NoWhatsappPill />}</td><td>{s.name || '—'}</td><td className="hint">{s.labels.join(', ')}</td>
                         <td><span className={`pill ${s.action === 'create' ? 'p-ok' : s.action === 'update' ? 'p-blue' : 'p-grey'}`}>{s.action === 'create' ? 'Se crea' : s.action === 'update' ? 'Se actualiza' : 'Se omite'}</span></td></tr>
                     ))}
                   </tbody>
@@ -199,7 +200,9 @@ export function ImportWizard() {
                   <Stat label="Contactos que se crearán" value={preview.willCreate} />
                   <Stat label="Contactos que se actualizarán" value={preview.willUpdate} />
                   <Stat label="Duplicados del archivo (se unen)" value={preview.duplicatesInFile} />
-                  <Stat label="Teléfono no válido (se descartan)" value={preview.invalidPhone} bad />
+                  <Stat label="Sin WhatsApp (sin teléfono: se importan)" value={preview.withoutWhatsapp} />
+                  <Stat label="Sin teléfono, correo ni código (se descartan)" value={preview.invalidPhone} bad />
+                  {(['FOREIGN', 'LANDLINE', 'PHONE_CORRECTED', 'PHONE_INCOMPLETE'] as const).map((k) => preview.issuesByCode?.[k] ? <Stat key={k} label={`Aviso · ${IMPORT_ISSUE_CODE_ES[k]}`} value={preview.issuesByCode[k]} /> : null)}
                   <Stat label="Dados de baja (NO PUBLICIDAD)" value={preview.willOptOut} />
                   <Stat label="Filas vacías que se ignoran" value={preview.emptyRows} />
                   <Stat label="Filas que no se importan" value={preview.willSkip} />
@@ -232,6 +235,7 @@ export function ImportWizard() {
                   <div className="panel stat"><div className="k">Actualizados</div><div className="v">{fmtNumber(job.data.updated)}</div></div>
                   <div className="panel stat"><div className="k">Omitidos</div><div className="v">{fmtNumber(job.data.skipped)}</div></div>
                   <div className="panel stat"><div className="k">Dados de baja</div><div className="v">{fmtNumber(job.data.optedOut ?? 0)}</div></div>
+                  <div className="panel stat"><div className="k">Sin WhatsApp</div><div className="v">{fmtNumber(job.data.withoutWhatsapp ?? 0)}</div></div>
                 </div>
                 <div className="row">
                   <a className="btn" href={`/api/contacts/import/${job.data.id}/report.csv`}><Icon name="download" small />Descargar informe</a>

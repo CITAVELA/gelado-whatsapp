@@ -169,7 +169,7 @@ describe('M5 · REVOKED no se reactiva sin ConsentEvent con origen y usuario', (
       }
     };
     walk(src);
-    const allowed = ['modules/contacts/consent.service.ts', 'modules/contacts/import.service.ts', 'modules/contacts/contacts.service.ts', 'modules/inbox/mappers.ts', 'modules/campaigns/audience.service.ts', 'modules/campaigns/campaign-runner.service.ts', 'modules/whatsapp/messaging.service.ts', 'modules/webhooks/inbound-messages.service.ts'];
+    const allowed = ['modules/contacts/consent.service.ts', 'modules/contacts/contact-factory.service.ts', 'modules/contacts/import.service.ts', 'modules/contacts/contacts.service.ts', 'modules/inbox/mappers.ts', 'modules/campaigns/audience.service.ts', 'modules/campaigns/campaign-runner.service.ts', 'modules/whatsapp/messaging.service.ts', 'modules/webhooks/inbound-messages.service.ts'];
     expect(offenders.filter((o) => !allowed.includes(o))).toEqual([]);
   });
 });

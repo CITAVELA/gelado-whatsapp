@@ -10,7 +10,7 @@ beforeAll(async () => {
 });
 afterAll(async () => env.close());
 beforeEach(async () => {
-  await env.t.reset();
+  await env.t.reset({ autoReply: true });
   env.clear();
 });
 

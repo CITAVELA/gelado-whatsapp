@@ -7,7 +7,7 @@ export function MappingStep({ columns, mapping, sampleRows, onChange }: {
   sampleRows: Record<string, string>[];
   onChange: (column: string, field: ImportField) => void;
 }) {
-  const hasPhone = Object.values(mapping).includes('phone');
+  const hasPhone = ['phone', 'email', 'customerCode'].some((f) => Object.values(mapping).includes(f as never));
   return (
     <div className="panel tbl-wrap">
       <table>
@@ -31,7 +31,7 @@ export function MappingStep({ columns, mapping, sampleRows, onChange }: {
           })}
         </tbody>
       </table>
-      {!hasPhone && <div className="err" role="alert" style={{ padding: '10px 14px' }}>Elige qué columna contiene el teléfono móvil: sin él no se puede crear el contacto.</div>}
+      {!hasPhone && <div className="err" role="alert" style={{ padding: '10px 14px' }}>Elige qué columna contiene el teléfono móvil (o, al menos, el correo o el código): sin ninguno no se puede crear el contacto. Los contactos sin teléfono se importan como «Sin WhatsApp».</div>}
     </div>
   );
 }

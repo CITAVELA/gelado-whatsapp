@@ -25,7 +25,7 @@ interface ContactFields {
   profileName: string | null;
   company: string | null;
   customerCode: string | null;
-  phoneE164: string;
+  phoneE164: string | null;
 }
 
 /** Valor de cada variable de la plantilla para un contacto (campo con respaldo o texto fijo). */
@@ -331,7 +331,7 @@ export class CampaignRunnerService implements OnModuleInit {
       return;
     }
     // Reglas de baja: se comprueban justo antes de enviar (puede haberse dado de baja tras lanzar la campaña)
-    const skip = contact.deletedAt ? 'DELETED' : contact.consentStatus === 'REVOKED' ? 'REVOKED' : contact.phoneInvalid ? 'PHONE_INVALID' : null;
+    const skip = contact.deletedAt ? 'DELETED' : contact.consentStatus === 'REVOKED' ? 'REVOKED' : !contact.phoneE164 ? 'NO_PHONE' : contact.phoneInvalid ? 'PHONE_INVALID' : null;
     if (skip) {
       await this.prisma.campaignRecipient.update({ where: { id: r.id }, data: { status: 'SKIPPED', skipReason: skip } });
       await this.progress.recompute(campaign.id);

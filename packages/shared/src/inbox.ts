@@ -144,4 +144,6 @@ export const snoozeSchema = z.object({
 export type SnoozeDto = z.infer<typeof snoozeSchema>;
 export const conversationLabelsSchema = z.object({ add: z.array(z.string().uuid()).default([]), remove: z.array(z.string().uuid()).default([]) });
 export const starSchema = z.object({ starred: z.boolean() });
-export const newConversationSchema = z.object({ phone: z.string().min(3), firstName: z.string().optional() });
+export const newConversationSchema = z
+  .object({ phone: z.string().min(3).optional(), contactId: z.string().uuid().optional(), firstName: z.string().optional() })
+  .refine((v) => !!v.phone || !!v.contactId, { message: 'Indica un teléfono o un contacto' });

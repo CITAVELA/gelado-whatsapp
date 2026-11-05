@@ -11,6 +11,7 @@ import { StorageService } from '../storage/storage.service';
 import { contactInclude, toContactDto } from '../inbox/mappers';
 import { ConsentService } from './consent.service';
 import { searchCondition } from './contacts.search';
+import { ContactFactory } from './contact-factory.service';
 import { SuppressionService } from './suppression.service';
 
 const BLANK = { firstName: null, lastName: null, email: null, company: null, customerCode: null, taxId: null, landline: null, notes: null };
@@ -26,6 +27,7 @@ export class ContactsService {
     private readonly audit: AuditService,
     private readonly storage: StorageService,
     private readonly suppression: SuppressionService,
+    private readonly factory: ContactFactory,
   ) {}
 
   // ── Listado ──
@@ -44,6 +46,7 @@ export class ContactsService {
     if (q.ids?.length) and.push({ id: { in: q.ids.filter((x) => /^[0-9a-f-]{36}$/i.test(x)) } });
     if (q.consent) and.push({ consentStatus: q.consent });
     if (q.phoneInvalid !== undefined) and.push({ phoneInvalid: q.phoneInvalid });
+    if (q.whatsapp) and.push({ phoneE164: q.whatsapp === 'with' ? { not: null } : null });
     return { AND: and };
   }
 
@@ -55,6 +58,8 @@ export class ContactsService {
       { lastName: { sort: 'asc', nulls: 'last' } },
       { company: { sort: 'asc', nulls: 'last' } },
       { phoneE164: 'asc' },
+      { email: { sort: 'asc', nulls: 'last' } },
+      { id: 'asc' },
     ];
   }
 
@@ -83,14 +88,33 @@ export class ContactsService {
 
   private phoneOrThrow(phone: string) {
     const n = normalizePhone(phone);
-    if (!n.ok) throw new BadRequestException({ statusCode: 400, code: 'PHONE_INVALID', message: `Teléfono no válido: ${phone}` });
+    if (!n.ok) {
+      throw new BadRequestException({ statusCode: 400, code: 'PHONE_INVALID', message: n.code === 'INCOMPLETE_ES' ? `Teléfono español incompleto: ${phone}` : `Teléfono no válido: ${phone}` });
+    }
     return n;
   }
 
+  /** Un contacto necesita teléfono (WhatsApp) o correo; sin teléfono es un contacto «Sin WhatsApp» (P16). */
+  private identityOrThrow(phone: string | null | undefined, email: string | null | undefined, customerCode?: string | null) {
+    if (!phone && !email && !customerCode) {
+      throw new BadRequestException({ statusCode: 400, code: 'NO_IDENTITY', message: 'Indica un teléfono o un correo: un contacto necesita al menos uno de los dos' });
+    }
+  }
+
+  private async emailTaken(email: string, exceptId?: string) {
+    return this.prisma.contact.findFirst({
+      where: { id: exceptId ? { not: exceptId } : undefined, email: { equals: email, mode: 'insensitive' }, phoneE164: null },
+      select: { id: true, deletedAt: true },
+    });
+  }
+
   async create(dto: ContactUpsertDto, ctx: Ctx): Promise<ContactDto> {
-    const n = this.phoneOrThrow(dto.phone);
-    const { phone: _p, labelIds, ...fields } = dto;
+    const { phone: rawPhone, labelIds, ...fields } = dto;
+    const phone = rawPhone?.trim() || null;
+    this.identityOrThrow(phone, fields.email);
     await this.checkLabels(labelIds);
+    if (!phone) return this.createWithoutPhone(fields, labelIds);
+    const n = this.phoneOrThrow(phone);
     const existing = await this.prisma.contact.findUnique({ where: { phoneE164: n.e164 } });
     if (existing && !existing.deletedAt) {
       throw new ConflictException({ statusCode: 409, code: 'PHONE_EXISTS', message: 'Ya existe un contacto con ese teléfono', details: { contactId: existing.id } });
@@ -106,14 +130,32 @@ export class ContactsService {
         });
         cid = existing.id;
       } else {
-        const c = await tx.contact.create({ data: { ...fields, phoneE164: n.e164, waId: n.waId } });
+        const c = await this.factory.create({ ...fields, phoneE164: n.e164, waId: n.waId }, { db: tx, userId: ctx.userId });
         cid = c.id;
       }
       if (labelIds?.length) await tx.contactLabel.createMany({ data: [...new Set(labelIds)].map((labelId) => ({ contactId: cid, labelId })), skipDuplicates: true });
       return cid;
     });
-    // número que se suprimió físicamente antes: nace dado de baja (lista de supresión)
-    if (!existing) await this.suppression.enforce(id, n.e164);
+    return this.get(id);
+  }
+
+  /** Alta de un contacto sin teléfono (solo correo): duplicado por correo sin distinguir mayúsculas. */
+  private async createWithoutPhone(fields: Omit<ContactUpsertDto, 'phone' | 'labelIds'>, labelIds: string[] | undefined): Promise<ContactDto> {
+    const email = fields.email!.toLowerCase();
+    const other = await this.emailTaken(email);
+    if (other && !other.deletedAt) {
+      throw new ConflictException({ statusCode: 409, code: 'EMAIL_EXISTS', message: 'Ya existe un contacto sin teléfono con ese correo', details: { contactId: other.id } });
+    }
+    const id = await this.prisma.$transaction(async (tx) => {
+      let cid: string;
+      if (other) {
+        await tx.contactLabel.deleteMany({ where: { contactId: other.id } });
+        await tx.contact.update({ where: { id: other.id }, data: { ...BLANK, ...fields, email, deletedAt: null } });
+        cid = other.id;
+      } else cid = (await tx.contact.create({ data: { ...fields, email } })).id;
+      if (labelIds?.length) await tx.contactLabel.createMany({ data: [...new Set(labelIds)].map((labelId) => ({ contactId: cid, labelId })), skipDuplicates: true });
+      return cid;
+    });
     return this.get(id);
   }
 
@@ -123,8 +165,20 @@ export class ContactsService {
     const { phone, labelIds, ...fields } = dto;
     await this.checkLabels(labelIds);
     const data: Prisma.ContactUpdateInput = { ...fields };
-    if (phone !== undefined) {
-      const n = this.phoneOrThrow(phone);
+    const newPhone = phone === undefined ? undefined : phone?.trim() || null;
+    const finalPhone = newPhone === undefined ? cur.phoneE164 : newPhone;
+    const finalEmail = fields.email === undefined ? cur.email : fields.email;
+    this.identityOrThrow(finalPhone, finalEmail, fields.customerCode === undefined ? cur.customerCode : fields.customerCode);
+    if (newPhone === null && cur.phoneE164) {
+      if (!finalEmail) throw new BadRequestException({ statusCode: 400, code: 'NO_IDENTITY', message: 'Para quitar el teléfono el contacto necesita un correo' });
+      if (await this.prisma.conversation.count({ where: { contactId: id } })) {
+        throw new BadRequestException({ statusCode: 400, code: 'HAS_CONVERSATION', message: 'Este contacto tiene una conversación de WhatsApp: no se le puede quitar el teléfono' });
+      }
+      data.phoneE164 = null;
+      data.waId = null;
+    }
+    if (newPhone) {
+      const n = this.phoneOrThrow(newPhone);
       if (n.e164 !== cur.phoneE164) {
         const other = await this.prisma.contact.findUnique({ where: { phoneE164: n.e164 } });
         if (other) {
@@ -158,13 +212,18 @@ export class ContactsService {
       const mediaIds = conv
         ? (await this.prisma.message.findMany({ where: { conversationId: conv.id, mediaId: { not: null } }, select: { mediaId: true }, distinct: ['mediaId'] })).map((m) => m.mediaId!)
         : [];
-      const digits = [...new Set([c.waId, c.phoneE164.replace(/\D/g, '')].filter((x): x is string => !!x && /^\d{6,20}$/.test(x)))];
+      const digits = [...new Set([c.waId, c.phoneE164?.replace(/\D/g, '')].filter((x): x is string => !!x && /^\d{6,20}$/.test(x)))];
       let storagePaths: string[] = [];
       let webhookEvents = 0;
       await this.prisma.$transaction(async (tx) => {
         await tx.campaignRecipient.deleteMany({ where: { contactId: id } });
         await tx.contact.delete({ where: { id } });
-        await this.suppression.add(c.phoneE164, tx);
+        if (c.phoneE164) {
+          await this.suppression.add(c.phoneE164, tx);
+          // el número no puede quedar en claro en el registro de auditoría (p. ej. `test_campaign` de versiones anteriores):
+          // se sustituye por sus últimos 4 dígitos
+          await tx.$executeRaw`UPDATE "AuditLog" SET "data" = ("data" - 'phone') || jsonb_build_object('phoneLast4', right("data"->>'phone', 4)) WHERE "data"->>'phone' IN (${c.phoneE164}, ${c.waId ?? c.phoneE164})`;
+        }
         if (mediaIds.length) {
           const [msgs, lib, imports] = await Promise.all([
             tx.message.findMany({ where: { mediaId: { in: mediaIds } }, select: { mediaId: true }, distinct: ['mediaId'] }),
@@ -189,12 +248,12 @@ export class ContactsService {
       }
       await this.audit.log({
         userId: ctx.userId, action: 'hard_delete_contact', entityType: 'Contact', entityId: id,
-        data: { phoneLast4: c.phoneE164.slice(-4), mediaDeleted: storagePaths.length, webhookEventsDeleted: webhookEvents }, ip: ctx.ip,
+        data: { phoneLast4: c.phoneE164?.slice(-4) ?? null, mediaDeleted: storagePaths.length, webhookEventsDeleted: webhookEvents }, ip: ctx.ip,
       });
       return { ok: true, hard: true };
     }
     await this.prisma.contact.update({ where: { id }, data: { deletedAt: new Date() } });
-    await this.audit.log({ userId: ctx.userId, action: 'delete_contact', entityType: 'Contact', entityId: id, data: { phoneLast4: c.phoneE164.slice(-4) }, ip: ctx.ip });
+    await this.audit.log({ userId: ctx.userId, action: 'delete_contact', entityType: 'Contact', entityId: id, data: { phoneLast4: c.phoneE164?.slice(-4) ?? null }, ip: ctx.ip });
     return { ok: true, hard: false };
   }
 
@@ -272,11 +331,11 @@ export class ContactsService {
     for (const c of rows) {
       const d = toContactDto(c);
       lines.push(
-        [d.firstName, d.lastName, d.phoneE164, d.email, d.company, d.customerCode, d.taxId, d.landline, d.labels.map((l) => l.name).join(', '), LABELS_ES.consent[d.consentStatus], d.consentAt?.slice(0, 10), d.notes, d.createdAt.slice(0, 10)]
+        [d.firstName, d.lastName, d.phoneE164 ?? '', d.email, d.company, d.customerCode, d.taxId, d.landline, d.labels.map((l) => l.name).join(', '), LABELS_ES.consent[d.consentStatus], d.consentAt?.slice(0, 10), d.notes, d.createdAt.slice(0, 10)]
           .map(csvCell).join(';'),
       );
     }
-    await this.audit.log({ userId: ctx.userId, action: 'export_contacts', entityType: 'Contact', data: { count: rows.length, filtered: !!(q.q || q.includeLabelIds?.length || q.excludeLabelIds?.length || q.consent || q.phoneInvalid !== undefined) }, ip: ctx.ip });
+    await this.audit.log({ userId: ctx.userId, action: 'export_contacts', entityType: 'Contact', data: { count: rows.length, filtered: !!(q.q || q.includeLabelIds?.length || q.excludeLabelIds?.length || q.consent || q.whatsapp || q.phoneInvalid !== undefined) }, ip: ctx.ip });
     return { csv: '﻿' + lines.join('\r\n') + '\r\n', count: rows.length };
   }
 }

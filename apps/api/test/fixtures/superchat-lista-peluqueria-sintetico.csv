@@ -1,0 +1,41 @@
+ID,Nombre,Apellido,Teléfono,Dirección de correo electrónico,Etiquetas,Código,DNI,Teléfono Fijo,Género,Último mensaje enviado en,Último mensaje recibido en,IDs de campaña,Nombres de campañas,Campaña recibida en,Notas
+ctc_120972,Celia,Lasa Tejada,+34647015944,celia.2997@ejemplo.test,,1355,81970108V,,Männlich,2025-09-16 18:46:05,,,,,Lista Peluquería: datos actualizados
+ctc_126138,Gonzalo,Peñalver Bellido,+34671974114,gonzalo.3735@ejemplo.test,,8599,30020959W,,Weiblich,2025-10-07 19:43:46,2025-02-22 10:06:08,,,,Lista Peluquería: datos actualizados
+ctc_131416,Jaime,Garrido Aranda,+34635243230,jaime.4489@ejemplo.test,,9462,Z0770144F,,Männlich,,,,,,Lista Peluquería: datos actualizados
+ctc_100126,Emilio,,,emilio.19@ejemplo.test,,7320,,9.73119997E8,Männlich,,2025-04-01 19:44:46,"cmp_1001, cmp_1002","Black Friday 2025, Navidad 2025",2025-01-19 10:34:38,Lista Peluquería: datos actualizados
+ctc_100168,Rubén,Pardo Tejada,,ruben.25@ejemplo.test,,4512,55804499J,962423346,Männlich,2025-09-21 12:19:44,,,,,Lista Peluquería: datos actualizados
+ctc_100000,Vicente,Tejada Quintero,+34637970390,,,7026,78864007C,937338034,Männlich,2025-03-28 11:36:16,,"cmp_1001, cmp_1002, cmp_1003","Black Friday 2025, Navidad 2025, Rebajas enero",2025-02-21 20:13:45,Lista Peluquería: datos actualizados
+ctc_100014,Marisol,Montoya Quintero,+34731109617,marisol.3@ejemplo.test,,4718,F47316035,,Männlich,2025-09-22 15:48:21,2025-07-15 15:19:57,,,,Lista Peluquería: datos actualizados
+ctc_100021,Álvaro,Cuesta Pardo,+34693782867,,,1124,18585778F,972689499,Männlich,,,"cmp_1001, cmp_1002","Black Friday 2025, Navidad 2025",2025-04-03 12:05:21,Lista Peluquería: datos actualizados
+ctc_100028,Aitor,Mendizábal Herrero,+34639536289,aitor.5@ejemplo.test,,5520,-,,Männlich,,,"cmp_1001, cmp_1002, cmp_1003","Black Friday 2025, Navidad 2025, Rebajas enero",2025-02-13 19:29:20,Lista Peluquería: datos actualizados
+ctc_100035,Noelia,Jurado Zubiri,+34650784906,,,7681,F48712532,969611913,Weiblich,2025-02-18 15:24:58,,,,,Lista Peluquería: datos actualizados
+ctc_100049,Irene,Jurado Cervera,+34687361125,,,,G63931755,,Weiblich,,,cmp_1001,Black Friday 2025,2025-08-12 13:41:35,Lista Peluquería: datos actualizados
+ctc_100056,Paula,Quintero Cuesta,+34689226741,,,,Y5573220G,938351225,Weiblich,2025-05-01 16:25:22,,"cmp_1001, cmp_1002, cmp_1003","Black Friday 2025, Navidad 2025, Rebajas enero",2025-08-14 14:38:49,Lista Peluquería: datos actualizados
+ctc_100063,Sandra,Bellido Lasa,+34673870548,sandra.10@ejemplo.test,,,-,,Männlich,2025-07-15 16:10:36,,,,,Lista Peluquería: datos actualizados
+ctc_100070,Bruno,Zubiri Jurado,+34650306370,,,5557,35266638W,,Weiblich,2025-08-23 20:51:18,,,,,Lista Peluquería: datos actualizados
+ctc_100077,Elena,Salvatierra Bellido,+34694372318,elena.12@ejemplo.test,,4082,91203557R,946862712,Männlich,2025-07-09 10:39:30,,"cmp_1001, cmp_1002, cmp_1003","Black Friday 2025, Navidad 2025, Rebajas enero",2025-08-08 15:51:37,Lista Peluquería: datos actualizados
+ctc_100084,Yolanda,Tejada Albiol,+34607697271,,,3820,81072510V,977817084,Männlich,,2025-09-10 15:11:41,"cmp_1001, cmp_1002","Black Friday 2025, Navidad 2025",2025-11-16 18:42:40,Lista Peluquería: datos actualizados
+ctc_100091,Raquel,Bellido Peñalver,+34741787066,,,7939,79747291N,,Männlich,2025-08-22 16:03:09,,"cmp_1001, cmp_1002","Black Friday 2025, Navidad 2025",2025-11-28 11:56:16,Lista Peluquería: datos actualizados
+ctc_100098,Mónica,Tejada Nogales,+34682615877,monica.15@ejemplo.test,,1638,F02700702,,Weiblich,2025-08-09 11:21:29,2025-01-25 20:12:30,,,,Lista Peluquería: datos actualizados
+ctc_100105,Jaime,Yáñez Peñalver,+34630540264,jaime.16@ejemplo.test,,7790,-,,,,,,,,Lista Peluquería: datos actualizados
+ctc_100112,Karina,Quintero Uriarte,+34659936465,karina.17@ejemplo.test,,7679,99804804F,,Weiblich,2025-06-19 11:07:58,,cmp_1001,Black Friday 2025,2025-02-18 19:44:53,Lista Peluquería: datos actualizados
+ctc_100133,Vicente,Zubiri Vidal,+34787685006,vicente.20@ejemplo.test,,9324,X9364571P,937763446,Männlich,,,"cmp_1001, cmp_1002, cmp_1003","Black Friday 2025, Navidad 2025, Rebajas enero",2025-03-07 19:36:33,Lista Peluquería: datos actualizados
+ctc_100140,Leire,Vidal Núñez,+34724165758,,,,81850043N,,Männlich,,2025-10-25 11:40:48,"cmp_1001, cmp_1002","Black Friday 2025, Navidad 2025",2025-01-02 11:09:12,Lista Peluquería: datos actualizados
+ctc_100147,Dani,Nogales Montoya,+34740410558,dani.22@ejemplo.test,,8596,60983011Y,,Männlich,2025-12-11 18:14:05,,,,,Lista Peluquería: datos actualizados
+ctc_100154,Zoe,Fontana Cervera,+34606807819,zoe.23@ejemplo.test,,9289,08335133W,,Weiblich,,,cmp_1001,Black Friday 2025,2025-08-11 18:36:26,Lista Peluquería: datos actualizados
+ctc_100161,Ainhoa,Núñez Bellido,+34668433310,ainhoa.24@ejemplo.test,,5815,23622614G,,Männlich,2025-06-13 20:52:11,,,,,Lista Peluquería: datos actualizados
+ctc_100175,Sandra,Albiol Cuesta,+34748317980,,,2563,-,,,2025-01-07 11:02:50,2025-01-24 19:58:30,,,,Lista Peluquería: datos actualizados
+ctc_100182,Dolores,Herrero Albiol,+34605814577,dolores.27@ejemplo.test,,8672,18759556C,,Weiblich,2025-09-15 10:49:19,,,,,Lista Peluquería: datos actualizados
+ctc_100189,Emilio,Tejada Escribano,+34693121160,,,1237,76755624R,,Männlich,,2025-08-07 11:48:03,,,,Lista Peluquería: datos actualizados
+ctc_100196,Alba,Peñalver Pardo,+34647802257,alba.29@ejemplo.test,,,F41376810,916148327,Männlich,,2025-09-26 13:06:15,cmp_1001,Black Friday 2025,2025-09-08 15:48:53,Lista Peluquería: datos actualizados
+ctc_100203,Paula,Rivero Fontana,+34610276596,paula.30@ejemplo.test,,5037,53063939H,966022530,Männlich,2025-01-04 14:07:32,,,,,Lista Peluquería: datos actualizados
+ctc_100210,Carmen,Dávila Dávila,+34616382328,carmen.31@ejemplo.test,,2839,Y8183451N,,Weiblich,2025-12-06 15:49:22,,cmp_1001,Black Friday 2025,2025-09-23 09:27:52,Lista Peluquería: datos actualizados
+ctc_100217,Paula,Fontana Aranda,+34666867578,paula.32@ejemplo.test,,1501,,951511823,Weiblich,,,"cmp_1001, cmp_1002, cmp_1003","Black Friday 2025, Navidad 2025, Rebajas enero",2025-11-06 16:09:53,Lista Peluquería: datos actualizados
+ctc_100224,Noelia,Escribano Dávila,+34654154056,noelia.33@ejemplo.test,,,68737954Q,946798250,Weiblich,2025-06-20 10:36:19,,,,,Lista Peluquería: datos actualizados
+ctc_100231,Bruno,,+34669920759,bruno.34@ejemplo.test,,7644,X5210904X,,,2025-09-02 17:59:08,2025-04-21 09:33:36,,,,Lista Peluquería: datos actualizados
+ctc_100238,Héctor,Herrero Zubiri,+34692350030,hector.35@ejemplo.test,,9179,G87955760,,Weiblich,2025-06-11 11:00:45,,,,,Lista Peluquería: datos actualizados
+ctc_90,Valeria,Lista Nueva,+34658983565,nuevo.1@ejemplo.test,,9944,,,Weiblich,,,,,,
+ctc_91,Hugo,Lista Nueva,+34601878333,nuevo.2@ejemplo.test,,5729,,,Weiblich,,,,,,
+ctc_92,Inés,Lista Nueva,+34647978476,nuevo.3@ejemplo.test,,7891,,,Weiblich,,,,,,
+ctc_93,Mateo,Lista Nueva,+34657294620,nuevo.4@ejemplo.test,,6375,,,Weiblich,,,,,,
+ctc_94,Julia,Lista Nueva,+34665606873,nuevo.5@ejemplo.test,,2018,,,Weiblich,,,,,,

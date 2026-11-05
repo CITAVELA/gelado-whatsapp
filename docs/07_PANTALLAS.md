@@ -42,11 +42,11 @@ Correo y contraseña; debajo «¿Olvidaste tu contraseña? Pídele un enlace a l
 ## P3 · Contactos
 
 - Cabecera: «Contactos (6.560)» · Importar · Exportar (admin) · Nuevo contacto.
-- Barra: buscador · filtros (etiquetas incluir/excluir, consentimiento, teléfono inválido) · selector de columnas.
-- Tabla: casilla · nombre · teléfono · código · CIF/DNI · teléfono fijo · etiquetas · consentimiento (chip verde/gris/rojo) · última actividad. Paginación de 100.
+- Barra: buscador · filtros (etiquetas incluir/excluir, consentimiento, **Con / sin WhatsApp**, teléfono inválido) · selector de columnas.
+- Tabla: casilla · nombre · teléfono (los contactos sin teléfono llevan el chip gris **«Sin WhatsApp»**) · código · CIF/DNI · teléfono fijo · etiquetas · consentimiento (chip verde/gris/rojo) · última actividad. Paginación de 100.
 - Acciones en bloque: añadir/quitar etiqueta, cambiar consentimiento (pide origen y nota), exportar selección (admin).
-- **Ficha** (página o panel): todos los campos, etiquetas, consentimiento con historial, botón «Abrir conversación», campañas recibidas.
-- **Asistente de importación**: 1) subir CSV/XLSX → 2) mapear columnas (detecta Nombre, Apellido, Teléfono, Correo, Código, DNI, Teléfono Fijo, Listas, Etiqueta) → 3) reglas (país por defecto ES, qué hacer con duplicados: actualizar/omitir, qué etiqueta poner, cómo tratar NO PUBLICIDAD, consentimiento inicial) → 4) vista previa con errores → 5) importar con barra de progreso → 6) informe descargable.
+- **Ficha** (página o panel): todos los campos, etiquetas, consentimiento con historial, botón «Abrir conversación» (deshabilitado con «Sin WhatsApp» si no hay teléfono), campañas recibidas. «Nuevo contacto» pide teléfono **o** correo.
+- **Asistente de importación**: 1) subir CSV/XLSX → 2) mapear columnas (detecta Nombre, Apellido, Teléfono, Correo, Código, DNI, Teléfono Fijo, Listas, Etiqueta, Notas; ID, Género, últimos mensajes y campañas de Superchat van a «No importar»; basta con teléfono, correo o código) → 3) reglas (país por defecto ES, qué hacer con duplicados: actualizar/omitir, qué etiqueta poner, cómo tratar NO PUBLICIDAD, consentimiento inicial) → 4) vista previa con el recuento «Sin WhatsApp», los avisos por tipo (país distinto de España, fijo español, teléfono corregido, incompleto) y los errores → 5) importar con barra de progreso → 6) informe descargable (con el tipo de cada aviso). En el asistente de campañas el recuento añade «x sin WhatsApp».
 
 ## P4 · Campañas
 

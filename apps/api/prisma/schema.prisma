@@ -87,7 +87,7 @@ enum ConsentSource {
 
 model Contact {
   id            String        @id @default(uuid()) @db.Uuid
-  phoneE164     String        @unique // +34617498222
+  phoneE164     String?       @unique // +34617498222; null = contacto «Sin WhatsApp» (solo correo y/o código, P16). CHECK: teléfono, correo o código
   waId          String?       @unique // wa_id que manda Meta
   firstName     String?
   lastName      String?
@@ -478,9 +478,9 @@ model CampaignRecipient {
   id          String          @id @default(uuid()) @db.Uuid
   campaignId  String          @db.Uuid
   contactId   String          @db.Uuid
-  phoneE164   String // copia en el momento del envío
+  phoneE164   String? // copia en el momento del envío (null = Sin WhatsApp)
   status      RecipientStatus @default(QUEUED)
-  skipReason  String? // REVOKED, UNKNOWN_CONSENT, PHONE_INVALID, DAILY_LIMIT, DUPLICATE
+  skipReason  String? // REVOKED, UNKNOWN_CONSENT, PHONE_INVALID, NO_PHONE, DAILY_LIMIT, DUPLICATE
   plannedFor  DateTime? // tanda / día previsto
   claimedAt   DateTime? // cuándo pasó a SENDING (para devolver a la cola los huérfanos)
   messageId   String?         @unique @db.Uuid
@@ -536,8 +536,10 @@ model Setting {
 }
 
 /// Lista de supresión mínima (RGPD + «un dado de baja nunca recibe marketing»): al borrar físicamente un contacto se
-/// guarda aquí solo el HMAC-SHA256 de su teléfono E.164 (clave = SESSION_SECRET). Si el número vuelve (importación,
-/// mensaje entrante o alta manual) el contacto nuevo nace REVOKED con origen MANUAL y nota «Suprimido previamente».
+/// guarda aquí solo el HMAC-SHA256 de su teléfono E.164 (clave = sal aleatoria propia en Setting «suppression_salt»,
+/// independiente de SESSION_SECRET). Si el número vuelve (importación, mensaje entrante, alta manual, nueva conversación o
+/// prueba de campaña) el contacto nuevo nace REVOKED con origen MANUAL y nota «Suprimido previamente»; si una persona lo
+/// reactiva después, su hash se quita de la lista.
 model SuppressedPhone {
   phoneHash String   @id
   createdAt DateTime @default(now())

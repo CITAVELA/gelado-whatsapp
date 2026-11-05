@@ -20,8 +20,12 @@ export interface TestApp {
   http: ReturnType<typeof request>;
   prisma: PrismaClient;
   jobs: JobsService;
-  /** resetDb + límites de login a cero */
-  reset(): Promise<void>;
+  /**
+   * resetDb + límites de login a cero. Por defecto deja APAGADA la respuesta fuera de horario: si no, las pruebas
+   * que usan la hora real fallarían por la tarde-noche (salta el AUTO_REPLY). Las pruebas de horario pasan
+   * `{ autoReply: true }` y controlan la hora.
+   */
+  reset(opts?: { autoReply?: boolean }): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -35,9 +39,9 @@ export async function createTestApp(env: Record<string, string> = {}): Promise<T
     http: request(app.getHttpServer()),
     prisma,
     jobs: app.get(JobsService),
-    async reset() {
+    async reset(opts: { autoReply?: boolean } = {}) {
       app.get(AuthService).limiter.clear();
-      await resetDb(prisma);
+      await resetDb(prisma, { seed: true, autoReply: opts.autoReply ?? false });
     },
     async close() {
       await prisma.$disconnect();
@@ -47,7 +51,7 @@ export async function createTestApp(env: Record<string, string> = {}): Promise<T
 }
 
 /** Vacía todas las tablas del esquema app (menos migraciones) y vuelve a sembrar etiquetas y ajustes. */
-export async function resetDb(prisma: PrismaClient, opts: { seed?: boolean } = { seed: true }) {
+export async function resetDb(prisma: PrismaClient, opts: { seed?: boolean; autoReply?: boolean } = { seed: true }) {
   const rows = await prisma.$queryRaw<{ tablename: string }[]>`SELECT tablename FROM pg_tables WHERE schemaname = 'app' AND tablename <> '_prisma_migrations'`;
   if (rows.length) await prisma.$executeRawUnsafe(`TRUNCATE ${rows.map((r) => `"app"."${r.tablename}"`).join(', ')} RESTART IDENTITY CASCADE`);
   if (opts.seed !== false) {
@@ -55,6 +59,10 @@ export async function resetDb(prisma: PrismaClient, opts: { seed?: boolean } = {
     process.env.SEED_DEV_PASSWORD = TEST_PASSWORD;
     await seed(prisma, { quiet: true });
     process.env.SEED_DEV_PASSWORD = prev;
+    if (opts.autoReply === false) {
+      const row = await prisma.setting.findUnique({ where: { key: 'out_of_hours' } });
+      if (row) await prisma.setting.update({ where: { key: 'out_of_hours' }, data: { value: { ...(row.value as object), enabled: false } } });
+    }
   }
 }
 

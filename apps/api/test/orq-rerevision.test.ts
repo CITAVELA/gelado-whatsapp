@@ -82,3 +82,13 @@ describe('N8 · markSent no hace retroceder un estado ya avanzado', () => {
     expect(out.status).toBe('DELIVERED');
   });
 });
+
+describe('P3 · el seed deja la respuesta fuera de horario ENCENDIDA y vacaciones apagado', () => {
+  it('valores del seed', async () => {
+    await env.t.reset({ autoReply: true }); // tal cual el seed de producción
+    const ooh = await prisma().setting.findUniqueOrThrow({ where: { key: 'out_of_hours' } });
+    const vac = await prisma().setting.findUniqueOrThrow({ where: { key: 'vacation' } });
+    expect((ooh.value as any).enabled).toBe(true);
+    expect((vac.value as any).enabled).toBe(false);
+  });
+});

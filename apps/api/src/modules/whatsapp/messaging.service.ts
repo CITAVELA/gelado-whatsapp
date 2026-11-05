@@ -269,6 +269,8 @@ export class MessagingService implements OnModuleInit {
   async ensureConversationForContact(contactId: string) {
     const contact = await this.prisma.contact.findUnique({ where: { id: contactId } });
     if (!contact) throw new NotFoundException({ statusCode: 404, message: 'Contacto no encontrado' });
+    // P16: un contacto importado sin teléfono no tiene WhatsApp, así que no puede tener conversación
+    if (!contact.phoneE164) throw new BadRequestException({ statusCode: 400, code: 'NO_PHONE', message: 'Este contacto no tiene teléfono: sin WhatsApp no se puede abrir una conversación' });
     const existing = await this.prisma.conversation.findUnique({ where: { contactId } });
     if (existing) return existing;
     try {
@@ -376,6 +378,7 @@ export class MessagingService implements OnModuleInit {
         return;
       }
       const to = msg.conversation.contact.waId ?? msg.conversation.contact.phoneE164;
+      if (!to) throw new Error('El contacto no tiene teléfono (sin WhatsApp)');
       sendCalled = true;
       const res = await this.gateway.sendMessage(to, wa, { contextWamid: msg.contextWamid ?? undefined, opaqueData: msg.id });
       const wamid = res.messages?.[0]?.id;

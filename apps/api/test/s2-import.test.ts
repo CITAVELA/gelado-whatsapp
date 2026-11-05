@@ -227,7 +227,7 @@ function buildBigCsv(total = 7000) {
   const cell = (s: string | number) => String(s);
   for (let i = 0; i < baseRows; i++) {
     if (i % 211 === 5) { lines.push(';;;;;;;;;'); exp.empty++; continue; }
-    if (i % 97 === 3) { lines.push(`Malo ${i};Tel;${i % 2 ? 'abc' : '12 34'};;;${i};;;;`); exp.invalid++; continue; }
+    if (i % 97 === 3) { lines.push(`Malo ${i};Tel;${i % 2 ? 'abc' : '12 34'};;;;;;;;`); exp.invalid++; continue; }
     let phone: string;
     if (i % 50 === 7) { phone = `+33 6 ${String(10000000 + i).replace(/(\d\d)(?=\d)/g, '$1 ').trim()}`; exp.foreign++; }
     else {

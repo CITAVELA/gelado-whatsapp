@@ -11,6 +11,7 @@ import { ConsentBlock } from './ConsentBlock';
 import { ContactFields } from './ContactFields';
 import { useContact, useSaveContact } from './hooks';
 import { LabelPicker } from './LabelPicker';
+import { NoWhatsappPill } from './NoWhatsappPill';
 import './contacts.css';
 
 export interface ContactSidePanelProps {
@@ -38,7 +39,7 @@ export function ContactSidePanel({ contactId, onClose }: ContactSidePanelProps) 
             <Avatar name={c.displayName} />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.displayName}</div>
-              <div className="hint">{c.profileName ? `Perfil de WhatsApp: «${c.profileName}»` : formatPhone(c.phoneE164)}</div>
+              <div className="hint">{c.profileName ? `Perfil de WhatsApp: «${c.profileName}»` : c.phoneE164 ? formatPhone(c.phoneE164) : 'Sin WhatsApp'}</div>
             </div>
           </div>
           <LabelPicker value={c.labels} onChange={(labelIds) => save.mutate({ labelIds })} disabled={save.isPending} />
@@ -49,7 +50,7 @@ export function ContactSidePanel({ contactId, onClose }: ContactSidePanelProps) 
               <div className="kv">
                 <span className="k">Nombre</span><span className="v">{c.firstName ?? '—'}</span>
                 <span className="k">Apellidos</span><span className="v">{c.lastName ?? '—'}</span>
-                <span className="k">Teléfono</span><span className="v mono">{formatPhone(c.phoneE164)}</span>
+                <span className="k">Teléfono</span><span className="v mono">{c.phoneE164 ? formatPhone(c.phoneE164) : <NoWhatsappPill />}</span>
                 <span className="k">Teléfono fijo</span><span className="v mono">{c.landline ?? '—'}</span>
                 <span className="k">Correo</span><span className="v" title={c.email ?? undefined}>{c.email ?? '—'}</span>
                 <span className="k">Código</span><span className="v mono">{c.customerCode ?? '—'}</span>
