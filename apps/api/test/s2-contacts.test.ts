@@ -181,7 +181,11 @@ describe('S2 · borrado, exportación y campañas (RF-3.4, regla 7)', () => {
     expect(body).toContain(';+34617498222;');
     const filtered = await admin.get(`/api/contacts/export?includeLabelIds=${pel.id}`);
     expect(filtered.text.trim().split('\r\n')).toHaveLength(2);
-    expect(await t.prisma.auditLog.count({ where: { action: 'export_contacts' } })).toBe(2);
+    const a = await t.prisma.contact.findFirstOrThrow({ where: { firstName: 'Otro' } });
+    const sel = await admin.get(`/api/contacts/export?ids=${a.id},no-es-uuid`);
+    expect(sel.text.trim().split('\r\n')).toHaveLength(2);
+    expect(sel.text).toContain('Otro');
+    expect(await t.prisma.auditLog.count({ where: { action: 'export_contacts' } })).toBe(3);
   });
 
   it('campañas recibidas: [] si no hay y lista si las hay', async () => {

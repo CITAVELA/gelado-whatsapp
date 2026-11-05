@@ -51,6 +51,8 @@ export const contactListQuerySchema = z.object({
   includeLabelIds: z.union([z.string(), z.array(z.string())]).optional().transform(toArr),
   excludeLabelIds: z.union([z.string(), z.array(z.string())]).optional().transform(toArr),
   consent: z.enum(['UNKNOWN', 'GRANTED', 'REVOKED']).optional(),
+  /** Solo estos contactos (exportar una selección) */
+  ids: z.union([z.string(), z.array(z.string())]).optional().transform(toArr),
   phoneInvalid: z.union([z.boolean(), z.enum(['true', 'false', '1', '0'])]).optional().transform((v) => (v === undefined ? undefined : v === true || v === 'true' || v === '1')),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(500).default(100),

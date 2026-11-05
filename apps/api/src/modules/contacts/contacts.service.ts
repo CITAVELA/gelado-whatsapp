@@ -31,6 +31,7 @@ export class ContactsService {
     }
     if (q.includeLabelIds?.length) and.push({ labels: { some: { labelId: { in: q.includeLabelIds } } } });
     if (q.excludeLabelIds?.length) and.push({ NOT: { labels: { some: { labelId: { in: q.excludeLabelIds } } } } });
+    if (q.ids?.length) and.push({ id: { in: q.ids.filter((x) => /^[0-9a-f-]{36}$/i.test(x)) } });
     if (q.consent) and.push({ consentStatus: q.consent });
     if (q.phoneInvalid !== undefined) and.push({ phoneInvalid: q.phoneInvalid });
     return { AND: and };
