@@ -1,6 +1,7 @@
 // Hooks de TanStack Query de la bandeja, con actualizaciones optimistas, y tiempo real.
 import { useCallback, useEffect, useState } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
+import { canAdvanceStatus, type MessageStatus } from '@gelado/shared';
 import type {
   ConversationDetailDto,
   ConversationListItemDto,
@@ -117,21 +118,71 @@ function mapTimeline(qc: QueryClient, id: string, fn: (items: TimelineItemDto[],
 }
 const hasMessage = (data: TimelineData | undefined, mid: string) => !!data?.pages.some((p) => p.items.some((i) => i.type === 'message' && i.message.id === mid));
 
-/** Inserta (o sustituye) un mensaje en el historial cargado. */
+const STATUS_FIELDS = ['status', 'errorCode', 'errorTitle', 'retryable', 'sentAt', 'deliveredAt', 'readAt'] as const;
+
+/** Últimos estados recibidos por socket por mensaje: sirven si la respuesta HTTP llega después y trae un estado más atrasado (F-10). */
+const seenStatus = new Map<string, Pick<MessageDto, (typeof STATUS_FIELDS)[number]>>();
+function rememberStatus(m: MessageDto) {
+  seenStatus.delete(m.id);
+  seenStatus.set(m.id, Object.fromEntries(STATUS_FIELDS.map((k) => [k, m[k]])) as Pick<MessageDto, (typeof STATUS_FIELDS)[number]>);
+  if (seenStatus.size > 300) seenStatus.delete(seenStatus.keys().next().value as string);
+}
+
+/** Fusiona `incoming` sobre `current` sin retroceder nunca de estado (FAILED gana): solo avanza. */
+function mergeMessage(current: MessageDto | undefined, incoming: MessageDto): MessageDto {
+  const known = current ?? seenStatus.get(incoming.id);
+  if (!known) return incoming;
+  if (known.status === incoming.status || canAdvanceStatus(known.status as MessageStatus, incoming.status as MessageStatus)) return incoming;
+  return { ...incoming, ...Object.fromEntries(STATUS_FIELDS.map((k) => [k, known[k]])) } as MessageDto;
+}
+
+/** Inserta (o sustituye) un mensaje en el historial cargado. Nunca duplica por `id` ni retrocede de estado. */
 export function upsertMessage(qc: QueryClient, id: string, message: MessageDto) {
   const data = qc.getQueryData<TimelineData>(K.timeline(id));
   if (!data) return;
   if (hasMessage(data, message.id)) {
-    mapTimeline(qc, id, (items) => items.map((it) => (it.type === 'message' && it.message.id === message.id ? { ...it, message } : it)));
-  } else {
-    mapTimeline(qc, id, (items, i) => (i === 0 ? [...items, { type: 'message', at: message.createdAt, message }] : items));
+    mapTimeline(qc, id, (items) =>
+      items.map((it) => (it.type === 'message' && it.message.id === message.id ? { ...it, message: mergeMessage(it.message, message) } : it)),
+    );
+    return;
   }
+  const merged = mergeMessage(undefined, message);
+  // Un mensaje real que llega por socket sustituye a su provisional (mismo texto y autor): sin burbuja duplicada.
+  let dropTmp = !message.id.startsWith('tmp-') && (message.direction === 'OUTBOUND' || message.direction === 'INTERNAL');
+  const isTmp = (m: MessageDto) =>
+    m.id.startsWith('tmp-') && m.direction === message.direction && m.kind === message.kind && m.body === message.body && (m.sentBy?.id ?? null) === (message.sentBy?.id ?? null);
+  mapTimeline(qc, id, (items, i) => {
+    const rest = dropTmp
+      ? items.filter((it) => {
+          if (dropTmp && it.type === 'message' && isTmp(it.message)) {
+            dropTmp = false;
+            return false;
+          }
+          return true;
+        })
+      : items;
+    return i === 0 ? [...rest, { type: 'message', at: message.createdAt, message: merged }] : rest;
+  });
 }
 export function removeMessage(qc: QueryClient, id: string, messageId: string) {
   mapTimeline(qc, id, (items) => items.filter((it) => !(it.type === 'message' && it.message.id === messageId)));
 }
 export function patchMessage(qc: QueryClient, id: string, messageId: string, patch: Partial<MessageDto>) {
   mapTimeline(qc, id, (items) => items.map((it) => (it.type === 'message' && it.message.id === messageId ? { ...it, message: { ...it.message, ...patch } } : it)));
+}
+/** Aplica un estado recibido por socket: solo si avanza (FAILED gana). Se recuerda aunque el mensaje aún no esté en el caché. */
+export function applyMessageStatus(qc: QueryClient, id: string, messageId: string, patch: Partial<MessageDto> & { status: MessageStatus }) {
+  const data = qc.getQueryData<TimelineData>(K.timeline(id));
+  const item = data?.pages.flatMap((p) => p.items).find((i) => i.type === 'message' && i.message.id === messageId);
+  const current = item && item.type === 'message' ? item.message : undefined;
+  const base = current ?? seenStatus.get(messageId);
+  if (base && base.status !== patch.status && !canAdvanceStatus(base.status as MessageStatus, patch.status)) return;
+  if (current) {
+    patchMessage(qc, id, messageId, patch);
+    rememberStatus({ ...current, ...patch } as MessageDto);
+  } else {
+    seenStatus.set(messageId, { status: patch.status, errorCode: patch.errorCode ?? null, errorTitle: patch.errorTitle ?? null, retryable: false, sentAt: patch.sentAt ?? null, deliveredAt: patch.deliveredAt ?? null, readAt: patch.readAt ?? null });
+  }
 }
 
 // ── Acciones ──

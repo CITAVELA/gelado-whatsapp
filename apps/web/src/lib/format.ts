@@ -37,7 +37,7 @@ export function fmtEur(n: number | null | undefined) {
 export function fmtBytes(n: number) {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
-  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n / 1024 / 1024)} MB`;
 }
 /** Tiempo restante legible: «22 h», «45 min» */
 export function fmtRemaining(untilIso: string | null | undefined, now = Date.now()) {

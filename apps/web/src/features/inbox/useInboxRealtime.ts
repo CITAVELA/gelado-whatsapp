@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { inboxApi } from './api';
-import { K, patchConversation, patchMessage, upsertEvent, upsertMessage } from './hooks';
+import { K, applyMessageStatus, patchConversation, upsertEvent, upsertMessage } from './hooks';
 import { createBatchedRefresh } from './refresh';
 import { useRealtime } from './realtime';
 import { getFocusedConversation, shouldNotify, showNotification } from './notify';
@@ -59,7 +59,7 @@ export function useInboxRealtime() {
     }
   });
   useRealtime('message.status', (p) => {
-    patchMessage(qc, p.conversationId, p.messageId, {
+    applyMessageStatus(qc, p.conversationId, p.messageId, {
       status: p.status,
       errorCode: p.errorCode,
       errorTitle: p.errorTitle,
