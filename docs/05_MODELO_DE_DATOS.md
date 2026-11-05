@@ -99,7 +99,7 @@ enum ConsentSource {
 
 model Contact {
   id             String        @id @default(uuid()) @db.Uuid
-  phoneE164      String        @unique          // +34617498222
+  phoneE164      String?       @unique          // +34617498222; null = «Sin WhatsApp» (P16); varios NULL permitidos
   waId           String?       @unique          // wa_id que manda Meta
   firstName      String?
   lastName       String?
@@ -471,9 +471,9 @@ model CampaignRecipient {
   id           String          @id @default(uuid()) @db.Uuid
   campaignId   String          @db.Uuid
   contactId    String          @db.Uuid
-  phoneE164    String                       // copia en el momento del envío
+  phoneE164    String?                      // copia en el momento del envío (null = Sin WhatsApp)
   status       RecipientStatus @default(QUEUED)
-  skipReason   String?                      // REVOKED, UNKNOWN_CONSENT, PHONE_INVALID, DAILY_LIMIT, DUPLICATE
+  skipReason   String?                      // REVOKED, UNKNOWN_CONSENT, PHONE_INVALID, NO_PHONE, DAILY_LIMIT, DUPLICATE
   plannedFor   DateTime?                    // tanda / día previsto
   messageId    String?         @unique @db.Uuid
   errorCode    Int?
@@ -574,7 +574,7 @@ model AuditLog {
 
 ## Reglas que el modelo debe garantizar
 
-1. `Contact.phoneE164` único; normalizar siempre antes de guardar (libphonenumber, país por defecto ES).
+1. **Si hay teléfono**, `Contact.phoneE164` es E.164 y único; normalizar siempre antes de guardar (libphonenumber, país por defecto ES). `phoneE164` puede ser NULL (contacto «Sin WhatsApp», P16): la BD exige teléfono, correo o código (`CHECK "Contact_identity_check"`) y el alta manual exige teléfono o correo. Un contacto sin teléfono no tiene `Conversation` ni recibe campañas (`skipReason = NO_PHONE`). Índice `lower("email")` para deduplicar la importación por correo.
 2. Una sola `Conversation` por contacto.
 3. `Message.wamid` único: un webhook repetido no duplica mensajes.
 4. Los estados de un mensaje solo avanzan (SENT → DELIVERED → READ); un estado que llega tarde no hace retroceder. FAILED gana a todo.
