@@ -235,6 +235,7 @@ export function ImportWizard() {
                   <div className="panel stat"><div className="k">Actualizados</div><div className="v">{fmtNumber(job.data.updated)}</div></div>
                   <div className="panel stat"><div className="k">Omitidos</div><div className="v">{fmtNumber(job.data.skipped)}</div></div>
                   <div className="panel stat"><div className="k">Dados de baja</div><div className="v">{fmtNumber(job.data.optedOut ?? 0)}</div></div>
+                  <div className="panel stat"><div className="k">Con WhatsApp</div><div className="v">{fmtNumber(Math.max(0, job.data.created + job.data.updated - (job.data.withoutWhatsapp ?? 0)))}</div></div>
                   <div className="panel stat"><div className="k">Sin WhatsApp</div><div className="v">{fmtNumber(job.data.withoutWhatsapp ?? 0)}</div></div>
                 </div>
                 <div className="row">

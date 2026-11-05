@@ -38,7 +38,7 @@ test('importar el export sintético de Superchat por la interfaz: 6.253 con What
   expect(await total({ whatsapp: 'with' })).toBe(antes.con + 6253);
   expect(await total({ whatsapp: 'without' })).toBe(antes.sin + 307);
   expect(await total({ consent: 'REVOKED' })).toBe(antes.baja + 3);
-  // el informe no dice cuántos tienen WhatsApp (solo Creados y Sin WhatsApp): ver QA.md
+  await expect(stat('Con WhatsApp')).toHaveText('6.253'); // F-20: el informe da también el total con WhatsApp
 });
 
 test('un contacto sin teléfono muestra el chip «Sin WhatsApp» y «Abrir conversación» deshabilitado', async ({ page }) => {

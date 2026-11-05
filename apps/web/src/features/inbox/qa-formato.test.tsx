@@ -65,8 +65,8 @@ describe('QA · formato en español, EUR y Europe/Madrid', () => {
     expect(fmtPct(1, 3)).toMatch(/33(,\d)? %/);
     expect(fmtPct(0, 0)).toMatch(/0 %|—/);
   });
-  // FALLO F-19 (bajo): Intl es-ES no agrupa los números de 4 cifras («6560», «6253»); el cliente y docs/03 escriben «6.560 contactos»
-  it.fails('los números de 4 cifras llevan punto de millar como en la documentación («6.560»)', () => {
+  // CORREGIDO F-19 (bajo): Intl es-ES no agrupa los números de 4 cifras («6560», «6253»); el cliente y docs/03 escriben «6.560 contactos»
+  it('los números de 4 cifras llevan punto de millar como en la documentación («6.560»)', () => {
     expect(fmtNumber(6560)).toBe('6.560');
   });
   it('las horas se muestran en Europa/Madrid aunque el navegador esté en otra zona (verano e invierno)', () => {

@@ -24,8 +24,10 @@ export function fmtListTime(iso: string | null | undefined, now = new Date()) {
   if (now.getTime() - d.getTime() < 6 * 86400000) return d.toLocaleDateString('es-ES', { timeZone: TZ, weekday: 'short' });
   return d.toLocaleDateString('es-ES', { timeZone: TZ, day: '2-digit', month: '2-digit' });
 }
+/** «6.560»: en es-ES Intl no agrupa los números de 4 cifras salvo con useGrouping 'always' (F-19). */
+const NUM = new Intl.NumberFormat('es-ES', { useGrouping: 'always' } as unknown as Intl.NumberFormatOptions);
 export function fmtNumber(n: number) {
-  return new Intl.NumberFormat('es-ES').format(n);
+  return NUM.format(n);
 }
 export function fmtPct(part: number, total: number) {
   if (!total) return '0 %';
