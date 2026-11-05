@@ -34,11 +34,16 @@ export const simGet = async (p: string) => (await fetch(`${SIM}${p}`)).json() as
 export const inboundText = (from: string, body: string, name = 'Cliente de prueba') => simPost('/_sim/inbound', { from, name, type: 'text', text: { body } });
 
 export async function login(page: Page, who: { email: string } = ADMIN, to = '/bandeja') {
+  // Los avisos en tiempo real solo llegan si el socket ya está conectado: un mensaje entrante justo tras entrar podría
+  // adelantarse y no avisar (sonido, notificación). Se espera a su conexión (socket.io: trama «40») antes de seguir.
+  let socketUp = false;
+  page.on('websocket', (ws) => ws.on('framereceived', (f) => { if (String(f.payload).startsWith('40')) socketUp = true; }));
   await page.goto('/login');
   await page.getByLabel('Correo').fill(who.email);
   await page.getByLabel('Contraseña').fill(PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await expect(page).toHaveURL(/\/bandeja/);
+  await expect.poll(() => socketUp, { timeout: 5000 }).toBe(true).catch(() => undefined);
   if (to !== '/bandeja') await page.goto(to);
 }
 
@@ -111,8 +116,9 @@ export const isTouchUi = (page: Page) => page.evaluate(() => window.matchMedia('
 
 /** Vuelve a la lista de conversaciones si en móvil se está viendo una conversación. */
 export async function backToList(page: Page) {
-  const back = page.getByRole('button', { name: 'Volver a la bandeja' });
-  if (await back.isVisible()) await back.click();
+  if (!(await isMobileUi(page))) return;
+  const inbox = page.locator('.inbox');
+  if ((await inbox.count()) && (await inbox.getAttribute('data-mobile-view')) === 'chat') await page.getByRole('button', { name: 'Volver a la bandeja' }).click();
 }
 
 /** Abre la tarjeta de la lista (en móvil, volviendo antes a la lista si hace falta). */
@@ -131,16 +137,14 @@ export async function sendText(page: Page, text: string) {
 
 /** Cierra sesión (en móvil está en el menú «Más»). */
 export async function logout(page: Page) {
-  const direct = page.getByRole('button', { name: 'Cerrar sesión' });
-  if (await direct.isVisible()) return direct.click();
+  if (!(await isMobileUi(page))) return page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await page.getByRole('button', { name: 'Más', exact: true }).click();
   await page.getByRole('menuitem', { name: /Cerrar sesión/ }).click();
 }
 
 /** Abre una sección de Ajustes (en móvil el menú lateral es un desplegable). */
 export async function openSettingsSection(page: Page, name: string | RegExp) {
-  const link = page.getByRole('link', { name }).first();
-  if (await link.isVisible()) return link.click();
+  if (!(await isMobileUi(page))) return page.getByRole('link', { name }).first().click();
   const select = page.getByLabel('Sección de ajustes');
   const option = select.locator('option').filter({ hasText: name }).first();
   await select.selectOption({ label: (await option.textContent())!.trim() });
@@ -148,9 +152,8 @@ export async function openSettingsSection(page: Page, name: string | RegExp) {
 
 /** Abre el menú de asignar / etiquetar / posponer de la conversación (en móvil están dentro de «Más acciones»). */
 export async function openConversationMenu(page: Page, kind: 'Asignar' | 'Etiquetar' | 'Posponer') {
-  const direct = page.getByRole('button', { name: kind, exact: true });
-  if (await direct.isVisible()) return direct.click();
-  await page.getByRole('button', { name: 'Más acciones' }).click();
+  if (!(await isMobileUi(page))) return page.getByRole('button', { name: kind, exact: true }).click();
+  await page.getByRole('button', { name: 'Más acciones', exact: true }).click();
   await page.getByRole('menuitem', { name: new RegExp(`^${kind === 'Etiquetar' ? 'Etiqueta' : kind}`) }).click();
 }
 

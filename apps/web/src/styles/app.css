@@ -230,7 +230,8 @@ tr.sel { background: #FBECEC; }
   .photo { width: 100%; }
   .msg-reply { right: 4px !important; left: auto !important; top: 4px; opacity: .55; }
   .qr { width: min(86%, 420px); }
-  .submenu { position: static; margin: 2px 0 2px 14px; box-shadow: none; border: 0; background: var(--bg); }
+  .submenu { position: static; margin: 2px 0 2px 14px; box-shadow: none; border: 0; background: var(--bg); min-width: 0 !important; }
+  .menu.pop { max-width: calc(100vw - 16px); }
   .composer { padding: 8px; }
   .composer.closed { flex-wrap: wrap; }
   .cbody { flex-wrap: nowrap; align-items: flex-end; gap: 4px; }

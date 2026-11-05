@@ -123,7 +123,7 @@ test('(d) asignar, etiquetar, posponer y finalizar dejan su rastro en el histori
   // asignar a mí
   await openConversationMenu(page, 'Asignar');
   await page.getByRole('menuitem', { name: /Cristina Lopez \(tú\)/ }).click();
-  await expect(page.getByText(/asignó|asignada/i).first()).toBeVisible();
+  await expect(page.getByText(/asignó|asignada/i).and(page.locator(':visible')).first()).toBeVisible();
   // etiquetar
   await openConversationMenu(page, 'Etiquetar');
   await page.getByRole('menuitem', { name: /PEDIDO/i }).click();
@@ -137,7 +137,7 @@ test('(d) asignar, etiquetar, posponer y finalizar dejan su rastro en el histori
   await page.getByRole('tab', { name: 'Pospuestas' }).click();
   await expect(card(page)).toBeVisible();
   await card(page).click();
-  await expect(page.getByText(/pospuso|pospuesta/i).first()).toBeVisible();
+  await expect(page.getByText(/pospuso|pospuesta/i).and(page.locator(':visible')).first()).toBeVisible();
   // finalizar → pasa a Finalizadas
   await page.getByRole('button', { name: 'Marcar como finalizada' }).click();
   await backToList(page);
