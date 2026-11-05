@@ -18,7 +18,7 @@ function useCosts(month: string) {
 export function QualityPage() {
   const current = monthKey();
   const [month, setMonth] = useState(current);
-  const status = useQuery({ queryKey: ['quality', 'status'], queryFn: () => api.get<QualityStatusDto>('/api/quality'), refetchInterval: 120_000 });
+  const status = useQuery({ queryKey: ['quality', 'status'], queryFn: () => api.get<QualityStatusDto>('/api/quality'), refetchInterval: 120_000, refetchIntervalInBackground: false });
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api.get<{ rates: Rates }>('/api/settings') });
   const costs = useCosts(month);
   const prev = useCosts(shiftMonth(month, -1));
