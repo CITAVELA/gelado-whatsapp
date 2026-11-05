@@ -149,6 +149,7 @@ Volumen real: campañas de 241 a 1.509 destinatarios, casi semanales; 1.394 mens
 | RF-7.3 | Modo vacaciones: mensaje y fecha de vuelta entre dos fechas; construido y apagado | MVP |
 | RF-7.4 | Etiquetas (crear, color, ámbito contacto/conversación), biblioteca de archivos, usuarios | MVP |
 | RF-7.5 | Mensaje de bienvenida, reglas, reparto automático, IA, copiloto | NO (el cliente: «responderán ellos manualmente… nada de IA de momento») |
+| RF-7.6 | **Página pública de privacidad** en `/privacidad`, sin inicio de sesión y renderizada en el servidor (HTML completo sin depender de JavaScript, para que la lea el revisor de Meta). Incluye la sección de supresión de datos con ancla `#supresion`. El texto es el ajuste `privacy_policy` (Markdown), con el contenido inicial de `docs/legal/politica-privacidad.md`, y la administradora lo edita en Ajustes → Privacidad con vista previa y **sin desplegar**. Enlace «Privacidad» en el pie del inicio de sesión. Es requisito de Meta para pasar la app a modo Live (`09`, D6). Las peticiones de supresión llegan como mensaje normal a la bandeja y se atienden con el borrado de contacto de la administradora (regla 7 de `05`) | MVP |
 
 ### M8 · Reseñas de Google — fuera del MVP (P5: se pide el acceso a Google ya)
 

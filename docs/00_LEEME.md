@@ -18,6 +18,7 @@ Paquete preparado el 05/11/2026 a partir del briefing relleno por el cliente y d
 | `08_PLAN_DE_ENTREGAS.md` | Fases internas, pruebas obligatorias, criterios de aceptación, definición de terminado | Desarrollo |
 | `09_MIGRACION_Y_PUESTA_EN_MARCHA.md` | Pasos para dejar Superchat y arrancar, con quién hace cada uno | Julio, cliente, Claude |
 | `10_PREGUNTAS_ABIERTAS.md` | Preguntas respondidas por Julio el 05/11/2026 (mandan sobre el resto) | Todos |
+| `legal/politica-privacidad.md` | Texto inicial de la página pública `/privacidad` (borrador para revisar por el asesor del cliente) | Desarrollo y cliente |
 | `maquetas/` | Maquetas aprobadas de las pantallas, con la forma de trabajar de Superchat | Desarrollo |
 | `12_ARRANQUE_SESION.md` | Proyecto de Claude, repositorio, rama, entorno en la nube y cómo lanzar la sesión | Julio |
 | `../CLAUDE.md` | Contexto permanente para cualquier sesión de Claude en el repo | Claude |

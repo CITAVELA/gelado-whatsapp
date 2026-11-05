@@ -33,7 +33,7 @@ Superchat **todavía deja entrar** (capturas del 05/11/2026), pero la suscripci�
 | B4 | Crear la cuenta de **Render** del cliente (workspace Hobby, gratuito), con su tarjeta y sus datos fiscales; guardar las credenciales en un gestor de contraseñas compartido; 2FA con un método que controle el cliente y que Julio pueda usar en la oficina | Cliente con Julio |
 | B5 | Dirección web: la gratuita de Render (`*.onrender.com`), sin dominio propio en el MVP (P12) | — |
 | B6 | Sin correo saliente en el MVP (P13) | — |
-| B7 | Borrador del **contrato de encargado del tratamiento** (Julio ↔ Exclusivas Gelado) y del texto de política de privacidad que pide Meta | Claude redacta · Julio y cliente firman |
+| B7 | Borrador del **contrato de encargado del tratamiento** (Julio ↔ Exclusivas Gelado) y del texto de política de privacidad que pide Meta (texto hecho: `docs/legal/politica-privacidad.md`; falta el contrato) | Claude redacta · Julio y cliente firman |
 | B8 | Repositorio privado `gelado-whatsapp` en la cuenta de GitHub de Julio, con `/docs` y `/docs/maquetas` | Julio lo crea vacío · Claude sube la documentación |
 
 ## C · App de Meta del cliente
@@ -54,7 +54,7 @@ Superchat **todavía deja entrar** (capturas del 05/11/2026), pero la suscripci�
 | D3 | Generar los enlaces de invitación de los 3 usuarios; cada uno crea su contraseña | Claude genera · Julio los pasa en la oficina |
 | D4 | ⚠️ **Suscribir la app nueva a la WABA** (`POST /24936790469294569/subscribed_apps`) y configurar el webhook. Desde aquí llegan los mensajes también a la plataforma nueva | Claude |
 | D5 | Prueba real: Julio escribe desde su móvil al +34 617 49 82 22 y responde desde la plataforma (texto, PDF, nota de voz, plantilla) | Julio + Claude |
-| D6 | Pasar la app de Meta a modo **Live** (pide la URL de la política de privacidad, servida por la propia plataforma en `/privacidad`) | Claude |
+| D6 | Rellenar en Ajustes → Privacidad los datos entre corchetes (CIF, domicilio, correo, fecha). En la configuración básica de la app de Meta, poner como URL de la política de privacidad `https://<servicio>.onrender.com/privacidad` y como URL de instrucciones de supresión de datos `…/privacidad#supresion`. Después, pasar la app a modo **Live** | Cliente da los datos · Claude el resto |
 | D7 | Formación de 30 min a María, Cristina y Lolo (bandeja, plantillas, campañas, bajas) | Julio (en la oficina); Claude prepara una guía de una página |
 | D7b | Duplicar las plantillas de campaña actuales (las de la carpeta CAMPAÑAS) añadiendo el botón «No recibir más» y enviarlas a revisión de Meta | Claude |
 | D8 | Campaña real pequeña de prueba (etiqueta Estética, 292) con una plantilla con botón de baja, y revisión del informe | María con Julio |

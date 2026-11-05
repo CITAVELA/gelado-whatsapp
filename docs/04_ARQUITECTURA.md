@@ -119,6 +119,7 @@ Reutilizar de CITAVELA lo que ya existe y funciona (cliente de la Graph API, ver
 - Despliegue automático de Render desde la rama `main`; migraciones de Prisma (`prisma migrate deploy`) en el comando de arranque.
 - **CI mínimo**: sin GitHub Actions de pago; las pruebas las ejecuta el agente en local antes de cada entrega.
 - `/health` para el health check de Render (comprueba BD).
+- `/privacidad` es la única página pública además del login: HTML renderizado en el servidor desde el ajuste `privacy_policy` (Markdown saneado, sin HTML del usuario), sin sesión y con la misma CSP. Su URL completa (`https://<servicio>.onrender.com/privacidad`) y la de supresión (`…/privacidad#supresion`) se ponen en la configuración básica de la app de Meta (RF-7.6).
 - Copias: diarias de Supabase Pro (7 días) + exportación mensual de contactos a CSV guardada en Storage.
 
 ## Cuentas y accesos

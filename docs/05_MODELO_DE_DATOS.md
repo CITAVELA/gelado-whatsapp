@@ -519,7 +519,7 @@ model QualitySnapshot {
 }
 
 model Setting {
-  key         String   @id                   // business_hours, out_of_hours, vacation, rates, campaign_defaults
+  key         String   @id                   // business_hours, out_of_hours, vacation, rates, campaign_defaults, privacy_policy
   value       Json
   updatedById String?  @db.Uuid
   updatedAt   DateTime @updatedAt
@@ -569,6 +569,7 @@ model AuditLog {
 | `business_hours` | L–V 09:00–14:00 y 17:00–20:00; S 09:30–13:30; D cerrado; Europe/Madrid |
 | `out_of_hours` | **Activado** (P3); texto = el de la plantilla «Cierre de Ventana 24h» con 3 botones acortados a 20 caracteres («Hacer un pedido», «Necesito factura», «Duda o consulta»); `vacation` desactivado |
 | `rates` | Moneda **EUR** (J3) · marketing 0,0585 · utility 0,0166 · authentication 0,0166 · service 0,0166 tras 1.000 gratis/mes (España, 05/11/2026) |
+| `privacy_policy` | `{ markdown, updatedAt }` con el contenido de `docs/legal/politica-privacidad.md` (sin el comentario inicial). El seed no lo pisa si ya existe |
 | `campaign_defaults` | ratePerMinute 20 · todo contacto no REVOKED recibe campañas (P6) · plantilla de marketing con botón de baja obligatoria · límite diario 2.000 (se actualiza desde Meta) |
 
 ## Reglas que el modelo debe garantizar

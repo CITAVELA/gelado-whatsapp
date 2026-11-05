@@ -14,7 +14,7 @@ Alcance: todo lo marcado **MVP** y **MVP-P** en `03` (las MVP-P quedaron confirm
 | F3 · Contactos | Listado, filtros, ficha, importador (con el CSV real exportado de Superchat si está disponible; si no, uno sintético de 7.000 filas con los mismos problemas), exportar, etiquetas, consentimiento y bajas | Importa 7.000 filas en < 2 min con informe correcto |
 | F4 · Plantillas | Sincronización, editor con vista previa, envío a Meta (incluida cabecera multimedia con Resumable Upload), estados por webhook | Crea y sincroniza en el simulador; las 12 actuales se ven bien |
 | F5 · Campañas | Asistente, audiencia con exclusiones, prueba, programación, envío escalonado con límite de 24 h, pausar/reanudar/cancelar, parada automática, informe, exportación, duplicar | Campaña de 2.500 destinatarios con límite 2.000 se reparte en 2 días y el informe cuadra al 100 % |
-| F6 · Calidad, costes y ajustes | Calidad y límite, alertas (banner en la app y `/api/status`), costes, horario, fuera de horario (encendido), vacaciones (apagado), equipo con enlaces de invitación y de nueva contraseña, etiquetas, tarifas | Alertas disparadas desde el simulador |
+| F6 · Calidad, costes y ajustes | Calidad y límite, alertas (banner en la app y `/api/status`), costes, horario, fuera de horario (encendido), vacaciones (apagado), equipo con enlaces de invitación y de nueva contraseña, etiquetas, tarifas, página pública `/privacidad` con su editor (RF-7.6) | Alertas disparadas desde el simulador; `/privacidad` responde 200 sin sesión, con el texto en el HTML (sin JavaScript) y el ancla `#supresion` |
 | F7 · Pulido y verificación final | Responsive móvil, accesibilidad básica, textos en español, revisión de seguridad, revisión de código independiente, documentación de operación | Lista de verificación final completa |
 
 ## Pruebas obligatorias
@@ -50,6 +50,6 @@ Alcance: todo lo marcado **MVP** y **MVP-P** en `03` (las MVP-P quedaron confirm
 2. Pruebas automáticas en verde; informe de cobertura de las 10 áreas anteriores.
 3. Revisión de código independiente hecha y sus hallazgos corregidos.
 4. Revisión de seguridad hecha (lista de `04`).
-5. `README` de operación: variables de entorno, despliegue en Render, cómo rotar el token de Meta, cómo restaurar una copia.
+5. `README` de operación: URLs de privacidad y de supresión para la app de Meta, variables de entorno, despliegue en Render, cómo rotar el token de Meta, cómo restaurar una copia.
 6. Despliegue preparado (`render.yaml`, variables listadas sin valores) y probado en un entorno temporal o en local con Docker.
 7. Informe final breve en español: qué hay, cómo probarlo, qué queda pendiente y qué necesita de Julio o del cliente.

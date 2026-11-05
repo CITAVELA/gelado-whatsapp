@@ -51,7 +51,7 @@ Alcance = todo lo marcado **MVP** y **MVP-P** en `03`. Nada de Fase 2.
 | --- | --- | --- |
 | S5 · Bandeja backend | Sonnet 5.5 · high | F2 backend: conversaciones, vistas y contadores, asignación (y automática al responder), etiquetas, posponer/despertar, finalizar/reabrir, notas, búsqueda full-text, biblioteca, tiempo real; conecta la UI de S4 |
 | S6 · Campañas | Sonnet 5.5 · high | F5 completo: asistente, audiencia con exclusiones y recuento, prueba, programación, envío escalonado con límite de 24 h y reparto, pausar/reanudar/cancelar, paradas automáticas, informe, exportación, duplicar |
-| S7 · Calidad, costes y ajustes | Sonnet 5.5 · high | F6 completo: calidad y límite, alertas (banner y `/api/status`), costes desde `pricing`, horario, fuera de horario (encendido por defecto), vacaciones, equipo con enlaces, etiquetas, tarifas, registro de actividad |
+| S7 · Calidad, costes y ajustes | Sonnet 5.5 · high | F6 completo: calidad y límite, alertas (banner y `/api/status`), costes desde `pricing`, horario, fuera de horario (encendido por defecto), vacaciones, equipo con enlaces, etiquetas, tarifas, registro de actividad, página pública `/privacidad` y su editor (RF-7.6) |
 
 **Paso 3 — verificación (en paralelo, 3 subagentes)**
 

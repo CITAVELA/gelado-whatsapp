@@ -12,7 +12,7 @@ Descripción de cada pantalla del MVP para el desarrollo y para preparar maqueta
 
 ## P1 · Inicio de sesión
 
-Correo y contraseña; debajo «¿Olvidaste tu contraseña? Pídele un enlace a la administradora». Pantalla «Crear contraseña» al abrir un enlace de invitación o de nueva contraseña (generados por la administradora en Ajustes → Equipo).
+Correo y contraseña; debajo «¿Olvidaste tu contraseña? Pídele un enlace a la administradora». Pie con el enlace «Privacidad» (`/privacidad`). Pantalla «Crear contraseña» al abrir un enlace de invitación o de nueva contraseña (generados por la administradora en Ajustes → Equipo).
 
 ## P2 · Bandeja (tres columnas)
 
@@ -80,7 +80,12 @@ Correo y contraseña; debajo «¿Olvidaste tu contraseña? Pídele un enlace a l
 - **Biblioteca**: carpetas y archivos (subir, renombrar, mover, borrar).
 - **Horario y respuestas automáticas**: horario por día (dos tramos), respuesta fuera de horario (activar, texto, botones, vista previa), modo vacaciones (fechas, texto).
 - **WhatsApp**: datos del número y de la cuenta (solo lectura), estado del webhook (último evento recibido), tarifas de Meta editables.
+- **Privacidad**: editor de la política (Markdown) con vista previa, botón «Ver página pública» y aviso si quedan campos entre corchetes sin rellenar (`[CIF]`, `[domicilio social]`…).
 - **Registro de actividad**: tabla filtrable.
+
+## P8 · Página pública de privacidad
+
+`/privacidad`, sin sesión: logo de Gelado, el texto del ajuste `privacy_policy` con buena tipografía de lectura, títulos con ancla (la de supresión es `#supresion`) y fecha de actualización. Sin menú de la aplicación. Se ve bien en el móvil.
 
 ## Comportamiento en el móvil
 
