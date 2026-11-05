@@ -10,7 +10,7 @@ import { fmtListTime } from '../../lib/format';
 import { ConversationMenuButton } from './ConversationMenus';
 import { TAB_STATUS, VIEW_TITLES, titleCase, toListParams, type InboxFilters, type Tab } from './filters';
 import { useConversationList, useLabels, useNow, useUsers } from './hooks';
-import { notificationPermission, requestNotificationPermission } from './notify';
+import { NotificationBar, notificationPermission } from './NotificationBar';
 import { KIND_PREVIEW, displayLabel, stripLeadingEmoji, fmtShortDateTime, previewIcon, remainingText, waInitials, windowExpiresSoon, windowRemainingMs } from './utils';
 
 const TABS: { id: Tab; label: string }[] = [
@@ -162,11 +162,7 @@ export function ConversationList({
         <span>{TAB_STATUS[filters.tab] === 'SNOOZED' ? 'Próximamente vence ▾' : 'Más reciente ▾'}</span>
         <QuickFilters filters={filters} onSelect={onSelect} labels={labels} />
       </div>
-      {perm === 'default' && (
-        <button type="button" className="notif-bar" onClick={async () => setPerm(await requestNotificationPermission())}>
-          <Icon name="info" small /> Activar notificaciones del navegador
-        </button>
-      )}
+      <NotificationBar perm={perm} onPerm={setPerm} />
       <div className="cards" onScroll={onScroll} role="list" aria-label="Lista de conversaciones" aria-busy={list.isFetching}>
         {list.isLoading && <div className="empty"><Spinner /></div>}
         {list.isError && <div className="empty err">No se han podido cargar las conversaciones. <button className="btn" onClick={() => list.refetch()}>Reintentar</button></div>}
