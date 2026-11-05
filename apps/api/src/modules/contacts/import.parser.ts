@@ -5,6 +5,11 @@ import { foldAccents } from './contacts.search';
 
 export const MAX_IMPORT_ROWS = 50_000;
 export const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
+/** Un .xlsx es un zip: se limita lo que ocupa descomprimido y la proporción, para que una «bomba zip» no agote la memoria. */
+export const MAX_XLSX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
+export const MAX_XLSX_RATIO = 100;
+const MAX_XLSX_ENTRIES = 5_000;
+const XLSX_UNREADABLE = 'No se puede leer el archivo Excel. Comprueba que es un .xlsx válido';
 
 export interface ParsedFile {
   columns: string[];
@@ -85,6 +90,40 @@ function guessDelimiter(text: string): string {
   return best;
 }
 
+/**
+ * Lee el directorio central del zip (sin descomprimir nada) y rechaza el archivo si, descomprimido, ocuparía más de
+ * 50 MB o más de 100 veces lo que pesa comprimido. Debe llamarse ANTES de pasar el buffer a ExcelJS.
+ */
+export function assertSafeXlsx(data: Buffer): void {
+  const tooBig = () => new Error('El archivo Excel es demasiado grande una vez descomprimido (máximo 50 MB) o está demasiado comprimido. Guárdalo de nuevo como .xlsx normal o como .csv');
+  // fin del directorio central: firma 0x06054b50 en los últimos 65 557 bytes
+  let eocd = -1;
+  for (let i = data.length - 22; i >= Math.max(0, data.length - 22 - 65_535); i--) {
+    if (data.readUInt32LE(i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error(XLSX_UNREADABLE);
+  const entries = data.readUInt16LE(eocd + 10);
+  const cdSize = data.readUInt32LE(eocd + 12);
+  const cdOffset = data.readUInt32LE(eocd + 16);
+  // zip64: no lo usa ningún Excel de hasta 10 MB
+  if (entries === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff) throw tooBig();
+  if (entries > MAX_XLSX_ENTRIES) throw tooBig();
+  let pos = cdOffset;
+  let uncompressed = 0;
+  for (let n = 0; n < entries; n++) {
+    if (pos + 46 > data.length || data.readUInt32LE(pos) !== 0x02014b50) throw new Error(XLSX_UNREADABLE);
+    const size = data.readUInt32LE(pos + 24);
+    if (size === 0xffffffff) throw tooBig();
+    uncompressed += size;
+    if (uncompressed > MAX_XLSX_UNCOMPRESSED_BYTES) throw tooBig();
+    pos += 46 + data.readUInt16LE(pos + 28) + data.readUInt16LE(pos + 30) + data.readUInt16LE(pos + 32);
+  }
+  if (uncompressed / Math.max(1, data.length) > MAX_XLSX_RATIO) throw tooBig();
+}
+
 export async function parseFile(fileName: string, data: Buffer): Promise<ParsedFile> {
   const kind = detectKind(fileName, data);
   if (kind === 'csv') {
@@ -92,11 +131,12 @@ export async function parseFile(fileName: string, data: Buffer): Promise<ParsedF
     const res = Papa.parse<string[]>(text, { skipEmptyLines: false, delimiter: guessDelimiter(text) });
     return toObjects(res.data.filter((r) => Array.isArray(r)));
   }
+  assertSafeXlsx(data);
   const wb = new ExcelJS.Workbook();
   try {
     await wb.xlsx.load(data as any);
   } catch {
-    throw new Error('No se puede leer el archivo Excel. Comprueba que es un .xlsx válido');
+    throw new Error(XLSX_UNREADABLE);
   }
   const ws = wb.worksheets[0];
   if (!ws) throw new Error('El Excel no tiene hojas');

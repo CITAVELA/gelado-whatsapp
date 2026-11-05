@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { ImportField } from '@gelado/shared';
 import { ConsentPill } from '../../components/ui';
 import { MappingStep } from './MappingStep';
+import { buildImportOptions } from './ImportWizard';
 import { diffForm, toForm } from './ContactFields';
 import { readFilters, filtersToApi } from './ContactListPage';
 import type { ContactDto } from '@gelado/shared';
@@ -50,5 +51,12 @@ describe('ficha y filtros', () => {
     expect(f).toMatchObject({ q: 'ana', include: ['a', 'b'], consent: 'REVOKED', invalid: true, page: 3, sort: 'name' });
     expect(filtersToApi(f)).toMatchObject({ includeLabelIds: ['a', 'b'], consent: 'REVOKED', phoneInvalid: 'true' });
     expect(readFilters(new URLSearchParams('consent=xx')).consent).toBe('');
+  });
+});
+
+describe('importador · P7 (NO PUBLICIDAD siempre es baja)', () => {
+  it('las opciones que se envían incluyen siempre NO PUBLICIDAD como baja', () => {
+    const o = buildImportOptions({ Teléfono: 'phone' }, { defaultCountry: 'ES', onDuplicate: 'update', addLabelIds: [], initialConsent: 'UNKNOWN', createMissingLabels: true });
+    expect(o.optOutLabelValues).toEqual(['NO PUBLICIDAD']);
   });
 });
