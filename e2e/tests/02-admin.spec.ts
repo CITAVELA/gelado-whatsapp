@@ -51,21 +51,24 @@ test('(e) importar un CSV: mapear, reglas, vista previa, importar e informe', as
   // 4 · vista previa con problemas
   await expect(page.getByText('Vista previa del resultado')).toBeVisible();
   await expect(page.getByText('Duplicado del teléfono de la fila 4 (unido)')).toBeVisible();
-  await expect(page.getByText('Teléfono no válido (se descarta la fila)')).toBeVisible();
+  // P16: un teléfono no válido ya no descarta la fila: se importa como «Sin WhatsApp»
+  await expect(page.getByText('Aviso: Teléfono no válido: se importa sin teléfono (Sin WhatsApp)')).toBeVisible();
+  await expect(page.getByText('Aviso: País distinto de España: revisar')).toBeVisible();
   await expect(page.getByText('Fila vacía (se ignora)')).toBeVisible();
-  await page.getByRole('button', { name: 'Importar 6 contactos' }).click();
+  await page.getByRole('button', { name: 'Importar 7 contactos' }).click();
   // 5 · informe
   await expect(page.getByRole('main').getByText('Importación terminada')).toBeVisible({ timeout: 20_000 });
   const stat = (k: string) => page.locator('.stat', { hasText: k }).locator('.v');
-  await expect(stat('Creados')).toHaveText('6');
-  await expect(stat('Omitidos')).toHaveText('3');
+  await expect(stat('Creados')).toHaveText('7');
+  await expect(stat('Omitidos')).toHaveText('2');
+  await expect(stat('Sin WhatsApp')).toHaveText('1');
   await expect(stat('Dados de baja')).toHaveText('1');
-  await expect(page.getByText(/Informe \(3 incidencias\)/)).toBeVisible();
+  await expect(page.getByText(/Informe \(4 incidencias\)/)).toBeVisible();
   // el informe descargable existe y es un CSV
   const href = await page.getByRole('link', { name: 'Descargar informe' }).getAttribute('href');
   const rep = await admin.get(href!);
   expect(rep.ok()).toBe(true);
-  expect(await rep.text()).toMatch(/Teléfono no válido/);
+  expect(await rep.text()).toMatch(/Teléfono no válido|Sin WhatsApp/);
   // los contactos están: el que tenía NO PUBLICIDAD, de baja, y el extranjero conservado
   const contacts = await json(await admin.get('/api/contacts', { params: { q: csv.phones.jubilado.slice(3) } }));
   const j = (contacts.items ?? contacts.data)[0];

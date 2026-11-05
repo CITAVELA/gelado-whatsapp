@@ -46,7 +46,7 @@ test('recorrido de administradora (María Iborra)', async ({ page }) => {
   await expect(page.getByText(/9 filas/)).toBeVisible();
   await shot(page, 'importar-2-columnas');
   await page.getByRole('button', { name: /Siguiente: reglas/ }).click();
-  await expect(page.getByText(/La etiqueta NO PUBLICIDAD significa baja/)).toBeVisible();
+  await expect(page.getByTestId('nopub-note')).toContainText('significa baja');
   await shot(page, 'importar-3-reglas');
   await page.getByRole('button', { name: /Siguiente/ }).click();
   await expect(page.getByText('Vista previa del resultado')).toBeVisible();
@@ -143,7 +143,26 @@ test('recorrido de administradora (María Iborra)', async ({ page }) => {
   await page.goto('/campanas');
   await shot(page, 'campanas-listado-con-resultado');
 
-  // 5 · calidad y costes, ajustes y privacidad
+  // 5 · P16: export de Superchat (6.560 filas, con y sin teléfono) y contactos «Sin WhatsApp»
+  await page.goto('/contactos/importar');
+  await page.getByLabel('Archivo a importar').setInputFiles(path.resolve(__dirname, '../../apps/api/test/fixtures/superchat-export-sintetico.csv'));
+  await expect(page.getByText(/6\.?560 filas/)).toBeVisible({ timeout: 60_000 });
+  await shot(page, 'superchat-1-columnas-reconocidas');
+  await page.getByRole('button', { name: /Siguiente: reglas/ }).click();
+  await page.getByRole('button', { name: /Siguiente/ }).click();
+  await expect(page.getByText('Vista previa del resultado')).toBeVisible({ timeout: 60_000 });
+  await shot(page, 'superchat-2-vista-previa');
+  await page.getByRole('button', { name: /^Importar [\d.]+ contactos$/ }).click();
+  await expect(page.getByRole('main').getByText('Importación terminada')).toBeVisible({ timeout: 180_000 });
+  await shot(page, 'superchat-3-informe');
+  await page.goto('/contactos?whatsapp=without');
+  await expect(page.getByRole('row').nth(1)).toContainText('Sin WhatsApp');
+  await shot(page, 'superchat-4-contactos-sin-whatsapp');
+  await page.getByRole('row').nth(1).locator('td').nth(1).click();
+  await expect(page.getByRole('button', { name: 'Abrir conversación' })).toBeDisabled();
+  await shot(page, 'superchat-5-ficha-sin-whatsapp');
+
+  // 6 · calidad y costes, ajustes y privacidad
   await page.goto('/calidad');
   await shot(page, 'calidad-y-costes');
   await page.goto('/ajustes');
