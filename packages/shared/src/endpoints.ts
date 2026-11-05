@@ -113,5 +113,7 @@ export const ENDPOINTS: EndpointDef[] = [
   { method: 'GET', path: '/api/settings', role: 'any', module: 'settings', desc: 'Ajustes legibles por todos (horario, tarifas…)' },
   { method: 'PUT', path: '/api/settings/:key', role: 'admin', module: 'settings', desc: 'Guardar un ajuste (validado con zod)' },
   { method: 'GET', path: '/api/settings/whatsapp', role: 'admin', module: 'settings', desc: 'Datos del número, cuenta y webhook (solo lectura)' },
+  { method: 'GET', path: '/api/settings/privacy', role: 'admin', module: 'settings', desc: 'Texto actual de la política (editor)' },
+  { method: 'POST', path: '/api/settings/privacy/preview', role: 'admin', module: 'settings', desc: 'Vista previa HTML saneada del Markdown de privacidad' },
   { method: 'GET', path: '/api/audit', role: 'admin', module: 'audit', desc: 'Registro de actividad filtrable' },
 ];
