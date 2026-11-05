@@ -229,7 +229,7 @@ export class CampaignRunnerService implements OnModuleInit {
         if (n > 0) claimed = await this.claim(c.id, n, now);
         this.lastDispatch.set(c.id, now.getTime());
         room -= claimed.length;
-        for (const id of claimed) await this.jobs.send(QUEUES.CAMPAIGN_SEND, { recipientId: id }, { retryLimit: 3, retryDelay: 10, retryBackoff: true });
+        for (const id of claimed) await this.jobs.send(QUEUES.CAMPAIGN_SEND, { recipientId: id });
         await this.progress.recompute(c.id); // completa la campaña si ya no queda nada
       }
     } finally {
