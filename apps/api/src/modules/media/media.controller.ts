@@ -4,6 +4,7 @@ import { memoryStorage } from 'multer';
 import { validateMediaForWhatsApp, type MediaDto } from '@gelado/shared';
 import { CurrentUser, type AuthUser } from '../../common/decorators';
 import { MediaService } from './media.service';
+import { normalizeUploadMime } from './mime';
 
 const MAX_UPLOAD = 100 * 1024 * 1024; // el mayor límite de Meta (documentos)
 
@@ -35,10 +36,12 @@ export class MediaController {
   async upload(@UploadedFile() file: Express.Multer.File | undefined, @CurrentUser() me: AuthUser): Promise<MediaDto> {
     if (!file) throw new BadRequestException({ statusCode: 400, message: 'Falta el archivo (campo «file»)' });
     const fileName = Buffer.from(file.originalname, 'latin1').toString('utf8'); // multer entrega el nombre en latin1
-    const check = validateMediaForWhatsApp(file.mimetype, file.size);
+    // sin parámetros (`audio/webm;codecs=opus` → `audio/webm`) y con alias (`audio/x-m4a` → `audio/mp4`)
+    const mime = normalizeUploadMime(file.mimetype);
+    const check = validateMediaForWhatsApp(mime, file.size);
     if (!check.ok) throw new BadRequestException({ statusCode: 400, message: check.reason });
     if (!file.size) throw new BadRequestException({ statusCode: 400, message: 'El archivo está vacío' });
-    const m = await this.media.storeBuffer(file.buffer, file.mimetype, fileName, 'UPLOAD', me.id);
+    const m = await this.media.storeBuffer(file.buffer, mime, fileName, 'UPLOAD', me.id);
     return this.media.toDto(m);
   }
 

@@ -29,6 +29,18 @@ export function ffmpegInputFormat(mime: string): string | null {
 }
 
 /**
+ * Contenedor de audio según los primeros bytes («números mágicos»), para no fiarse solo del MIME que declara el
+ * navegador: Safari/iOS graba MP4 (AAC), Firefox OGG (Opus) y Chrome WebM (Opus), pero un MIME mal puesto no debe
+ * romper la nota de voz. Solo reconoce los tres contenedores de las grabaciones; null si no es ninguno.
+ */
+export function sniffAudioFormat(buf: Buffer): 'ogg' | 'matroska' | 'mov' | null {
+  if (buf.length >= 4 && buf.subarray(0, 4).toString('latin1') === 'OggS') return 'ogg';
+  if (buf.length >= 4 && buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) return 'matroska'; // EBML (WebM)
+  if (buf.length >= 12 && buf.subarray(4, 8).toString('latin1') === 'ftyp') return 'mov'; // MP4 / M4A
+  return null;
+}
+
+/**
  * Argumentos de ffmpeg. El formato de entrada se fuerza según el MIME (si no, ffmpeg lo detecta por contenido y un
  * «audio» HLS/concat podría leer archivos locales) y el protocolo se limita a `file,pipe`: ni red ni otros esquemas.
  */
@@ -46,7 +58,8 @@ export function ffmpegArgs(format: string, inFile: string, outFile: string): str
  * de WhatsApp. Usa archivos temporales (algunos contenedores no se pueden leer por tubería).
  */
 export async function convertToOggOpusMono(input: Buffer, inputMime = 'audio/webm'): Promise<Buffer> {
-  const format = ffmpegInputFormat(inputMime);
+  // primero lo que dicen los bytes (webm/ogg/mp4) y, si no es ninguno de ellos (mp3, aac, amr), el MIME declarado
+  const format = sniffAudioFormat(input) ?? ffmpegInputFormat(inputMime);
   if (!format) throw new Error(`Formato de audio no admitido: ${inputMime}`);
   const dir = await mkdtemp(path.join(tmpdir(), 'gelado-voice-'));
   try {

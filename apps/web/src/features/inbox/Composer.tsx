@@ -12,6 +12,7 @@ import { useVoiceRecorder, voiceSupported } from './voice';
 
 const drafts = new Map<string, { reply: string; note: string }>();
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const HOLD_MIN_MS = 700;
 const coarse = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
 
 export function Composer({
@@ -90,6 +91,22 @@ export function Composer({
     } catch (e) {
       toast(e instanceof Error && /Permission|NotAllowed|denied/i.test(e.name + e.message) ? 'No se ha permitido el acceso al micrófono' : errMsg(e, 'No se ha podido grabar'), true);
     }
+  }
+  /**
+   * Móvil: mantener pulsado el micrófono graba y soltar envía. Al empezar a grabar el botón se sustituye por la barra
+   * «Grabando», así que el dedo ya no está sobre él y su `pointerup` no le llegaría: se escucha en `window`.
+   * Un toque corto (< 0,7 s) deja la grabación en marcha con la barra para enviar o cancelar.
+   */
+  function holdToRecord(e: React.PointerEvent) {
+    if (e.pointerType !== 'touch') return;
+    touchHold.current = true;
+    const t0 = Date.now();
+    const started = startRec();
+    const off = () => { window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', cancelled); };
+    const up = () => { off(); void started.then(() => { if (Date.now() - t0 >= HOLD_MIN_MS) void finishRec(); }); };
+    const cancelled = () => { off(); void started.then(() => voice.cancel()); };
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancelled);
   }
   async function finishRec() {
     const file = await voice.stop();
@@ -188,9 +205,7 @@ export function Composer({
                 type="button"
                 className="play mic-big"
                 aria-label="Mantén pulsado para grabar nota de voz"
-                onPointerDown={(e) => { if (e.pointerType === 'touch') { touchHold.current = true; void startRec(); } }}
-                onPointerUp={(e) => { if (e.pointerType === 'touch' && voice.recording) void finishRec(); }}
-                onPointerCancel={() => { if (voice.recording) voice.cancel(); }}
+                onPointerDown={holdToRecord}
                 onContextMenu={(e) => e.preventDefault()}
               ><Icon name="mic" /></button>
             )}
