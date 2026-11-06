@@ -83,9 +83,12 @@ export const ENDPOINTS: EndpointDef[] = [
   { method: 'GET', path: '/api/templates', role: 'any', module: 'templates', desc: 'Listado (?status=APPROVED para el chat)' },
   { method: 'POST', path: '/api/templates/sync', role: 'admin', module: 'templates', desc: 'Sincronizar con Meta' },
   { method: 'POST', path: '/api/templates', role: 'admin', module: 'templates', desc: 'Crear y enviar a revisión' },
-  { method: 'GET', path: '/api/templates/:id', role: 'any', module: 'templates', desc: 'Detalle' },
+  { method: 'POST', path: '/api/templates/draft', role: 'admin', module: 'templates', desc: 'Guardar un borrador de plantilla (LOCAL_DRAFT) sin llamar a Meta' },
+  { method: 'PUT', path: '/api/templates/:id/draft', role: 'admin', module: 'templates', desc: 'Actualizar un borrador (409 si ya no es borrador)' },
+  { method: 'POST', path: '/api/templates/:id/submit', role: 'admin', module: 'templates', desc: 'Enviar a revisión un borrador (misma validación y envío que crear)' },
+  { method: 'GET', path: '/api/templates/:id', role: 'any', module: 'templates', desc: 'Detalle (los borradores solo para admin)' },
   { method: 'POST', path: '/api/templates/:id/duplicate', role: 'admin', module: 'templates', desc: 'Duplicar (p. ej. con botón de baja) → borrador de editor' },
-  { method: 'DELETE', path: '/api/templates/:id', role: 'admin', module: 'templates', desc: 'Borrar en Meta y localmente' },
+  { method: 'DELETE', path: '/api/templates/:id', role: 'admin', module: 'templates', desc: 'Borrar en Meta y localmente (un borrador solo localmente)' },
 
   // Campañas
   { method: 'GET', path: '/api/campaigns', role: 'any', module: 'campaigns', desc: 'Listado' },

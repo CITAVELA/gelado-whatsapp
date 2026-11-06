@@ -34,6 +34,8 @@ export interface TemplateDto {
   variables: string[];
   headerFormat: 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
   usableInCampaigns: boolean;
+  /** Solo en borradores locales (`LOCAL_DRAFT`): el contenido del editor tal cual se guardó. */
+  draft?: TemplateDraftDto | null;
   lastSyncedAt: string | null;
   updatedAt: string;
 }
@@ -78,6 +80,75 @@ export const templateEditorSchema = z.object({
 });
 export type TemplateEditorDto = z.infer<typeof templateEditorSchema>;
 export type TemplateEditorButton = TemplateEditorDto['buttons'][number];
+
+/**
+ * Borrador local («Guardar borrador»): validación suave. Solo hace falta el nombre de Meta (ya normalizado) y el
+ * idioma; el resto puede estar incompleto y se valida entero al enviar a revisión (`templateEditorSchema` +
+ * `validateTemplateEditor`). Los límites de longitud son solo de seguridad.
+ */
+export const templateDraftSchema = z.object({
+  displayName: z.string().trim().max(120, 'El nombre es demasiado largo (máximo 120)').default(''),
+  name: z
+    .string({ required_error: 'Escribe un nombre para la plantilla' })
+    .min(1, 'Escribe un nombre para la plantilla')
+    .regex(META_TEMPLATE_NAME_RE, 'El nombre en Meta solo admite minúsculas, números y guion bajo (_)'),
+  category: z.enum(['MARKETING', 'UTILITY'], { errorMap: () => ({ message: 'Elige la categoría: Marketing o Utilidad' }) }).default('MARKETING'),
+  language: z.string({ required_error: 'Elige el idioma' }).min(2, 'Elige el idioma').max(10).default('es'),
+  header: z
+    .object({
+      format: z.enum(['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT']).default('NONE'),
+      text: z.string().max(200).optional(),
+      textExample: z.string().max(500).optional(),
+      exampleMediaFileId: z.string().uuid('El archivo de ejemplo no es válido').optional(),
+    })
+    .default({ format: 'NONE' }),
+  body: z.string().max(4096, 'El mensaje es demasiado largo').default(''),
+  bodyExamples: z.array(z.string().max(500)).max(50).default([]),
+  footer: z.string().max(200).optional(),
+  buttons: z
+    .array(
+      z.object({
+        type: z.enum(['QUICK_REPLY', 'URL', 'PHONE_NUMBER']),
+        text: z.string().max(100).default(''),
+        url: z.string().max(2000).optional(),
+        example: z.string().max(500).optional(),
+        phone: z.string().max(40).optional(),
+      }),
+    )
+    .max(10, 'Máximo 10 botones')
+    .default([]),
+  addOptOutButton: z.boolean().default(true),
+});
+export type TemplateDraftDto = z.infer<typeof templateDraftSchema>;
+
+/** Borrador (posiblemente incompleto) → forma del editor, con valores por defecto donde falte algo. */
+export function draftToEditor(d: TemplateDraftDto): TemplateEditorDto {
+  return {
+    displayName: d.displayName ?? '',
+    name: d.name,
+    category: d.category,
+    language: d.language,
+    header: d.header,
+    body: d.body ?? '',
+    bodyExamples: d.bodyExamples ?? [],
+    footer: d.footer,
+    buttons: (d.buttons ?? [])
+      .filter((b) => b.text.trim())
+      .map((b) =>
+        b.type === 'QUICK_REPLY'
+          ? { type: 'QUICK_REPLY' as const, text: b.text }
+          : b.type === 'URL'
+            ? { type: 'URL' as const, text: b.text, url: b.url ?? '', example: b.example }
+            : { type: 'PHONE_NUMBER' as const, text: b.text, phone: b.phone ?? '' },
+      ),
+    addOptOutButton: d.addOptOutButton,
+  };
+}
+
+/** `components` aproximados de un borrador (vista previa, variables…); no son los que se mandarían a Meta. */
+export function draftToComponents(d: TemplateDraftDto): TemplateComponent[] {
+  return editorToComponents(draftToEditor(d));
+}
 
 /** Respuesta rápida con exactamente «No recibir más» (la que impone el editor). */
 const isCanonicalOptOutQr = (b: { type: string; text: string }) => b.type === 'QUICK_REPLY' && isCanonicalOptOutButtonText(b.text);

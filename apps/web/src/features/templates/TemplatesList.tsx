@@ -12,6 +12,8 @@ import { invalidateTemplates, useTemplates } from './queries';
 import type { DraftState } from './TemplateEditor';
 
 const STATUSES = ['APPROVED', 'PENDING', 'REJECTED', 'PAUSED', 'DISABLED', 'IN_APPEAL'] as const;
+/** Los borradores locales solo existen para la administradora: a un agente no se le ofrece el filtro. */
+const ADMIN_STATUSES = ['LOCAL_DRAFT', ...STATUSES] as const;
 
 export function TemplatesList() {
   const { isAdmin } = useAuth();
@@ -28,8 +30,8 @@ export function TemplatesList() {
   async function sync() {
     setSyncing(true);
     try {
-      const r = await api.post<{ total: number; created: number; deleted: number }>('/api/templates/sync');
-      toast(`Sincronizado con Meta: ${r.total} plantillas${r.created ? `, ${r.created} nuevas` : ''}${r.deleted ? `, ${r.deleted} retiradas` : ''}`);
+      const r = await api.post<{ total: number; created: number; deleted: number; adoptedDrafts?: number }>('/api/templates/sync');
+      toast(`Sincronizado con Meta: ${r.total} plantillas${r.created ? `, ${r.created} nuevas` : ''}${r.deleted ? `, ${r.deleted} retiradas` : ''}${r.adoptedDrafts ? `, ${r.adoptedDrafts} borrador(es) sustituido(s) por la plantilla de Meta del mismo nombre` : ''}`);
       await invalidateTemplates();
     } catch (e) {
       toast((e as Error).message, true);
@@ -37,6 +39,8 @@ export function TemplatesList() {
       setSyncing(false);
     }
   }
+
+  const openDraft = (t: TemplateDto) => nav(`/plantillas/borrador/${t.id}`);
 
   async function duplicate(t: TemplateDto) {
     try {
@@ -71,7 +75,7 @@ export function TemplatesList() {
         </div>
         <select className="tpl-input" style={{ width: 170 }} aria-label="Filtrar por estado" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Todos los estados</option>
-          {STATUSES.map((s) => (
+          {(isAdmin ? ADMIN_STATUSES : STATUSES).map((s) => (
             <option key={s} value={s}>{LABELS_ES.templateStatus[s]}</option>
           ))}
         </select>
@@ -98,7 +102,7 @@ export function TemplatesList() {
             </thead>
             <tbody>
               {data.map((t) => (
-                <tr key={t.id} className="tpl-row" onClick={() => setDetail(t)}>
+                <tr key={t.id} className="tpl-row" onClick={() => (isAdmin && t.status === 'LOCAL_DRAFT' ? openDraft(t) : setDetail(t))}>
                   <td>
                     <div className="tpl-name">
                       <strong>{templateTitle(t)}</strong>
@@ -119,7 +123,9 @@ export function TemplatesList() {
                   <td onClick={(e) => e.stopPropagation()}>
                     {isAdmin && (
                       <div className="tpl-actions">
-                        {t.status === 'REJECTED' ? (
+                        {t.status === 'LOCAL_DRAFT' ? (
+                          <button className="btn" aria-label={`Editar borrador ${templateTitle(t)}`} onClick={() => openDraft(t)}><Icon name="edit" small /> Editar</button>
+                        ) : t.status === 'REJECTED' ? (
                           <button className="btn" onClick={() => duplicate(t)}>Duplicar y corregir</button>
                         ) : t.category === 'MARKETING' && !t.hasOptOutButton ? (
                           <button className="btn" onClick={() => duplicate(t)}>Duplicar con botón de baja</button>
@@ -157,12 +163,18 @@ export function TemplatesList() {
           title="Borrar plantilla"
           danger
           confirmText="Borrar"
-          text={<>Se borrará «{templateTitle(toDelete)}» también en Meta. Esta acción no se puede deshacer.</>}
+          text={
+            toDelete.status === 'LOCAL_DRAFT' ? (
+              <>Se borrará el borrador «{templateTitle(toDelete)}». Nunca se envió a Meta. Esta acción no se puede deshacer.</>
+            ) : (
+              <>Se borrará «{templateTitle(toDelete)}» también en Meta. Esta acción no se puede deshacer.</>
+            )
+          }
           onClose={() => setToDelete(null)}
           onConfirm={async () => {
             try {
               await api.del(`/api/templates/${toDelete.id}`);
-              toast('Plantilla borrada');
+              toast(toDelete.status === 'LOCAL_DRAFT' ? 'Borrador borrado' : 'Plantilla borrada');
               await invalidateTemplates();
             } catch (e) {
               toast((e as Error).message, true);

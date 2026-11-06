@@ -394,6 +394,8 @@ model Template {
   category        TemplateCategory
   status          TemplateStatus
   components      Json                         // HEADER/BODY/FOOTER/BUTTONS tal cual Meta
+  draftData       Json?                        // contenido del editor de un borrador (LOCAL_DRAFT); null en el resto
+  submittingAt    DateTime?                    // reserva del borrador mientras se envía a Meta (evita dobles envíos y borrados a medias; caduca a los 2 min)
   rejectedReason  String?
   qualityScore    String?
   hasOptOutButton Boolean          @default(false)

@@ -12,6 +12,8 @@ import { useVoiceRecorder, voiceSupported } from './voice';
 
 const drafts = new Map<string, { reply: string; note: string }>();
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const HOLD_MIN_MS = 700;
+const MIN_NOTE_MS = 1000;
 const coarse = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
 
 export function Composer({
@@ -84,14 +86,45 @@ export function Composer({
     });
   }
 
-  async function startRec() {
+  /** Empieza a grabar; true si la grabación está en marcha (false si se denegó el micrófono o falló). */
+  async function startRec(): Promise<boolean> {
     try {
       await voice.start();
+      return true;
     } catch (e) {
       toast(e instanceof Error && /Permission|NotAllowed|denied/i.test(e.name + e.message) ? 'No se ha permitido el acceso al micrófono' : errMsg(e, 'No se ha podido grabar'), true);
+      return false;
     }
   }
+  /**
+   * Móvil: mantener pulsado el micrófono graba y soltar envía. Al empezar a grabar el botón se sustituye por la barra
+   * «Grabando», así que el dedo ya no está sobre él y su `pointerup` no le llegaría: se escucha en `window`.
+   * Solo se envía al soltar si la grabación ya estaba en marcha y se mantuvo pulsado (≥ 0,7 s); si al soltar aún se
+   * esperaba el permiso del micrófono, o fue un toque corto, la barra «Grabando» queda para enviar o cancelar a mano.
+   */
+  function holdToRecord(e: React.PointerEvent) {
+    if (e.pointerType !== 'touch') return;
+    touchHold.current = true;
+    const t0 = Date.now();
+    let live = false; // la grabación ya empezó (getUserMedia resuelto)
+    const started = startRec().then((ok) => { live = ok; return ok; });
+    const off = () => { window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', cancelled); };
+    const up = () => {
+      off();
+      const held = Date.now() - t0; // se mide al levantar el dedo, no cuando se resuelve el permiso
+      if (live && held >= HOLD_MIN_MS) void finishRec();
+    };
+    const cancelled = () => { off(); void started.then((ok) => { if (ok) voice.cancel(); }); };
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancelled);
+  }
   async function finishRec() {
+    // una grabación de menos de ~1 s no es una nota de voz: se descarta con un aviso en vez de enviar un audio vacío
+    if (voice.elapsedMs() < MIN_NOTE_MS) {
+      voice.cancel();
+      toast('La nota de voz es demasiado corta. Mantén pulsado el micrófono y habla.', true);
+      return;
+    }
     const file = await voice.stop();
     if (!file) return;
     setSending(true);
@@ -188,9 +221,7 @@ export function Composer({
                 type="button"
                 className="play mic-big"
                 aria-label="Mantén pulsado para grabar nota de voz"
-                onPointerDown={(e) => { if (e.pointerType === 'touch') { touchHold.current = true; void startRec(); } }}
-                onPointerUp={(e) => { if (e.pointerType === 'touch' && voice.recording) void finishRec(); }}
-                onPointerCancel={() => { if (voice.recording) voice.cancel(); }}
+                onPointerDown={holdToRecord}
                 onContextMenu={(e) => e.preventDefault()}
               ><Icon name="mic" /></button>
             )}

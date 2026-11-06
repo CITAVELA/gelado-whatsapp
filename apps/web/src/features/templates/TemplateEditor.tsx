@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   OPT_OUT_BUTTON_TEXT,
@@ -6,8 +6,10 @@ import {
   editorToComponents,
   extractVariables,
   slugifyTemplateName,
+  templateDraftSchema,
   templateEditorSchema,
   validateTemplateEditor,
+  type TemplateDraftDto,
   type TemplateDto,
   type TemplateEditorDto,
 } from '@gelado/shared';
@@ -17,12 +19,28 @@ import { useToast } from '../../components/ui';
 import { TemplatePreview } from './TemplatePreview';
 import { invalidateTemplates } from './queries';
 
-/** Respuesta de POST /api/templates/:id/duplicate; llega por `location.state`. */
+/**
+ * Contenido inicial del editor: la respuesta de POST /api/templates/:id/duplicate (llega por `location.state`)
+ * o el borrador guardado que se reabre desde el listado (`TemplateDraftPage`).
+ */
 export interface DraftState {
   sourceTemplateId: string;
-  draft: TemplateEditorDto;
+  draft: TemplateDraftDto;
   notes: string[];
 }
+
+export interface TemplateEditorProps {
+  /** Contenido con el que se abre el editor (por defecto, el de `location.state`). */
+  initial?: DraftState | null;
+  /** Id del borrador local que se está editando: «Guardar borrador» lo actualiza y «Enviar a revisión» lo envía. */
+  draftId?: string;
+}
+
+const messagesOf = (e: unknown): string[] => {
+  const body = (e as { body?: { details?: Array<{ message: string }> } }).body;
+  const list = Array.isArray(body?.details) ? body!.details.map((x) => x.message).filter(Boolean) : [];
+  return list.length ? list : [(e as Error).message];
+};
 
 type HeaderFormat = 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
 type BtnType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
@@ -38,11 +56,13 @@ function Counter({ n, max }: { n: number; max: number }) {
   return <div className={`tpl-counter${n > max ? ' over' : ''}`}>{n} / {max}</div>;
 }
 
-export function TemplateEditor() {
+export function TemplateEditor({ initial, draftId: initialDraftId }: TemplateEditorProps = {}) {
   const nav = useNavigate();
   const toast = useToast();
-  const { state } = useLocation() as { state: DraftState | null };
+  const { state: locState } = useLocation() as { state: DraftState | null };
+  const state = initial ?? locState;
   const d = state?.draft;
+  const [draftId, setDraftId] = useState<string | undefined>(initialDraftId);
 
   const [displayName, setDisplayName] = useState(d?.displayName ?? '');
   const [name, setName] = useState(d?.name ?? '');
@@ -52,18 +72,36 @@ export function TemplateEditor() {
   const [headerFormat, setHeaderFormat] = useState<HeaderFormat>(d?.header.format ?? 'NONE');
   const [headerText, setHeaderText] = useState(d?.header.text ?? '');
   const [headerExample, setHeaderExample] = useState(d?.header.textExample ?? '');
-  const [media, setMedia] = useState<{ id: string; fileName: string; url: string } | null>(null);
+  const [media, setMedia] = useState<{ id: string; fileName: string; url: string } | null>(
+    d?.header.exampleMediaFileId ? { id: d.header.exampleMediaFileId, fileName: 'archivo guardado en el borrador', url: '' } : null,
+  );
   const [uploading, setUploading] = useState(false);
   const [body, setBody] = useState(d?.body ?? '');
   const [examples, setExamples] = useState<string[]>(d?.bodyExamples ?? []);
   const [footer, setFooter] = useState(d?.footer ?? '');
   const [buttons, setButtons] = useState<BtnState[]>(
-    (d?.buttons ?? []).map((b) => ({ type: b.type, text: b.text, url: b.type === 'URL' ? b.url : '', example: b.type === 'URL' ? b.example ?? '' : '', phone: b.type === 'PHONE_NUMBER' ? b.phone : '' })),
+    (d?.buttons ?? []).map((b) => ({ type: b.type, text: b.text, url: b.type === 'URL' ? b.url ?? '' : '', example: b.type === 'URL' ? b.example ?? '' : '', phone: b.type === 'PHONE_NUMBER' ? b.phone ?? '' : '' })),
   );
   const [optOut, setOptOut] = useState(d?.addOptOutButton ?? true);
   const [errors, setErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // al reabrir un borrador con imagen/vídeo/documento de ejemplo, recupera su vista previa (URL firmada)
+  const restoredMediaId = useRef(d?.header.exampleMediaFileId);
+  useEffect(() => {
+    const id = restoredMediaId.current;
+    if (!id) return;
+    let alive = true;
+    api
+      .get<{ url: string }>(`/api/media/${id}/url`)
+      .then((r) => alive && setMedia((m) => (m && m.id === id ? { ...m, url: r.url } : m)))
+      .catch(() => alive && setMedia((m) => (m && m.id === id ? null : m)));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const marketing = category === 'MARKETING';
   const bodyVars = uniqVars(body);
@@ -163,16 +201,34 @@ export function TemplateEditor() {
     if (errs.length) return setErrors(errs);
     setBusy(true);
     try {
-      const t = await api.post<TemplateDto>('/api/templates', parsed.data);
-      await invalidateTemplates();
+      // un borrador guardado se envía con su mismo registro; si Meta falla sigue siendo borrador
+      const t = draftId ? await api.post<TemplateDto>(`/api/templates/${draftId}/submit`, parsed.data) : await api.post<TemplateDto>('/api/templates', parsed.data);
       toast(`«${t.displayName ?? t.name}» enviada a revisión de Meta`);
+      // primero navega: si se refrescara antes la consulta del borrador abierto, pintaría un instante «ya no es un borrador»
       nav('/plantillas');
+      void invalidateTemplates();
     } catch (e) {
-      const body = (e as { body?: { details?: Array<{ message: string }> } }).body;
-      const list = Array.isArray(body?.details) ? body!.details.map((x) => x.message).filter(Boolean) : [];
-      setErrors(list.length ? list : [(e as Error).message]);
+      setErrors(messagesOf(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** Guarda en la BD como borrador, sin llamar a Meta. Validación suave: basta con el nombre y el idioma. */
+  async function saveDraft() {
+    setErrors([]);
+    const parsed = templateDraftSchema.safeParse(dto);
+    if (!parsed.success) return setErrors([...new Set(parsed.error.issues.map((i) => i.message))]);
+    setSaving(true);
+    try {
+      const t = draftId ? await api.put<TemplateDto>(`/api/templates/${draftId}/draft`, parsed.data) : await api.post<TemplateDto>('/api/templates/draft', parsed.data);
+      setDraftId(t.id);
+      await invalidateTemplates();
+      toast(`Borrador «${t.displayName ?? t.name}» guardado`);
+    } catch (e) {
+      setErrors(messagesOf(e));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -337,7 +393,8 @@ export function TemplateEditor() {
         )}
         <div className="section" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button className="btn" onClick={() => nav('/plantillas')}>Cancelar</button>
-          <button className="btn primary" disabled={busy || uploading} onClick={submit}>{busy ? 'Enviando…' : 'Enviar a revisión de Meta'}</button>
+          <button className="btn" disabled={busy || saving || uploading} onClick={saveDraft}>{saving ? 'Guardando…' : 'Guardar borrador'}</button>
+          <button className="btn primary" disabled={busy || saving || uploading} onClick={submit}>{busy ? 'Enviando…' : 'Enviar a revisión de Meta'}</button>
         </div>
       </div>
 
@@ -345,6 +402,7 @@ export function TemplateEditor() {
         <span className="label">Vista previa</span>
         <TemplatePreview components={previewComponents} values={previewValues} headerMediaUrl={media?.url} />
         <div className="hint" style={{ marginTop: 10 }}>Meta revisa la plantilla, normalmente en minutos. Os avisaremos aquí cuando esté aprobada o si la rechaza, con el motivo.</div>
+        <div className="hint" style={{ marginTop: 6 }}>«Guardar borrador» la deja en el listado sin enviarla a Meta; podéis terminarla más tarde.</div>
       </div>
     </div>
   );

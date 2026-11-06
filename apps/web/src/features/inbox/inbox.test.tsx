@@ -72,10 +72,18 @@ describe('bandeja', () => {
   });
 
   it('separadores de fecha', async () => {
-    setup('/bandeja/c/c1');
-    const log = await screen.findByRole('log');
-    await waitFor(() => expect(within(log).getAllByText(/^(Hoy|Ayer|\d{2}\/\d{2}\/\d{4})$/).length).toBeGreaterThan(1));
-    expect(within(log).getByText('Hoy')).toBeInTheDocument();
+    // El simulacro fecha los mensajes respecto a «ahora» (el último, hace ~3 h): entre las 00:00 y las 03:00 ninguno
+    // sería de hoy. Se fija el reloj a mediodía (solo Date; los temporizadores siguen siendo reales).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-05T12:00:00+01:00'));
+    try {
+      setup('/bandeja/c/c1');
+      const log = await screen.findByRole('log');
+      await waitFor(() => expect(within(log).getAllByText(/^(Hoy|Ayer|\d{2}\/\d{2}\/\d{4})$/).length).toBeGreaterThan(1));
+      expect(within(log).getByText('Hoy')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

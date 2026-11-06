@@ -404,6 +404,8 @@ model Template {
   rejectedReason  String?
   qualityScore    String?
   hasOptOutButton Boolean          @default(false)
+  draftData       Json? // contenido del editor de un borrador local (LOCAL_DRAFT); null en el resto
+  submittingAt    DateTime? // reserva del borrador mientras se envía a Meta (null = libre; caduca a los 2 min)
   lastSyncedAt    DateTime?
   createdById     String?          @db.Uuid
   createdAt       DateTime         @default(now())
