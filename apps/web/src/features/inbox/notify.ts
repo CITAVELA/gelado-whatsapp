@@ -121,7 +121,7 @@ export function showNotification(title: string, body: string, onClick: () => voi
   playBeep();
   if (notificationPermission() !== 'granted') return;
   try {
-    const n = new Notification(title, { body, icon: '/favicon.svg', tag: 'gelado-inbox' });
+    const n = new Notification(title, { body, icon: '/favicon.png', tag: 'gelado-inbox' });
     n.onclick = () => {
       window.focus();
       onClick();

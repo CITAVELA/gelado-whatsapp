@@ -79,6 +79,8 @@ export class PrivacyService {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Política de privacidad · Exclusivas Gelado</title>
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="description" content="Política de privacidad de Exclusivas Gelado: qué datos tratamos, para qué, cómo darte de baja y cómo pedir la supresión de tus datos.">
 <style>
 :root{--bg:#faf8f5;--fg:#1f1b16;--muted:#6b6258;--line:#e4ddd3;--accent:#8a5a2b;--card:#fff}
@@ -90,6 +92,7 @@ header{border-bottom:1px solid var(--line);background:var(--card)}
 .wrap{max-width:46rem;margin:0 auto;padding:0 20px}
 .logo{display:inline-block;padding:18px 0;font:700 22px/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;letter-spacing:.32em;color:var(--fg);text-decoration:none}
 .logo span{color:var(--accent)}
+.logo img{width:30px;height:30px;vertical-align:middle;margin:-4px 12px 0 0}
 main{padding:32px 0 56px}
 h1,h2,h3,h4{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.25;scroll-margin-top:16px}
 h1{font-size:2rem;margin:.2em 0 .3em}
@@ -109,7 +112,7 @@ footer{border-top:1px solid var(--line);color:var(--muted);font:14px system-ui,s
 </style>
 </head>
 <body>
-<header><div class="wrap"><a class="logo" href="/privacidad" aria-label="Exclusivas Gelado">GEL<span>A</span>DO</a></div></header>
+<header><div class="wrap"><a class="logo" href="/privacidad" aria-label="Exclusivas Gelado"><img src="/favicon.png" alt="" width="30" height="30">GEL<span>A</span>DO</a></div></header>
 <main><div class="wrap">
 ${updated ? `<p class="updated">Última actualización: ${esc(updated)}</p>` : ''}
 ${body}

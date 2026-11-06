@@ -54,7 +54,7 @@ export function AuthShell({ children, subtitle = 'WhatsApp del equipo' }: { chil
     <div style={{ width: '100%', minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#121417', position: 'relative' }}>
       <div style={{ width: 400, maxWidth: '92%', background: '#fff', borderRadius: 16, padding: 32, display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="logo" style={{ margin: 0, width: 48, height: 48, fontSize: 10 }} aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+          <img className="logo" src="/favicon.png" alt="Gelado" width={48} height={48} style={{ margin: 0, width: 48, height: 48 }} />
           <div><div style={{ fontWeight: 800, fontSize: 18 }}>Exclusivas Gelado</div><div className="hint">{subtitle}</div></div>
         </div>
         {children}
