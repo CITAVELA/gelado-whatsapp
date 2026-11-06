@@ -67,7 +67,7 @@ export function AppLayout() {
   return (
     <div className="app">
       <nav className="rail" aria-label="Menú principal">
-        <div className="logo" aria-label="Gelado"><span><b>G</b>ELADO</span></div>
+        <img className="logo" src="/favicon.png" alt="Gelado" width={40} height={40} />
         {nav.map((n) => (
           <NavLink key={n.to} to={n.to} className={(s) => `${cls(s)}${n.desktopOnly ? ' hide-mobile' : ''}`} aria-label={n.label} title={n.label}>
             <Icon name={n.icon} />
