@@ -30,3 +30,4 @@ Respondidas por Julio el 05/11/2026. Estas respuestas mandan sobre cualquier otr
 | J1 | Titular del repositorio | **Cuenta de GitHub de Julio, repo privado** `gelado-whatsapp` |
 | J2 | Maquetas | **Sí, maquetas aprobadas antes del desarrollo** (en `docs/maquetas/`) |
 | J3 | Moneda de la cuenta de WhatsApp | **EUR** (marketing España 0,0585 €) |
+| J4 | Datos reales y Claude (06/11/2026) | **Claude no trata datos personales reales del cliente** (su plan de Claude es de consumidor, sin contrato de encargado). Julio hace las importaciones en la app; Claude trabaja solo con datos inventados, configuración y métricas sin datos personales. Anthropic no figura como subencargado en el contrato de encargado |

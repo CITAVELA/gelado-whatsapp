@@ -50,7 +50,7 @@ Superchat **todavía deja entrar** (capturas del 05/11/2026), pero la suscripci�
 | # | Paso | Quién |
 | --- | --- | --- |
 | D1 | Desplegar en Render (servicio web Starter, región Frankfurt), migraciones y seed, en la dirección `*.onrender.com` | Claude |
-| D2 | Importar **primero la exportación general** de Superchat (A1, 6.560 contactos; los que no tienen móvil entran como «Sin WhatsApp»), **después las tres listas** (Peluquería, Barbería, Estética), cada una con «Añadir etiqueta» (la de su lista) y «Si existe: actualizar»; importar los PDF de la biblioteca (A2). Julio revisa con María el informe de avisos (país distinto de España, fijos españoles, teléfonos corregidos a +34, incompletos, sin WhatsApp) antes de seguir | Claude · Julio revisa el informe con María |
+| D2 | Importar **primero la exportación general** de Superchat (A1, 6.560 contactos; los que no tienen móvil entran como «Sin WhatsApp»), **después las tres listas** (Peluquería, Barbería, Estética), cada una con «Añadir etiqueta» (la de su lista) y «Si existe: actualizar»; importar los PDF de la biblioteca (A2). Julio revisa con María el informe de avisos (país distinto de España, fijos españoles, teléfonos corregidos a +34, incompletos, sin WhatsApp) antes de seguir | Julio, en la app con el asistente de importación (Claude no maneja los datos reales, J4) · revisa el informe con María |
 | D3 | Generar los enlaces de invitación de los 3 usuarios; cada uno crea su contraseña | Claude genera · Julio los pasa en la oficina |
 | D4 | ⚠️ **Suscribir la app nueva a la WABA** (`POST /24936790469294569/subscribed_apps`) y configurar el webhook. Desde aquí llegan los mensajes también a la plataforma nueva | Claude |
 | D5 | Prueba real: Julio escribe desde su móvil al +34 617 49 82 22 y responde desde la plataforma (texto, PDF, nota de voz, plantilla) | Julio + Claude |
@@ -60,7 +60,7 @@ Superchat **todavía deja entrar** (capturas del 05/11/2026), pero la suscripci�
 | D8 | Campaña real pequeña de prueba (etiqueta Estética, 292) con una plantilla con botón de baja, y revisión del informe | María con Julio |
 | D9 | ⚠️ Comprobar que el método de pago del cliente está activo en Meta y **quitar a Superchat** de Socios del portfolio (retira su línea de crédito) | Cliente o Julio |
 | D10 | ⚠️ Cambiar el **PIN de verificación en dos pasos** del número en WhatsApp Manager y guardarlo en el gestor de contraseñas | Julio |
-| D11 | Vigilancia 7 días: calidad, errores, entregas, cupo de servicio, gasto | Claude (revisión diaria; avisa a Julio solo si algo falla) |
+| D11 | Vigilancia 7 días: calidad, errores, entregas, cupo de servicio, gasto | Claude (revisión diaria con `/api/status`, métricas de Render y calidad y plantillas en Meta, sin leer contactos, conversaciones ni registros con datos personales, J4; avisa a Julio solo si algo falla) |
 
 ## Vuelta atrás
 
